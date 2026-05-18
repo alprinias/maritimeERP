@@ -1,0 +1,1518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maritime ERP</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/vue-router@4/dist/vue-router.global.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="assets/erp-base.css">
+    <link rel="stylesheet" href="assets/gantt.css">
+</head>
+<body class="bg-gray-50 font-sans text-gray-800">
+
+<!-- ── App shell ─────────────────────────────────────────────── -->
+<div id="app" class="h-screen flex flex-col overflow-hidden">
+
+    <!-- Top bar -->
+    <header class="bg-slate-900 text-white flex items-center justify-between px-5 shrink-0" style="height:48px">
+        <div class="flex items-center gap-3">
+            <!-- Sidebar toggle -->
+            <button @click="sidebarOpen = !sidebarOpen"
+                    class="w-7 h-7 flex flex-col items-center justify-center gap-1.5 rounded hover:bg-slate-700 transition shrink-0">
+                <span class="block w-4 h-0.5 bg-slate-300"></span>
+                <span class="block w-4 h-0.5 bg-slate-300"></span>
+                <span class="block w-4 h-0.5 bg-slate-300"></span>
+            </button>
+            <h1 class="text-base font-bold tracking-tight leading-none">
+                MARITIME<span class="text-blue-400">ERP</span>
+            </h1>
+        </div>
+        <div class="flex items-center gap-3 text-xs">
+            <span class="text-slate-400">Welcome, <strong class="text-slate-200">Ops_User_01</strong></span>
+            <div class="w-7 h-7 bg-blue-500 rounded-full flex items-center justify-center text-xs font-bold shrink-0">JD</div>
+        </div>
+    </header>
+
+    <!-- Body: sidebar + content -->
+    <div class="flex flex-1 overflow-hidden">
+
+        <!-- ── Sidebar ──────────────────────────────────────── -->
+        <aside :class="['bg-slate-800 flex flex-col shrink-0 overflow-y-auto transition-all duration-200',
+                         sidebarOpen ? 'w-52' : 'w-0']"
+               style="min-width:0">
+            <nav class="flex-1 py-3 select-none">
+
+                <!-- Admin -->
+                <div>
+                    <button @click="toggleSection('admin')"
+                            class="w-full flex items-center justify-between px-4 py-2.5 text-left hover:bg-slate-700 transition group">
+                        <div class="flex items-center gap-2.5">
+                            <span class="text-slate-400 text-sm">⚙</span>
+                            <span class="text-xs font-bold uppercase tracking-widest text-slate-300 group-hover:text-white transition whitespace-nowrap">Admin</span>
+                        </div>
+                        <span :class="['text-slate-500 text-[10px] transition-transform', openSections.admin ? 'rotate-90' : '']">▶</span>
+                    </button>
+                    <div v-show="openSections.admin" class="pl-4">
+                        <router-link to="/admin/users"
+                            class="flex items-center gap-2 px-4 py-2 text-xs text-slate-400 hover:text-white hover:bg-slate-700 transition rounded-sm whitespace-nowrap"
+                            active-class="text-white bg-slate-700">
+                            Users
+                        </router-link>
+                        <router-link to="/admin/clients"
+                            class="flex items-center gap-2 px-4 py-2 text-xs text-slate-400 hover:text-white hover:bg-slate-700 transition rounded-sm whitespace-nowrap"
+                            active-class="text-white bg-slate-700">
+                            Clients Setup
+                        </router-link>
+                        <router-link to="/admin/settings"
+                            class="flex items-center gap-2 px-4 py-2 text-xs text-slate-400 hover:text-white hover:bg-slate-700 transition rounded-sm whitespace-nowrap"
+                            active-class="text-white bg-slate-700">
+                            Settings
+                        </router-link>
+                    </div>
+                </div>
+
+                <!-- Recruitment -->
+                <div>
+                    <button @click="toggleSection('recruitment')"
+                            class="w-full flex items-center justify-between px-4 py-2.5 text-left hover:bg-slate-700 transition group">
+                        <div class="flex items-center gap-2.5">
+                            <span class="text-slate-400 text-sm">👥</span>
+                            <span class="text-xs font-bold uppercase tracking-widest text-slate-300 group-hover:text-white transition whitespace-nowrap">Recruitment</span>
+                        </div>
+                        <span :class="['text-slate-500 text-[10px] transition-transform', openSections.recruitment ? 'rotate-90' : '']">▶</span>
+                    </button>
+                    <div v-show="openSections.recruitment" class="pl-4">
+                        <router-link to="/recruitment/candidates"
+                            class="flex items-center gap-2 px-4 py-2 text-xs text-slate-400 hover:text-white hover:bg-slate-700 transition rounded-sm whitespace-nowrap"
+                            active-class="text-white bg-slate-700">
+                            Candidates
+                        </router-link>
+                        <router-link to="/recruitment/pipeline"
+                            class="flex items-center gap-2 px-4 py-2 text-xs text-slate-400 hover:text-white hover:bg-slate-700 transition rounded-sm whitespace-nowrap"
+                            active-class="text-white bg-slate-700">
+                            Pipeline
+                        </router-link>
+                    </div>
+                </div>
+
+                <!-- Operations -->
+                <div>
+                    <button @click="toggleSection('operations')"
+                            class="w-full flex items-center justify-between px-4 py-2.5 text-left hover:bg-slate-700 transition group">
+                        <div class="flex items-center gap-2.5">
+                            <span class="text-slate-400 text-sm">🚢</span>
+                            <span class="text-xs font-bold uppercase tracking-widest text-slate-300 group-hover:text-white transition whitespace-nowrap">Operations</span>
+                        </div>
+                        <span :class="['text-slate-500 text-[10px] transition-transform', openSections.operations ? 'rotate-90' : '']">▶</span>
+                    </button>
+                    <div v-show="openSections.operations" class="pl-4">
+                        <router-link to="/operations/rotation"
+                            class="flex items-center gap-2 px-4 py-2 text-xs text-slate-400 hover:text-white hover:bg-slate-700 transition rounded-sm whitespace-nowrap"
+                            active-class="!text-white !bg-blue-600 font-semibold">
+                            Rotation Plan
+                        </router-link>
+                    </div>
+                </div>
+
+            </nav>
+
+            <!-- Sidebar footer -->
+            <div class="px-4 py-3 border-t border-slate-700 text-[10px] text-slate-500 whitespace-nowrap">
+                v2.4 — Maritime ERP
+            </div>
+        </aside>
+
+        <!-- ── Content area ─────────────────────────────────── -->
+        <main class="flex-1 flex flex-col overflow-hidden bg-gray-50">
+            <router-view class="flex-1 flex flex-col overflow-hidden"></router-view>
+        </main>
+
+    </div>
+</div>
+
+<!-- ── ClientsSetup x-template ──────────────────────────────── -->
+<script type="text/x-template" id="tpl-clients-setup">
+<div class="flex-1 flex flex-col overflow-hidden">
+
+    <!-- Sub-nav (matches Rotation Plan style) -->
+    <nav class="bg-white border-b flex px-8 shadow-sm shrink-0">
+        <button class="active-tab py-3 px-1 text-sm">CLIENTS SETUP</button>
+    </nav>
+
+    <!-- Client selector bar -->
+    <div class="bg-white border-b px-8 py-3 flex items-center gap-4 shrink-0">
+        <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Client</label>
+        <select v-model="selectedClientId"
+                class="text-sm border rounded px-3 py-1.5 bg-white min-w-[260px] focus:outline-none focus:ring-2 focus:ring-blue-400">
+            <option value="">— select a client —</option>
+            <option v-for="c in clients" :key="c.id" :value="c.id">
+                {{ c.name }} ({{ c.alias }})
+            </option>
+        </select>
+        <!-- Active badge -->
+        <span v-if="selectedClient"
+              :class="['text-[10px] font-black uppercase px-2.5 py-1 rounded-full border',
+                       selectedClient.isActive
+                         ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                         : 'bg-red-50 text-red-600 border-red-300']">
+            {{ selectedClient.isActive ? '● Active' : '● Inactive' }}
+        </span>
+    </div>
+
+    <!-- Empty state -->
+    <div v-if="!selectedClient"
+         class="flex-1 flex flex-col items-center justify-center gap-3 text-gray-300">
+        <div class="text-5xl">🏢</div>
+        <div class="text-base font-semibold text-gray-400">Select a client to view details</div>
+    </div>
+
+    <!-- Client detail panel -->
+    <div v-else class="flex-1 overflow-auto px-8 py-6">
+
+        <!-- Tab bar -->
+        <div class="flex gap-0 border-b mb-6">
+            <button v-for="tab in [{id:'details',label:'Details'},{id:'vessels',label:'Vessels'},{id:'salary',label:'Salary Ranges'}]"
+                    :key="tab.id"
+                    @click="activeTab = tab.id; editing = false"
+                    :class="['px-5 py-2.5 text-sm font-semibold border-b-2 transition -mb-px',
+                             activeTab === tab.id
+                               ? 'border-blue-600 text-blue-600'
+                               : 'border-transparent text-gray-400 hover:text-gray-600']">
+                {{ tab.label }}
+            </button>
+        </div>
+
+        <!-- ── DETAILS TAB ─────────────────────────────────── -->
+        <div v-show="activeTab === 'details'">
+
+            <!-- View mode -->
+            <div v-if="!editing" class="max-w-2xl">
+                <div class="flex items-start justify-between mb-6">
+                    <div>
+                        <h2 class="text-xl font-bold text-slate-800 leading-tight">{{ selectedClient.name }}</h2>
+                        <div class="text-sm text-slate-400 mt-0.5">{{ selectedClient.alias }}</div>
+                    </div>
+                    <button @click="startEdit"
+                            class="px-4 py-2 text-xs font-bold rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 transition">
+                        ✏ Edit
+                    </button>
+                </div>
+
+                <!-- Detail grid -->
+                <div class="grid grid-cols-1 gap-4">
+                    <div class="bg-white rounded-xl border border-gray-200 px-6 py-5 grid grid-cols-2 gap-x-8 gap-y-4">
+
+                        <div>
+                            <div class="text-[9px] font-black uppercase text-gray-400 tracking-widest mb-1">Full Name</div>
+                            <div class="text-sm font-semibold text-gray-800">{{ selectedClient.name }}</div>
+                        </div>
+                        <div>
+                            <div class="text-[9px] font-black uppercase text-gray-400 tracking-widest mb-1">Alias / Short Code</div>
+                            <div class="text-sm font-semibold text-gray-800">{{ selectedClient.alias }}</div>
+                        </div>
+                        <div class="col-span-2">
+                            <div class="text-[9px] font-black uppercase text-gray-400 tracking-widest mb-1">Address</div>
+                            <div class="text-sm text-gray-700">{{ selectedClient.address }}</div>
+                        </div>
+                        <div>
+                            <div class="text-[9px] font-black uppercase text-gray-400 tracking-widest mb-1">Contact Email</div>
+                            <div class="text-sm text-blue-600">{{ selectedClient.contactEmail }}</div>
+                        </div>
+                        <div>
+                            <div class="text-[9px] font-black uppercase text-gray-400 tracking-widest mb-1">Contact Phone</div>
+                            <div class="text-sm text-gray-700">{{ selectedClient.contactPhone }}</div>
+                        </div>
+                        <div>
+                            <div class="text-[9px] font-black uppercase text-gray-400 tracking-widest mb-1">Status</div>
+                            <span :class="['inline-block text-xs font-bold px-2.5 py-1 rounded-full',
+                                           selectedClient.isActive
+                                             ? 'bg-emerald-100 text-emerald-700'
+                                             : 'bg-red-100 text-red-600']">
+                                {{ selectedClient.isActive ? 'Active' : 'Inactive' }}
+                            </span>
+                        </div>
+                        <div>
+                            <div class="text-[9px] font-black uppercase text-gray-400 tracking-widest mb-1">Vessels on Contract</div>
+                            <div class="text-sm font-semibold text-gray-800">{{ selectedClient.vesselIds.length }}</div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+            <!-- Edit mode -->
+            <div v-else class="max-w-2xl">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-base font-bold text-slate-700">Editing — {{ selectedClient.name }}</h2>
+                    <div class="flex gap-2">
+                        <button @click="cancelEdit"
+                                class="px-4 py-2 text-xs font-semibold rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 transition">Cancel</button>
+                        <button @click="saveEdit"
+                                class="px-4 py-2 text-xs font-bold rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition">Save</button>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl border border-gray-200 px-6 py-5 grid grid-cols-2 gap-x-6 gap-y-5">
+
+                    <div class="col-span-2">
+                        <label class="block text-[9px] font-black uppercase text-gray-400 tracking-widest mb-1">Full Name</label>
+                        <input type="text" v-model="editForm.name"
+                               class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+                    </div>
+                    <div>
+                        <label class="block text-[9px] font-black uppercase text-gray-400 tracking-widest mb-1">Alias / Short Code</label>
+                        <input type="text" v-model="editForm.alias"
+                               class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+                    </div>
+                    <div>
+                        <label class="block text-[9px] font-black uppercase text-gray-400 tracking-widest mb-1">Status</label>
+                        <div class="flex items-center gap-3 h-9">
+                            <label class="flex items-center gap-2 cursor-pointer text-sm font-semibold text-gray-700 select-none">
+                                <input type="checkbox" v-model="editForm.isActive" class="w-4 h-4 accent-blue-600">
+                                Active
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-span-2">
+                        <label class="block text-[9px] font-black uppercase text-gray-400 tracking-widest mb-1">Address</label>
+                        <input type="text" v-model="editForm.address"
+                               class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+                    </div>
+                    <div>
+                        <label class="block text-[9px] font-black uppercase text-gray-400 tracking-widest mb-1">Contact Email</label>
+                        <input type="email" v-model="editForm.contactEmail"
+                               class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+                    </div>
+                    <div>
+                        <label class="block text-[9px] font-black uppercase text-gray-400 tracking-widest mb-1">Contact Phone</label>
+                        <input type="text" v-model="editForm.contactPhone"
+                               class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- ── VESSELS TAB ─────────────────────────────────── -->
+        <div v-show="activeTab === 'vessels'">
+            <div class="max-w-3xl">
+
+                <div v-if="clientVessels.length === 0" class="text-gray-400 text-sm italic py-8 text-center">
+                    No vessels on contract for this client.
+                </div>
+
+                <div v-else class="space-y-3">
+                    <div v-for="vessel in clientVessels" :key="vessel.id"
+                         class="bg-white rounded-xl border border-gray-200 px-6 py-4">
+
+                        <!-- Vessel header -->
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="flex items-center gap-3">
+                                <span class="text-2xl">{{ vesselTypeIcon(vessel.type) }}</span>
+                                <div>
+                                    <div class="font-bold text-slate-800 text-sm leading-tight">{{ vessel.name }}</div>
+                                    <div class="text-[10px] text-slate-400 uppercase tracking-wide mt-0.5">{{ vessel.type }}</div>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <span class="text-lg" :title="vessel.flag">{{ flagEmoji(vessel.flag) }}</span>
+                                <span class="text-[10px] text-gray-500 font-semibold">{{ vessel.flag }}</span>
+                                <span class="text-[9px] font-black uppercase px-2 py-1 rounded bg-slate-100 text-slate-500 tracking-widest">{{ vessel.id.toUpperCase() }}</span>
+                            </div>
+                        </div>
+
+                        <!-- Rank summary -->
+                        <div class="border-t pt-3 grid grid-cols-2 gap-x-6 gap-y-1.5">
+                            <div v-for="row in vessel.ranks.filter(r => !r.isRating)" :key="row.rank"
+                                 class="flex items-center justify-between text-[11px]">
+                                <span class="text-gray-500 font-semibold uppercase tracking-wide">{{ row.rank }}</span>
+                                <span class="text-gray-700 font-bold truncate ml-2 max-w-[160px]">{{ row.onboard.name }}</span>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ── SALARY TAB ──────────────────────────────────── -->
+        <div v-show="activeTab === 'salary'">
+            <div class="max-w-2xl">
+
+                <!-- View mode -->
+                <div v-if="!editing">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="text-[10px] font-black uppercase text-gray-400 tracking-widest">Monthly salary ranges — {{ selectedClient.name }}</div>
+                        <button @click="startEdit"
+                                class="px-4 py-2 text-xs font-bold rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 transition">
+                            ✏ Edit
+                        </button>
+                    </div>
+
+                    <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr class="bg-slate-800 text-white text-left">
+                                    <th class="px-5 py-3 text-[10px] font-black uppercase tracking-widest w-1/2">Rank</th>
+                                    <th class="px-5 py-3 text-[10px] font-black uppercase tracking-widest text-right">Min</th>
+                                    <th class="px-5 py-3 text-[10px] font-black uppercase tracking-widest text-right">Max</th>
+                                    <th class="px-5 py-3 text-[10px] font-black uppercase tracking-widest text-center">CCY</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="(row, idx) in selectedClient.salaryRanges" :key="row.rank"
+                                    :class="['border-b border-gray-100 last:border-b-0', idx % 2 === 0 ? 'bg-white' : 'bg-gray-50']">
+                                    <td class="px-5 py-3 font-semibold text-slate-700">{{ row.rank }}</td>
+                                    <td class="px-5 py-3 text-right font-mono text-emerald-700 font-semibold">{{ fmtSalary(row.min) }}</td>
+                                    <td class="px-5 py-3 text-right font-mono text-blue-700 font-semibold">{{ fmtSalary(row.max) }}</td>
+                                    <td class="px-5 py-3 text-center text-[10px] font-black text-gray-400 tracking-widest">{{ row.currency }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Edit mode -->
+                <div v-else>
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="text-[10px] font-black uppercase text-gray-400 tracking-widest">Editing salary ranges</div>
+                        <div class="flex gap-2">
+                            <button @click="cancelEdit"
+                                    class="px-4 py-2 text-xs font-semibold rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 transition">Cancel</button>
+                            <button @click="saveEdit"
+                                    class="px-4 py-2 text-xs font-bold rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition">Save</button>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr class="bg-slate-800 text-white text-left">
+                                    <th class="px-5 py-3 text-[10px] font-black uppercase tracking-widest w-1/2">Rank</th>
+                                    <th class="px-5 py-3 text-[10px] font-black uppercase tracking-widest text-center">Min</th>
+                                    <th class="px-5 py-3 text-[10px] font-black uppercase tracking-widest text-center">Max</th>
+                                    <th class="px-5 py-3 text-[10px] font-black uppercase tracking-widest text-center">CCY</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="(row, idx) in editSalary" :key="row.rank"
+                                    :class="['border-b border-gray-100 last:border-b-0', idx % 2 === 0 ? 'bg-white' : 'bg-gray-50']">
+                                    <td class="px-5 py-3 font-semibold text-slate-700">{{ row.rank }}</td>
+                                    <td class="px-3 py-2">
+                                        <input type="number" v-model.number="row.min" min="0"
+                                               class="w-full border border-gray-300 rounded px-2 py-1.5 text-sm text-right font-mono focus:outline-none focus:ring-2 focus:ring-blue-400">
+                                    </td>
+                                    <td class="px-3 py-2">
+                                        <input type="number" v-model.number="row.max" min="0"
+                                               class="w-full border border-gray-300 rounded px-2 py-1.5 text-sm text-right font-mono focus:outline-none focus:ring-2 focus:ring-blue-400">
+                                    </td>
+                                    <td class="px-3 py-2">
+                                        <select v-model="row.currency"
+                                                class="w-full border border-gray-300 rounded px-2 py-1.5 text-xs font-black uppercase focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white">
+                                            <option>USD</option>
+                                            <option>EUR</option>
+                                            <option>GBP</option>
+                                        </select>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+</div>
+</script>
+
+<!-- ── RotationAll x-template (parsed as HTML, referenced by RotationAllView) ── -->
+<script type="text/x-template" id="tpl-rotation-all">
+<div class="flex-1 flex flex-col overflow-hidden">
+
+    <!-- Sub-nav -->
+    <nav class="bg-white border-b flex px-8 shadow-sm shrink-0">
+        <button class="active-tab py-3 px-1 text-sm">ALL VESSELS — ROTATION PLAN</button>
+    </nav>
+
+    <!-- Filter bar -->
+    <div class="bg-white border-b px-8 py-3 flex items-center gap-4 shrink-0 flex-wrap">
+        <div class="flex items-center gap-2">
+            <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Client</label>
+            <select v-model="filterClient" @change="filterVessel=''"
+                    class="text-sm border rounded px-3 py-1.5 bg-white min-w-[160px]">
+                <option value="">All Clients</option>
+                <option v-for="c in allClients" :value="c">{{ c }}</option>
+            </select>
+        </div>
+        <div class="flex items-center gap-2">
+            <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Vessel</label>
+            <select v-model="filterVessel" :disabled="!filterClient"
+                    class="text-sm border rounded px-3 py-1.5 bg-white min-w-[180px] disabled:opacity-50">
+                <option value="">{{ filterClient ? 'All Vessels' : '— select client first —' }}</option>
+                <option v-for="v in clientVessels" :value="v.id">{{ v.name }}</option>
+            </select>
+        </div>
+        <div class="flex items-center gap-2">
+            <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Rank</label>
+            <select v-model="filterRank"
+                    class="text-sm border rounded px-3 py-1.5 bg-white min-w-[160px]">
+                <option value="">All Ranks</option>
+                <option v-for="r in allRanks" :value="r">{{ r }}</option>
+            </select>
+        </div>
+        <div class="flex items-center gap-2">
+            <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest">RF Type</label>
+            <div class="flex rounded border overflow-hidden text-xs">
+                <button v-for="t in [{v:'',l:'All'},{v:'any',l:'Any RF'},{v:'rfs',l:'RFS'},{v:'rfr',l:'RFR'},{v:'rfe',l:'RFE'},{v:'rfp',l:'RFP'},{v:'rfx',l:'RFX'}]"
+                        :key="t.v" @click="filterRfType = t.v"
+                        :class="['px-2.5 py-1.5 font-bold border-r last:border-r-0 transition text-[10px]',
+                                 filterRfType === t.v
+                                   ? rfTypeActiveClass(t.v)
+                                   : 'bg-white text-gray-400 hover:bg-gray-50']">
+                    {{ t.l }}
+                </button>
+            </div>
+        </div>
+        <div class="flex items-center gap-2">
+            <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Window</label>
+            <div class="flex rounded border overflow-hidden text-xs">
+                <button v-for="m in [6,12,18]" :key="m" @click="viewMonths=m"
+                        :class="['px-3 py-1.5 font-semibold border-r last:border-r-0 transition',
+                                 viewMonths===m ? 'bg-slate-800 text-white' : 'bg-white text-gray-500 hover:bg-gray-50']">
+                    {{ m }} mo
+                </button>
+            </div>
+        </div>
+        <label class="flex items-center gap-2 cursor-pointer select-none">
+            <input type="checkbox" v-model="includeRatings" class="w-4 h-4 rounded accent-blue-600">
+            <span class="text-xs font-semibold text-gray-600">Include Ratings</span>
+        </label>
+        <div class="flex items-center gap-2">
+            <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest">From</label>
+            <input type="date" v-model="ganttStartStr"
+                   class="text-sm border rounded px-3 py-1.5 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400">
+            <button @click="resetGanttStart"
+                    title="Reset to default (3 months before today)"
+                    class="text-[10px] px-2 py-1.5 rounded border bg-white text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition">↺</button>
+        </div>
+        <div class="ml-auto flex items-center gap-4 text-[10px] text-gray-500 flex-wrap justify-end">
+            <div class="flex items-center gap-2.5">
+                <span class="text-[9px] font-black uppercase text-gray-300 tracking-widest mr-1">Type</span>
+                <span class="flex items-center gap-1"><span class="inline-block w-8 h-2.5 rounded-sm" style="background:#fda4af;border:1px solid #f43f5e"></span>RFS</span>
+                <span class="flex items-center gap-1"><span class="inline-block w-8 h-2.5 rounded-sm" style="background:#fcd34d;border:1px solid #f59e0b"></span>RFR</span>
+                <span class="flex items-center gap-1"><span class="inline-block w-8 h-2.5 rounded-sm" style="background:#7dd3fc;border:1px solid #0ea5e9"></span>RFE</span>
+                <span class="flex items-center gap-1"><span class="inline-block w-8 h-2.5 rounded-sm" style="background:#d8b4fe;border:1px solid #a855f7"></span>RFP</span>
+                <span class="flex items-center gap-1"><span class="inline-block w-8 h-2.5 rounded-sm" style="background:#5eead4;border:1px solid #14b8a6"></span>RFX</span>
+            </div>
+            <div class="flex items-center gap-2.5">
+                <span class="text-[9px] font-black uppercase text-gray-300 tracking-widest mr-1">Status</span>
+                <span class="flex items-center gap-1"><span class="inline-block w-8 h-2.5 rounded-sm" style="background:#7dd3fc;border:1px solid #0ea5e9"></span>Active</span>
+                <span class="flex items-center gap-1">
+                    <span class="inline-block w-8 h-2.5 rounded-sm" style="background:#7dd3fc;border:1px solid #0ea5e9;background-image:repeating-linear-gradient(135deg,transparent 0px,transparent 3px,rgba(255,255,255,0.6) 3px,rgba(255,255,255,0.6) 5px,transparent 5px,transparent 10px)"></span>Approval
+                </span>
+                <span class="flex items-center gap-1">
+                    <span class="inline-block w-8 h-2.5 rounded-sm" style="background:#7dd3fc;border:1px solid #0ea5e9;background-image:radial-gradient(circle,rgba(255,255,255,0.7) 1.5px,transparent 1.5px);background-size:5px 5px"></span>Preparation
+                </span>
+                <span class="flex items-center gap-1"><span class="inline-block w-8 h-2.5 rounded-sm" style="background:#b2d8d0;border:1px solid #8bb5ae;filter:saturate(0.3)"></span>Completed</span>
+            </div>
+            <div class="flex items-center gap-2.5">
+                <span class="flex items-center gap-1"><span class="inline-block w-2 h-3 rounded-sm" style="background:#16a34a"></span>Today</span>
+                <span class="flex items-center gap-1"><span class="inline-block w-2 h-3 rounded-sm" style="background:#d97706"></span>+2mo horizon</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gantt chart -->
+    <main class="flex-1 overflow-auto">
+        <div class="overflow-x-auto">
+            <div :style="{ minWidth: (rankColWidth + ganttTotalDays * dayWidth) + 'px' }">
+
+                <!-- Sticky month ruler -->
+                <div class="flex border-b bg-slate-100 sticky top-0 z-30" :style="{ paddingLeft: rankColWidth + 'px' }">
+                    <div v-for="m in ganttMonths" :key="m.key"
+                         class="shrink-0 text-center text-[10px] font-bold text-gray-400 uppercase border-r py-1.5 tracking-wide"
+                         :style="{ width: (m.days * dayWidth) + 'px' }">
+                        {{ m.label }}
+                    </div>
+                </div>
+
+                <!-- All vessel groups -->
+                <template v-for="vessel in allFlatRows" :key="vessel.vesselId">
+
+                    <!-- Vessel header row -->
+                    <div class="flex border-b bg-slate-700 text-white" style="height:32px;">
+                        <div class="shrink-0 flex items-center px-3 gap-3 justify-between"
+                             :style="{ width: rankColWidth + 'px' }">
+                            <div class="flex items-center gap-2 min-w-0">
+                                <span class="text-[10px] font-black uppercase tracking-wide text-slate-200 truncate">{{ vessel.client }}</span>
+                                <span class="text-[10px] text-slate-500">·</span>
+                                <span class="text-[10px] font-semibold text-slate-300 truncate">{{ vessel.name }}</span>
+                                <span class="text-[9px] text-slate-500 shrink-0">{{ vessel.type }}</span>
+                            </div>
+                            <button @click.stop="openModal('Embark', vessel, null)"
+                                    class="shrink-0 text-[9px] font-bold px-2 py-0.5 rounded bg-blue-500 text-white hover:bg-blue-400 transition leading-none">
+                                + Embark
+                            </button>
+                        </div>
+                        <div class="flex-1 bg-slate-700"></div>
+                    </div>
+
+                    <!-- Rank rows -->
+                    <div v-for="row in vessel.ranks" :key="vessel.vesselId + '-' + row.rank"
+                         class="rank-row flex">
+
+                        <!-- Sticky label column -->
+                        <div class="shrink-0 flex items-center px-3 border-r"
+                             :class="row.isRating ? 'bg-slate-50' : 'bg-gray-50'"
+                             :style="{ width: rankColWidth + 'px' }">
+                            <div class="text-[10px] font-black uppercase leading-tight truncate"
+                                 :class="row.isRating ? 'text-slate-400' : 'text-slate-700'">{{ row.rank }}</div>
+                        </div>
+
+                        <!-- Chart zone -->
+                        <div class="flex-1 relative" style="overflow:visible">
+                            <div v-for="m in ganttMonths" :key="'g'+m.key"
+                                 class="absolute inset-y-0 border-r border-gray-100 pointer-events-none"
+                                 :style="{ left: (m.offsetDays * dayWidth) + 'px' }"></div>
+                            <div class="today-line" :style="{ left: (todayOffset * dayWidth) + 'px' }"></div>
+                            <div class="rfa-horizon-line" :style="{ left: (rfaHorizonOffset * dayWidth) + 'px' }"></div>
+
+                            <!-- Onboard bar -->
+                            <div class="gantt-bar bar-onboard"
+                                 :style="barStyle(row.onboard.embark, row.onboard.signoff)"
+                                 @contextmenu.prevent.stop="openContextMenu($event, vessel, row)">
+                                <div class="bar-label" style="color:white;pointer-events:none">{{ row.onboard.shortName }}</div>
+                            </div>
+
+                            <!-- Signoff adjustment overlays -->
+                            <template v-if="row.rfs && row.rfs.signoffDate !== row.onboard.signoff">
+                                <template v-if="row.rfs.signoffDate < row.onboard.signoff">
+                                    <div class="gantt-bar bar-signoff-early"
+                                         :style="barStyle(row.rfs.signoffDate, row.onboard.signoff)">
+                                        <div class="bar-label" style="pointer-events:none;color:#b91c1c;font-size:8px">↤ Early sign-off</div>
+                                    </div>
+                                </template>
+                                <template v-else>
+                                    <div class="gantt-bar bar-signoff-late"
+                                         :style="barStyle(row.onboard.signoff, row.rfs.signoffDate)">
+                                        <div class="bar-label" style="pointer-events:none;color:#166534;font-size:8px">Extended ↦</div>
+                                    </div>
+                                </template>
+                            </template>
+
+                            <!-- RFX bar (bottom zone) -->
+                            <template v-if="row.rfa && row.rfa.type === 'Extend' && rfaVisible(row.rfa)">
+                                <div :class="['gantt-bar rfa-bottom rfa-rfx', 'rfa-'+row.rfa.status]"
+                                     :style="rfaBarStyle(row.rfa)"
+                                     @click.stop="openRfaModal(row.rfa, 'rfx', row, vessel)">
+                                    <div class="bar-label" style="color:#134e4a">{{ row.rfa.rfaNo }} {{ rfaStatusIcon(row.rfa.status) }}</div>
+                                </div>
+                            </template>
+
+                            <!-- RFP bar (bottom zone) -->
+                            <template v-if="row.rfa && row.rfa.type === 'Promote' && rfaVisible(row.rfa)">
+                                <div :class="['gantt-bar rfa-bottom rfa-rfp', 'rfa-'+row.rfa.status]"
+                                     :style="rfaBarStyle(row.rfa)"
+                                     @click.stop="openRfaModal(row.rfa, 'rfp', row, vessel)">
+                                    <div class="bar-label" style="color:#3b0764">{{ row.rfa.rfaNo }} {{ rfaStatusIcon(row.rfa.status) }}</div>
+                                </div>
+                            </template>
+
+                            <!-- RFS bar (top zone) -->
+                            <template v-if="row.rfs">
+                                <div :class="['gantt-bar rfa-top rfa-rfs', 'rfa-'+row.rfs.status]"
+                                     :style="barStyle(row.rfs.dateCreated, row.rfs.signoffDate)"
+                                     @click.stop="openRfaModal(row.rfs, 'rfs', row, vessel)">
+                                    <div class="bar-label" style="color:#881337">{{ row.rfs.rfaNo }} {{ rfaStatusIcon(row.rfs.status) }}</div>
+                                </div>
+                            </template>
+
+                            <!-- RFR dual bars -->
+                            <template v-if="row.rfr_rfe">
+                                <div v-if="row.rfs"
+                                     :class="['gantt-bar rfa-top rfa-rfr', 'rfa-'+row.rfs.status]"
+                                     :style="barStyle(row.rfs.dateCreated, row.rfs.signoffDate)"
+                                     @click.stop="openRfaModal(row.rfs, 'rfr', row, vessel)">
+                                    <div class="bar-label" style="color:#78350f;font-size:9px">↑ {{ row.rfs.rfaNo }}</div>
+                                </div>
+                                <div :class="['gantt-bar rfa-bottom rfa-rfr', 'rfa-'+row.rfr_rfe.status]"
+                                     :style="barStyle(row.rfr_rfe.dateCreated, row.rfr_rfe.embarkDate)"
+                                     @click.stop="openRfaModal(row.rfr_rfe, 'rfr', row, vessel)">
+                                    <div class="bar-label" style="color:#78350f;font-size:9px">↓ {{ row.rfr_rfe.rfaNo }}</div>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- RFE rows -->
+                    <div v-for="rfe in vessel.rfeRows" :key="rfe.rfaNo" class="rfe-row flex">
+                        <div class="shrink-0 flex items-center justify-between px-3 border-r bg-blue-50"
+                             :style="{ width: rankColWidth + 'px' }">
+                            <div class="min-w-0">
+                                <div class="text-[10px] font-black uppercase text-blue-700 truncate">{{ rfe.rank }}</div>
+                                <div class="text-[9px] text-blue-400 truncate">{{ rfe.rfaNo }}</div>
+                            </div>
+                            <span :class="['text-[8px] font-black uppercase px-1.5 py-0.5 rounded border shrink-0 ml-1',
+                                           rfe.status === 'active'      ? 'bg-orange-100 text-orange-700 border-orange-300' :
+                                           rfe.status === 'approval'    ? 'bg-purple-100 text-purple-700 border-purple-300' :
+                                           rfe.status === 'preparation' ? 'bg-yellow-100 text-yellow-700 border-yellow-300' :
+                                                                          'bg-green-100  text-green-700  border-green-300']">
+                                {{ rfe.status }}
+                            </span>
+                        </div>
+                        <div class="flex-1 relative" style="overflow:visible">
+                            <div v-for="m in ganttMonths" :key="'grfe'+m.key+rfe.rfaNo"
+                                 class="absolute inset-y-0 border-r border-gray-100 pointer-events-none"
+                                 :style="{ left: (m.offsetDays * dayWidth) + 'px' }"></div>
+                            <div class="today-line" :style="{ left: (todayOffset * dayWidth) + 'px' }"></div>
+                            <div class="rfa-horizon-line" :style="{ left: (rfaHorizonOffset * dayWidth) + 'px' }"></div>
+                            <div class="gantt-bar bar-future-service" :style="barStyle(rfe.embarkDate, rfe.serviceEnd)">
+                                <div class="bar-label" style="color:white;pointer-events:none">{{ rfe.rank }}</div>
+                            </div>
+                            <div :class="['gantt-bar rfa-bottom rfa-rfe', 'rfa-'+rfe.status]"
+                                 :style="barStyle(rfe.dateCreated, rfe.embarkDate)"
+                                 @click.stop="openRfaModal(rfe, 'rfe', null, vessel)">
+                                <div class="bar-label" style="color:#0c4a6e;pointer-events:none">{{ rfe.rfaNo }} {{ rfaStatusIcon(rfe.status) }}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                </template>
+
+                <!-- Footer today / horizon labels -->
+                <div class="relative border-t bg-gray-50 h-6 sticky bottom-0"
+                     :style="{ paddingLeft: rankColWidth + 'px' }">
+                    <div class="today-line"         :style="{ left: (rankColWidth + todayOffset * dayWidth) + 'px' }"></div>
+                    <span class="today-label"       :style="{ left: (rankColWidth + todayOffset * dayWidth) + 'px' }">TODAY</span>
+                    <div class="rfa-horizon-line"   :style="{ left: (rankColWidth + rfaHorizonOffset * dayWidth) + 'px' }"></div>
+                    <span class="rfa-horizon-label" :style="{ left: (rankColWidth + rfaHorizonOffset * dayWidth) + 'px' }">+2 mo</span>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- ── Context menu ─────────────────────────────────────── -->
+    <div v-if="ctxMenu.visible"
+         class="fixed bg-white rounded-lg shadow-2xl border border-gray-200 py-1 min-w-[220px]"
+         :style="{ zIndex: 9999, top: ctxMenu.y + 'px', left: ctxMenu.x + 'px' }"
+         @click.stop>
+        <div class="px-4 py-2.5 border-b border-gray-100">
+            <div class="font-bold text-[12px] text-slate-800 leading-tight">{{ ctxMenu.row && ctxMenu.row.onboard.name }}</div>
+            <div class="text-[10px] text-slate-400 uppercase tracking-wide mt-0.5">
+                {{ ctxMenu.row && ctxMenu.row.rank }} · {{ ctxMenu.vessel && ctxMenu.vessel.name }}
+            </div>
+            <div class="mt-1.5 space-y-0.5 text-[11px] text-gray-600" v-if="ctxMenu.row">
+                <div><span class="text-gray-400">Embarked:</span> {{ ctxMenu.row.onboard.embark }}</div>
+                <div><span class="text-gray-400">Est. Sign-off:</span> {{ ctxMenu.row.onboard.signoff }}</div>
+                <div><span class="text-gray-400">Contract:</span> {{ ctxMenu.row.onboard.contract }}</div>
+            </div>
+        </div>
+        <div class="py-1">
+            <div class="px-3 py-1 text-[9px] font-black text-gray-400 uppercase tracking-widest">Issue RFA as</div>
+            <button v-for="action in ['Extend','Replace','Promote','Sign Off']" :key="action"
+                    @click.stop="openModal(action, ctxMenu.vessel, ctxMenu.row)"
+                    class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 flex items-center gap-2 transition">
+                <span class="text-base">{{ {Extend:'⏩', Replace:'🔄', Promote:'⬆️', 'Sign Off':'🚪'}[action] }}</span>
+                {{ action }}
+            </button>
+        </div>
+    </div>
+
+    <!-- ── Action modal (Embark / Extend / Replace / Sign Off / Promote) ── -->
+    <div v-if="modal.visible"
+         class="fixed inset-0 flex items-center justify-center p-4"
+         :style="{ zIndex: 9998 }"
+         @click.self="modal.visible = false">
+        <div class="absolute inset-0 bg-black/50" @click="modal.visible = false"></div>
+        <div class="relative bg-white rounded-xl shadow-2xl overflow-hidden flex flex-col"
+             :style="{ zIndex: 9999, width: '520px', maxWidth:'96vw', maxHeight:'90vh' }"
+             @click.stop>
+
+            <!-- Header -->
+            <div class="px-6 py-4 bg-slate-800 text-white flex items-center justify-between shrink-0">
+                <div>
+                    <div class="font-bold text-sm tracking-tight">
+                        {{ {Embark:'New Embarkation (RFE)', Extend:'Extend Contract (RFX)', Replace:'Replace Seafarer (RFR)', Promote:'Promote Seafarer (RFP)', 'Sign Off':'Request For Sign-Off (RFS)'}[modal.action] }}
+                    </div>
+                    <div class="text-slate-400 text-xs mt-0.5" v-if="modal.vessel">
+                        {{ modal.vessel.name }} · {{ modal.vessel.client }}
+                    </div>
+                </div>
+                <span :class="['text-xs font-black px-2 py-0.5 rounded uppercase tracking-wide',
+                               {Embark:'bg-sky-600', Extend:'bg-teal-600', Replace:'bg-amber-600',
+                                Promote:'bg-purple-600', 'Sign Off':'bg-rose-600'}[modal.action]]">
+                    {{ {Embark:'RFE', Extend:'RFX', Replace:'RFR', Promote:'RFP', 'Sign Off':'RFS'}[modal.action] }}
+                </span>
+            </div>
+
+            <!-- ── Embark (RFE) form ── -->
+            <div v-if="modal.action === 'Embark'" class="px-6 py-5 space-y-4 overflow-y-auto">
+                <div>
+                    <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Vessel</label>
+                    <div class="w-full border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 text-sm text-gray-500 select-none">
+                        {{ modal.vessel && modal.vessel.name }}
+                        <span class="text-gray-400 text-xs ml-2">{{ modal.vessel && modal.vessel.client }}</span>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Rank</label>
+                    <select v-model="embarkForm.rank"
+                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 bg-white">
+                        <option value="">— select rank —</option>
+                        <option v-for="r in allRanks" :key="r" :value="r">{{ r }}</option>
+                    </select>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Date Created</label>
+                        <div class="w-full border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 text-sm text-gray-500 select-none">{{ todayStr }}</div>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Est. Embarkation Date</label>
+                        <input type="date" v-model="embarkForm.embarkDate" :min="todayStr"
+                               class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Embarkation Port</label>
+                    <input type="text" v-model="embarkForm.port" placeholder="e.g. Port of Manila"
+                           class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Contract Length (months)</label>
+                        <div class="flex items-center gap-2">
+                            <button @click.stop="embarkForm.contractMonths = Math.max(1, embarkForm.contractMonths - 1)"
+                                    class="w-8 h-8 rounded border border-gray-300 text-gray-600 hover:bg-gray-100 font-bold text-base flex items-center justify-center">−</button>
+                            <span class="w-8 text-center font-bold text-sm">{{ embarkForm.contractMonths }}</span>
+                            <button @click.stop="embarkForm.contractMonths = Math.min(24, embarkForm.contractMonths + 1)"
+                                    class="w-8 h-8 rounded border border-gray-300 text-gray-600 hover:bg-gray-100 font-bold text-base flex items-center justify-center">+</button>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">± Variation (months)</label>
+                        <div class="flex items-center gap-2">
+                            <button @click.stop="embarkForm.contractVariation = Math.max(0, embarkForm.contractVariation - 1)"
+                                    class="w-8 h-8 rounded border border-gray-300 text-gray-600 hover:bg-gray-100 font-bold text-base flex items-center justify-center">−</button>
+                            <span class="w-8 text-center font-bold text-sm">{{ embarkForm.contractVariation }}</span>
+                            <button @click.stop="embarkForm.contractVariation = Math.min(6, embarkForm.contractVariation + 1)"
+                                    class="w-8 h-8 rounded border border-gray-300 text-gray-600 hover:bg-gray-100 font-bold text-base flex items-center justify-center">+</button>
+                        </div>
+                    </div>
+                </div>
+                <div v-show="embarkForm.rank && embarkForm.embarkDate"
+                     class="text-[11px] bg-sky-50 border border-sky-200 rounded-lg px-4 py-3 space-y-1">
+                    <div class="font-bold text-sky-800 text-[11px] uppercase tracking-wide mb-1.5">RFE Preview</div>
+                    <div><span class="text-gray-400">Rank:</span> <span class="font-semibold text-gray-700">{{ embarkForm.rank }}</span></div>
+                    <div><span class="text-gray-400">Est. Embarkation:</span> <span class="font-semibold text-gray-700">{{ embarkForm.embarkDate }}</span></div>
+                    <div><span class="text-gray-400">Service window:</span>
+                        <span class="font-semibold text-sky-700">
+                            {{ embarkForm.embarkDate }} → {{ embarkForm.embarkDate ? isoDate(addM(d(embarkForm.embarkDate), embarkForm.contractMonths)) : '—' }}
+                        </span>
+                    </div>
+                    <div><span class="text-gray-400">Contract:</span> <span class="font-semibold text-gray-700">{{ embarkForm.contractMonths }} ± {{ embarkForm.contractVariation }} months</span></div>
+                </div>
+            </div>
+
+            <!-- ── Extend (RFX) form ── -->
+            <div v-else-if="modal.action === 'Extend'" class="px-6 py-5 space-y-4 overflow-y-auto">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Vessel</label>
+                        <div class="w-full border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 text-sm text-gray-500 select-none truncate">{{ modal.vessel && modal.vessel.name }}</div>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Rank</label>
+                        <div class="w-full border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 text-sm text-gray-500 select-none">{{ modal.row && modal.row.rank }}</div>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Seafarer</label>
+                    <div class="w-full border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 text-sm text-gray-600 font-semibold select-none">{{ modal.row && modal.row.onboard.name }}</div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Embarkation Date</label>
+                        <div class="w-full border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 text-sm text-gray-500 select-none">{{ modal.row && modal.row.onboard.embark }}</div>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">New Est. Sign-off</label>
+                        <input type="date" v-model="extendForm.newSignoff" :min="modal.row && modal.row.onboard.signoff"
+                               class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400">
+                    </div>
+                </div>
+                <div class="text-[11px] bg-teal-50 border border-teal-200 rounded-lg px-4 py-3 space-y-1">
+                    <div class="font-bold text-teal-800 text-[11px] uppercase tracking-wide mb-1.5">RFX Preview</div>
+                    <div><span class="text-gray-400">Seafarer:</span> <span class="font-semibold text-gray-700">{{ modal.row && modal.row.onboard.name }}</span></div>
+                    <div><span class="text-gray-400">Current sign-off:</span> <span class="font-semibold text-gray-700">{{ modal.row && modal.row.onboard.signoff }}</span></div>
+                    <div><span class="text-gray-400">New sign-off:</span> <span class="font-semibold text-teal-700">{{ extendForm.newSignoff || '—' }}</span></div>
+                </div>
+            </div>
+
+            <!-- ── Replace (RFR) form ── -->
+            <div v-else-if="modal.action === 'Replace'" class="px-6 py-5 space-y-4 overflow-y-auto">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Vessel</label>
+                        <div class="w-full border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 text-sm text-gray-500 select-none truncate">{{ modal.vessel && modal.vessel.name }}</div>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Rank</label>
+                        <div class="w-full border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 text-sm text-gray-500 select-none">{{ modal.row && modal.row.rank }}</div>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Current Seafarer (signing off)</label>
+                    <div class="w-full border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 text-sm text-gray-600 font-semibold select-none">{{ modal.row && modal.row.onboard.name }}</div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Date Created</label>
+                        <div class="w-full border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 text-sm text-gray-500 select-none">{{ todayStr }}</div>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Est. Replacement Date</label>
+                        <input type="date" v-model="replaceForm.replacementDate"
+                               class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Replacement Port</label>
+                    <input type="text" v-model="replaceForm.port" placeholder="e.g. Port of Singapore"
+                           class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400">
+                </div>
+                <div v-show="replaceForm.replacementDate"
+                     class="text-[11px] bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 space-y-1">
+                    <div class="font-bold text-amber-800 text-[11px] uppercase tracking-wide mb-1.5">RFR Preview — dual RFA</div>
+                    <div class="flex gap-4">
+                        <div class="flex-1 bg-white rounded border border-orange-200 px-3 py-2 space-y-0.5">
+                            <div class="text-[9px] font-black uppercase text-orange-600 mb-1">RFS — Sign Off</div>
+                            <div><span class="text-gray-400">From:</span> <span class="font-semibold text-gray-700">{{ todayStr }}</span></div>
+                            <div><span class="text-gray-400">To:</span> <span class="font-semibold text-orange-700">{{ replaceForm.replacementDate }}</span></div>
+                        </div>
+                        <div class="flex-1 bg-white rounded border border-orange-200 px-3 py-2 space-y-0.5">
+                            <div class="text-[9px] font-black uppercase text-orange-600 mb-1">RFE — Embark</div>
+                            <div><span class="text-gray-400">From:</span> <span class="font-semibold text-gray-700">{{ todayStr }}</span></div>
+                            <div><span class="text-gray-400">To:</span> <span class="font-semibold text-orange-700">{{ replaceForm.replacementDate }}</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── Sign Off (RFS) form ── -->
+            <div v-else-if="modal.action === 'Sign Off'" class="px-6 py-5 space-y-4 overflow-y-auto">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Vessel</label>
+                        <div class="w-full border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 text-sm text-gray-500 select-none truncate">{{ modal.vessel && modal.vessel.name }}</div>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Rank</label>
+                        <div class="w-full border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 text-sm text-gray-500 select-none">{{ modal.row && modal.row.rank }}</div>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Seafarer</label>
+                    <div class="w-full border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 text-sm text-gray-600 font-semibold select-none">{{ modal.row && modal.row.onboard.name }}</div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Date Created</label>
+                        <div class="w-full border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 text-sm text-gray-500 select-none">{{ todayStr }}</div>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Est. Sign-off Date</label>
+                        <input type="date" v-model="signoffForm.signoffDate"
+                               class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-400">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Sign-off Port</label>
+                    <input type="text" v-model="signoffForm.port" placeholder="e.g. Port of Rotterdam"
+                           class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-400">
+                </div>
+                <div v-show="signoffForm.signoffDate"
+                     class="text-[11px] bg-rose-50 border border-rose-200 rounded-lg px-4 py-3 space-y-1">
+                    <div class="font-bold text-rose-800 text-[11px] uppercase tracking-wide mb-1.5">RFS Preview</div>
+                    <div><span class="text-gray-400">Seafarer:</span> <span class="font-semibold text-gray-700">{{ modal.row && modal.row.onboard.name }}</span></div>
+                    <div><span class="text-gray-400">RFS start:</span> <span class="font-semibold text-gray-700">{{ todayStr }} (today)</span></div>
+                    <div><span class="text-gray-400">Est. sign-off:</span> <span class="font-semibold text-rose-700">{{ signoffForm.signoffDate }}</span></div>
+                    <div v-show="signoffForm.port"><span class="text-gray-400">Port:</span> <span class="font-semibold text-gray-700">{{ signoffForm.port }}</span></div>
+                </div>
+            </div>
+
+            <!-- ── Promote (RFP) form ── -->
+            <div v-else-if="modal.action === 'Promote'" class="px-6 py-5 space-y-4 overflow-y-auto">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Vessel</label>
+                        <div class="w-full border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 text-sm text-gray-500 select-none truncate">{{ modal.vessel && modal.vessel.name }}</div>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Current Rank</label>
+                        <div class="w-full border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 text-sm text-gray-500 select-none">{{ modal.row && modal.row.rank }}</div>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Seafarer</label>
+                    <div class="w-full border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 text-sm text-gray-600 font-semibold select-none">{{ modal.row && modal.row.onboard.name }}</div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Embarkation Date</label>
+                        <div class="w-full border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 text-sm text-gray-500 select-none">{{ modal.row && modal.row.onboard.embark }}</div>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Est. Sign-off Date</label>
+                        <div class="w-full border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 text-sm text-gray-500 select-none">{{ modal.row && modal.row.onboard.signoff }}</div>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">New Rank (promotion target)</label>
+                    <select v-model="promoteForm.newRank"
+                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white">
+                        <option value="">— select target rank —</option>
+                        <option v-for="r in higherRanks" :key="r" :value="r">{{ r }}</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Date of Promotion</label>
+                    <input type="date" v-model="promoteForm.promotionDate" :min="todayStr"
+                           class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
+                </div>
+                <div v-show="promoteForm.newRank && promoteForm.promotionDate"
+                     class="text-[11px] bg-purple-50 border border-purple-200 rounded-lg px-4 py-3 space-y-1">
+                    <div class="font-bold text-purple-800 text-[11px] uppercase tracking-wide mb-1.5">RFP Preview</div>
+                    <div><span class="text-gray-400">Seafarer:</span> <span class="font-semibold text-gray-700">{{ modal.row && modal.row.onboard.name }}</span></div>
+                    <div><span class="text-gray-400">Promotion:</span>
+                        <span class="font-semibold text-gray-700">{{ modal.row && modal.row.rank }}</span>
+                        <span class="text-purple-600 font-bold mx-1">→</span>
+                        <span class="font-bold text-purple-800">{{ promoteForm.newRank }}</span>
+                    </div>
+                    <div><span class="text-gray-400">Effective:</span> <span class="font-semibold text-purple-700">{{ promoteForm.promotionDate }}</span></div>
+                </div>
+            </div>
+
+            <!-- Modal footer -->
+            <div class="px-6 py-4 bg-gray-50 border-t flex justify-end gap-3 shrink-0">
+                <button @click="modal.visible = false"
+                        class="px-4 py-2 text-sm rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-100 transition font-semibold">
+                    Cancel
+                </button>
+                <button @click="submitModal"
+                        :disabled="(modal.action === 'Embark'   && (!embarkForm.rank || !embarkForm.embarkDate)) ||
+                                   (modal.action === 'Extend'   && !extendForm.newSignoff) ||
+                                   (modal.action === 'Sign Off' && !signoffForm.signoffDate) ||
+                                   (modal.action === 'Replace'  && !replaceForm.replacementDate) ||
+                                   (modal.action === 'Promote'  && (!promoteForm.newRank || !promoteForm.promotionDate))"
+                        :class="['px-5 py-2 text-sm rounded-lg text-white font-bold transition disabled:opacity-40 disabled:cursor-not-allowed',
+                                 {Embark:'bg-sky-600 hover:bg-sky-700', Extend:'bg-teal-600 hover:bg-teal-700',
+                                  Replace:'bg-amber-500 hover:bg-amber-600', Promote:'bg-purple-600 hover:bg-purple-700',
+                                  'Sign Off':'bg-rose-600 hover:bg-rose-700'}[modal.action]]">
+                    Add
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── RFA detail modal ─────────────────────────────────── -->
+    <div v-if="rfaModal.visible"
+         class="fixed inset-0 flex items-center justify-center"
+         :style="{ zIndex: 10000 }"
+         @click.self="rfaModal.visible = false">
+        <div class="absolute inset-0 bg-black/50" @click="rfaModal.visible = false"></div>
+
+        <!-- Wide two-pane (active RFE only) -->
+        <div v-if="rfaModal.kind === 'rfe' && rfaModal.data && rfaModal.data.status === 'active'"
+             class="relative bg-white rounded-xl shadow-2xl overflow-hidden flex flex-col"
+             :style="{ zIndex: 10001, width:'960px', maxWidth:'96vw', maxHeight:'90vh' }"
+             @click.stop>
+
+            <div :class="['px-6 py-4 text-white flex items-center justify-between shrink-0', rfaModalHeaderClass]">
+                <div>
+                    <div class="font-bold text-sm tracking-tight">{{ rfaModal.data && rfaModal.data.rfaNo }}</div>
+                    <div class="text-xs mt-0.5 opacity-70">
+                        {{ rfaModal.row && rfaModal.row.rank }} · {{ rfaModal.vessel && rfaModal.vessel.name }}
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="text-xs font-black px-2 py-0.5 rounded bg-white/20 uppercase tracking-wide">{{ rfaModalTypeName }}</span>
+                    <span :class="['text-xs font-black px-2 py-0.5 rounded uppercase tracking-wide', rfaStatusBadgeClass]">{{ rfaModal.data && rfaModal.data.status }}</span>
+                </div>
+            </div>
+
+            <div class="flex flex-1 overflow-hidden">
+
+                <!-- Left pane -->
+                <div class="w-72 shrink-0 flex flex-col border-r overflow-y-auto">
+                    <div class="px-5 py-5 space-y-4 flex-1" v-if="rfaModal.data">
+                        <div class="space-y-2 text-[11px]">
+                            <div class="flex gap-4">
+                                <div class="flex-1">
+                                    <div class="text-[9px] font-black uppercase text-gray-400 tracking-widest mb-0.5">Vessel</div>
+                                    <div class="font-semibold text-gray-700">{{ rfaModal.vessel && rfaModal.vessel.name }}</div>
+                                </div>
+                                <div class="flex-1">
+                                    <div class="text-[9px] font-black uppercase text-gray-400 tracking-widest mb-0.5">Rank</div>
+                                    <div class="font-semibold text-gray-700">{{ (rfaModal.row && rfaModal.row.rank) || (rfaModal.data && rfaModal.data.rank) }}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3 text-[11px]">
+                            <div>
+                                <div class="text-[9px] font-black uppercase text-gray-400 tracking-widest mb-0.5">Date Created</div>
+                                <div class="font-semibold text-gray-700">{{ rfaModal.data.dateCreated || '—' }}</div>
+                            </div>
+                            <div>
+                                <div class="text-[9px] font-black uppercase text-gray-400 tracking-widest mb-0.5">Est. Embarkation</div>
+                                <div class="font-semibold text-sky-700">{{ rfaModal.data.embarkDate }}</div>
+                            </div>
+                            <div v-if="rfaModal.data.port">
+                                <div class="text-[9px] font-black uppercase text-gray-400 tracking-widest mb-0.5">Port</div>
+                                <div class="font-semibold text-gray-700">{{ rfaModal.data.port }}</div>
+                            </div>
+                            <div v-if="rfaModal.data.contractMonths">
+                                <div class="text-[9px] font-black uppercase text-gray-400 tracking-widest mb-0.5">Contract</div>
+                                <div class="font-semibold text-gray-700">{{ rfaModal.data.contractMonths }} ± {{ rfaModal.data.contractVariation || 0 }}m</div>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="text-[9px] font-black uppercase text-gray-400 tracking-widest mb-1.5">Status</div>
+                            <div class="flex gap-2 flex-wrap">
+                                <button v-for="s in rfaStatusOptions" :key="s.value"
+                                        @click="rfaModal.editStatus = s.value"
+                                        :class="['px-3 py-1.5 rounded-lg text-xs font-bold border transition',
+                                                 rfaModal.editStatus === s.value ? s.activeClass : 'bg-white border-gray-200 text-gray-500 hover:border-gray-400']">
+                                    {{ s.icon }} {{ s.label }}
+                                </button>
+                            </div>
+                        </div>
+                        <div v-if="rfaModal.confirmDelete"
+                             class="bg-red-50 border border-red-200 rounded-lg px-4 py-3">
+                            <div class="text-[11px] font-bold text-red-700 mb-2">Delete {{ rfaModal.data.rfaNo }}?</div>
+                            <div class="text-[11px] text-red-600 mb-3">This will remove the bar from the chart.</div>
+                            <div class="flex gap-2">
+                                <button @click="deleteRfa" class="px-4 py-1.5 bg-red-600 text-white text-xs font-bold rounded-lg hover:bg-red-700 transition">Yes, Delete</button>
+                                <button @click="rfaModal.confirmDelete = false" class="px-4 py-1.5 bg-white border border-gray-300 text-gray-600 text-xs font-semibold rounded-lg hover:bg-gray-50 transition">Cancel</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="px-5 py-3 border-t bg-gray-50 shrink-0 space-y-2">
+                        <button :class="['w-full px-4 py-2 text-xs font-bold rounded-lg border-2 transition uppercase tracking-wide',
+                                         rfaModal.rfcIssued
+                                           ? 'border-orange-400 bg-orange-50 text-orange-700 cursor-default'
+                                           : 'border-orange-400 text-orange-600 hover:bg-orange-50']"
+                                @click="rfaModal.rfcIssued = true">
+                            {{ rfaModal.rfcIssued ? '✓ RFC Issued to Recruitment' : 'Issue RFC to Recruitment' }}
+                        </button>
+                        <div class="flex justify-between items-center gap-2">
+                            <button @click="rfaModal.confirmDelete = true"
+                                    class="px-3 py-1.5 text-xs rounded-lg border border-red-200 text-red-600 hover:bg-red-50 transition font-semibold">
+                                🗑 Delete
+                            </button>
+                            <div class="flex gap-2">
+                                <button @click="rfaModal.visible = false"
+                                        class="px-3 py-1.5 text-xs rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-100 transition font-semibold">
+                                    Cancel
+                                </button>
+                                <button @click="saveRfa"
+                                        class="px-4 py-1.5 text-xs rounded-lg text-white font-bold transition bg-sky-700 hover:bg-sky-800">
+                                    Save
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right pane: candidate pool -->
+                <div class="flex-1 flex flex-col overflow-hidden bg-slate-50">
+                    <div class="p-4 border-b bg-white flex justify-between items-center shrink-0">
+                        <div>
+                            <div class="font-bold text-slate-800 tracking-tight">{{ (rfaModal.row && rfaModal.row.rank) || (rfaModal.data && rfaModal.data.rank) }} Candidates</div>
+                            <div class="text-[11px] text-gray-500 mt-0.5">For: {{ rfaModal.vessel && rfaModal.vessel.name }} ({{ rfaModal.vessel && rfaModal.vessel.type }})</div>
+                        </div>
+                        <div class="flex gap-2">
+                            <button @click="rfaModal.showCompare = true"
+                                    :disabled="rfaModal.selectedCandidates.length < 2"
+                                    class="bg-gray-200 text-gray-700 px-3 py-1.5 text-xs rounded font-bold disabled:opacity-30 hover:bg-gray-300 transition">
+                                Compare
+                            </button>
+                            <button @click="rfaModal.showProposal = true"
+                                    :disabled="rfaModal.selectedCandidates.length === 0"
+                                    class="bg-emerald-600 text-white px-4 py-1.5 text-xs rounded font-bold shadow disabled:opacity-30 hover:bg-emerald-700 transition">
+                                Propose ({{ rfaModal.selectedCandidates.length }})
+                            </button>
+                        </div>
+                    </div>
+                    <div class="px-4 py-2 border-b bg-white flex items-center gap-3 shrink-0">
+                        <span class="text-[10px] text-gray-400 uppercase font-bold shrink-0">Available from</span>
+                        <input type="date" v-model="rfaModal.availFilter"
+                               :max="rfaModal.data && rfaModal.data.embarkDate"
+                               class="text-xs border rounded px-2 py-1 bg-white text-gray-700 focus:outline-none focus:border-sky-400">
+                        <span class="text-[10px] text-gray-400 shrink-0">to join date
+                            <span class="font-semibold text-sky-700">{{ rfaModal.data && rfaModal.data.embarkDate }}</span>
+                        </span>
+                        <button @click="rfaModal.availFilter = rfaModalAvailDefault"
+                                class="ml-auto text-[9px] text-sky-500 hover:text-sky-700 font-bold uppercase">Reset</button>
+                    </div>
+                    <div class="flex-1 overflow-y-auto p-4 space-y-6">
+                        <section v-for="cat in candidateCategories" :key="cat.label">
+                            <h3 class="text-[10px] font-black text-gray-400 uppercase mb-3 border-b pb-1 flex justify-between">
+                                <span>{{ cat.label }}</span>
+                                <span>{{ getRfeCandidates(cat.label).length }} Found</span>
+                            </h3>
+                            <div v-if="getRfeCandidates(cat.label).length === 0" class="text-[11px] text-gray-300 italic px-1 pb-2">None available</div>
+                            <div class="space-y-2">
+                                <div v-for="sea in getRfeCandidates(cat.label)" :key="sea.id"
+                                     class="w-full border rounded p-3 bg-white hover:bg-gray-50 transition border-l-4"
+                                     :style="{ borderColor: cat.color }">
+                                    <div class="flex items-start">
+                                        <input type="checkbox" v-model="rfaModal.selectedCandidates" :value="sea" class="mr-3 mt-1 w-4 h-4 shrink-0 accent-sky-600">
+                                        <div class="flex-1 min-w-0">
+                                            <div class="grid grid-cols-3 gap-2 items-baseline mb-2">
+                                                <div class="col-span-2">
+                                                    <div class="font-bold text-blue-900 text-sm leading-tight">{{ sea.name }}</div>
+                                                    <div class="text-[10px] text-gray-400 uppercase tracking-wide">{{ sea.nationality }}</div>
+                                                </div>
+                                                <div class="text-right">
+                                                    <div class="text-[9px] text-gray-400 uppercase">Available</div>
+                                                    <div class="text-xs font-bold text-emerald-700">{{ sea.availDate }}</div>
+                                                </div>
+                                            </div>
+                                            <div class="grid grid-cols-4 gap-2 mb-2 text-center">
+                                                <div>
+                                                    <div class="text-[9px] text-gray-400 uppercase mb-0.5">Age</div>
+                                                    <div class="text-xs font-semibold text-gray-700">{{ sea.age }}</div>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[9px] text-gray-400 uppercase mb-0.5">BMI</div>
+                                                    <div class="text-xs font-semibold text-gray-700">{{ sea.bmi }}</div>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[9px] text-gray-400 uppercase mb-0.5">CES STCW</div>
+                                                    <div :class="['text-xs font-semibold', sea.cesStcw >= 85 ? 'text-emerald-600' : sea.cesStcw >= 70 ? 'text-amber-600' : 'text-red-600']">{{ sea.cesStcw }}</div>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[9px] text-gray-400 uppercase mb-0.5">CES Eng</div>
+                                                    <div :class="['text-xs font-semibold', sea.cesEnglish >= 85 ? 'text-emerald-600' : sea.cesEnglish >= 70 ? 'text-amber-600' : 'text-red-600']">{{ sea.cesEnglish }}</div>
+                                                </div>
+                                            </div>
+                                            <div class="grid grid-cols-2 gap-x-4 border-t pt-2 mt-1">
+                                                <div v-for="svc in sea.services.filter(s => s.label !== 'Other')" :key="svc.label">
+                                                    <span class="text-[9px] text-gray-400 uppercase">{{ svc.label }}</span>
+                                                    <div class="text-xs font-semibold text-gray-700">{{ svc.count }} trips · {{ svc.months }}m</div>
+                                                    <div class="text-[9px] text-gray-400">{{ svc.rank }}</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Single-pane (all other RF types / statuses) -->
+        <div v-else
+             class="relative bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden"
+             :style="{ zIndex: 10001 }" @click.stop>
+
+            <div :class="['px-6 py-4 text-white flex items-center justify-between', rfaModalHeaderClass]">
+                <div>
+                    <div class="font-bold text-sm tracking-tight">{{ rfaModal.data && rfaModal.data.rfaNo }}</div>
+                    <div class="text-xs mt-0.5 opacity-70">
+                        {{ rfaModal.row && rfaModal.row.rank }} · {{ rfaModal.vessel && rfaModal.vessel.name }}
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="text-xs font-black px-2 py-0.5 rounded bg-white/20 uppercase tracking-wide">{{ rfaModalTypeName }}</span>
+                    <span :class="['text-xs font-black px-2 py-0.5 rounded uppercase tracking-wide', rfaStatusBadgeClass]">{{ rfaModal.data && rfaModal.data.status }}</span>
+                </div>
+            </div>
+
+            <div class="px-6 py-5 space-y-4" v-if="rfaModal.data">
+                <div class="flex gap-4 text-[11px]">
+                    <div class="flex-1">
+                        <div class="text-[9px] font-black uppercase text-gray-400 tracking-widest mb-0.5">Vessel</div>
+                        <div class="font-semibold text-gray-700">{{ rfaModal.vessel && rfaModal.vessel.name }}</div>
+                    </div>
+                    <div class="flex-1">
+                        <div class="text-[9px] font-black uppercase text-gray-400 tracking-widest mb-0.5">Rank</div>
+                        <div class="font-semibold text-gray-700">{{ rfaModal.row && rfaModal.row.rank }}</div>
+                    </div>
+                    <div class="flex-1" v-if="rfaModal.row && rfaModal.row.onboard">
+                        <div class="text-[9px] font-black uppercase text-gray-400 tracking-widest mb-0.5">Current Seafarer</div>
+                        <div class="font-semibold text-gray-700">{{ rfaModal.row.onboard.name }}</div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3 text-[11px]">
+                    <div>
+                        <div class="text-[9px] font-black uppercase text-gray-400 tracking-widest mb-0.5">Date Created</div>
+                        <div class="font-semibold text-gray-700">{{ rfaModal.data.dateCreated || rfaModal.data.rfaStart || '—' }}</div>
+                    </div>
+                    <div v-if="rfaModal.kind === 'rfs'">
+                        <div class="text-[9px] font-black uppercase text-gray-400 tracking-widest mb-0.5">Est. Sign-off</div>
+                        <div class="font-semibold text-rose-700">{{ rfaModal.data.signoffDate }}</div>
+                    </div>
+                    <div v-else-if="rfaModal.kind === 'rfr'">
+                        <div class="text-[9px] font-black uppercase text-gray-400 tracking-widest mb-0.5">Est. Replacement Date</div>
+                        <div class="font-semibold text-amber-700">{{ rfaModal.data.signoffDate || rfaModal.data.embarkDate }}</div>
+                    </div>
+                    <div v-else-if="rfaModal.kind === 'rfe'">
+                        <div class="text-[9px] font-black uppercase text-gray-400 tracking-widest mb-0.5">Est. Embarkation</div>
+                        <div class="font-semibold text-sky-700">{{ rfaModal.data.embarkDate }}</div>
+                    </div>
+                    <div v-else>
+                        <div class="text-[9px] font-black uppercase text-gray-400 tracking-widest mb-0.5">{{ rfaModal.kind === 'rfx' ? 'Extended Until' : 'Promotion Target' }}</div>
+                        <div :class="['font-semibold', rfaModal.kind==='rfx' ? 'text-teal-700' : 'text-purple-700']">{{ rfaModal.data.rfaEnd || '—' }}</div>
+                    </div>
+                    <div v-if="rfaModal.data.port">
+                        <div class="text-[9px] font-black uppercase text-gray-400 tracking-widest mb-0.5">Port</div>
+                        <div class="font-semibold text-gray-700">{{ rfaModal.data.port }}</div>
+                    </div>
+                </div>
+                <div v-if="rfaModal.kind === 'rfr'"
+                     class="text-[10px] bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-amber-800">
+                    ↑ Sign-off side · ↓ Embark side — both shown as paired amber bars on the same row.
+                </div>
+                <div v-if="(rfaModal.kind === 'rfx' || rfaModal.kind === 'rfp') && rfaModal.data.proposed && rfaModal.data.proposed.length">
+                    <div class="text-[9px] font-black uppercase text-gray-400 tracking-widest mb-1.5">Proposed Seafarers</div>
+                    <div class="space-y-1">
+                        <div v-for="p in rfaModal.data.proposed" :key="p.name"
+                             class="flex items-center justify-between bg-gray-50 rounded px-3 py-1.5 text-[11px]">
+                            <span class="font-semibold text-gray-700">{{ p.name }}</span>
+                            <span class="text-gray-400">{{ p.nationality }} · {{ p.service }}mo exp</span>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <div class="text-[9px] font-black uppercase text-gray-400 tracking-widest mb-1.5">Status</div>
+                    <div class="flex gap-2 flex-wrap">
+                        <button v-for="s in rfaStatusOptions" :key="s.value"
+                                @click="rfaModal.editStatus = s.value"
+                                :class="['px-3 py-1.5 rounded-lg text-xs font-bold border transition',
+                                         rfaModal.editStatus === s.value ? s.activeClass : 'bg-white border-gray-200 text-gray-500 hover:border-gray-400']">
+                            {{ s.icon }} {{ s.label }}
+                        </button>
+                    </div>
+                </div>
+                <div v-if="rfaModal.confirmDelete"
+                     class="bg-red-50 border border-red-200 rounded-lg px-4 py-3">
+                    <div class="text-[11px] font-bold text-red-700 mb-2">Delete {{ rfaModal.data.rfaNo }}?</div>
+                    <div class="text-[11px] text-red-600 mb-3">This will remove the bar from the chart.</div>
+                    <div class="flex gap-2">
+                        <button @click="deleteRfa" class="px-4 py-1.5 bg-red-600 text-white text-xs font-bold rounded-lg hover:bg-red-700 transition">Yes, Delete</button>
+                        <button @click="rfaModal.confirmDelete = false" class="px-4 py-1.5 bg-white border border-gray-300 text-gray-600 text-xs font-semibold rounded-lg hover:bg-gray-50 transition">Cancel</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="px-6 py-4 bg-gray-50 border-t flex items-center justify-between">
+                <button @click="rfaModal.confirmDelete = true"
+                        class="px-4 py-2 text-xs rounded-lg border border-red-200 text-red-600 hover:bg-red-50 transition font-semibold flex items-center gap-1.5">
+                    🗑 Delete
+                </button>
+                <div class="flex gap-2">
+                    <button @click="rfaModal.visible = false"
+                            class="px-4 py-2 text-sm rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-100 transition font-semibold">Cancel</button>
+                    <button @click="saveRfa"
+                            class="px-5 py-2 text-sm rounded-lg text-white font-bold transition bg-slate-700 hover:bg-slate-800">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Compare modal ────────────────────────────────────── -->
+    <div v-if="rfaModal.showCompare"
+         class="fixed inset-0 bg-slate-900/80 flex items-center justify-center p-6"
+         :style="{ zIndex: 10100 }">
+        <div class="bg-white w-full max-w-5xl rounded-lg shadow-xl flex flex-col max-h-[90vh]">
+            <div class="p-4 border-b bg-gray-50 flex justify-between items-center shrink-0">
+                <h2 class="text-base font-bold">Candidate Comparison</h2>
+                <button @click="rfaModal.showCompare = false" class="text-2xl text-gray-400 hover:text-black">&times;</button>
+            </div>
+            <div class="overflow-y-auto flex-1">
+                <table class="w-full text-xs">
+                    <thead class="sticky top-0 z-10">
+                        <tr class="bg-slate-800 text-white">
+                            <th class="p-3 text-left w-36">Criteria</th>
+                            <th v-for="s in rfaModal.selectedCandidates" :key="s.id" class="p-3 text-center text-blue-300 font-bold">{{ s.name }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td colspan="99" class="px-3 py-1.5 bg-slate-100 text-[9px] font-black text-slate-500 uppercase tracking-widest">Basic Information</td></tr>
+                        <tr class="border-b hover:bg-gray-50">
+                            <td class="p-2 font-bold text-gray-500 uppercase text-[10px] bg-gray-50">Category</td>
+                            <td v-for="s in rfaModal.selectedCandidates" :key="s.id" class="p-2 text-center">
+                                <span :class="['text-[10px] font-bold px-2 py-0.5 rounded uppercase', s.category === 'Client Ex-Crew' ? 'bg-emerald-100 text-emerald-700' : s.category === 'Other Ex-Crew' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700']">{{ s.category }}</span>
+                            </td>
+                        </tr>
+                        <tr class="border-b hover:bg-gray-50">
+                            <td class="p-2 font-bold text-gray-500 uppercase text-[10px] bg-gray-50">Nationality</td>
+                            <td v-for="s in rfaModal.selectedCandidates" :key="s.id" class="p-2 text-center">{{ s.nationality }}</td>
+                        </tr>
+                        <tr class="border-b hover:bg-gray-50">
+                            <td class="p-2 font-bold text-gray-500 uppercase text-[10px] bg-gray-50">Age</td>
+                            <td v-for="s in rfaModal.selectedCandidates" :key="s.id" class="p-2 text-center font-medium">{{ s.age }}</td>
+                        </tr>
+                        <tr class="border-b hover:bg-gray-50">
+                            <td class="p-2 font-bold text-gray-500 uppercase text-[10px] bg-gray-50">BMI</td>
+                            <td v-for="s in rfaModal.selectedCandidates" :key="s.id" class="p-2 text-center font-medium">{{ s.bmi }}</td>
+                        </tr>
+                        <tr class="border-b hover:bg-gray-50">
+                            <td class="p-2 font-bold text-gray-500 uppercase text-[10px] bg-gray-50">Availability</td>
+                            <td v-for="s in rfaModal.selectedCandidates" :key="s.id" class="p-2 text-center font-bold text-emerald-700">{{ s.availDate }}</td>
+                        </tr>
+                        <tr><td colspan="99" class="px-3 py-1.5 bg-slate-100 text-[9px] font-black text-slate-500 uppercase tracking-widest">CES Scores</td></tr>
+                        <tr class="border-b hover:bg-gray-50">
+                            <td class="p-2 font-bold text-gray-500 uppercase text-[10px] bg-gray-50">CES STCW</td>
+                            <td v-for="s in rfaModal.selectedCandidates" :key="s.id" class="p-2 text-center">
+                                <span :class="['font-bold px-2 py-0.5 rounded', s.cesStcw >= 85 ? 'bg-emerald-100 text-emerald-700' : s.cesStcw >= 70 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700']">{{ s.cesStcw }}</span>
+                            </td>
+                        </tr>
+                        <tr class="border-b hover:bg-gray-50">
+                            <td class="p-2 font-bold text-gray-500 uppercase text-[10px] bg-gray-50">CES English</td>
+                            <td v-for="s in rfaModal.selectedCandidates" :key="s.id" class="p-2 text-center">
+                                <span :class="['font-bold px-2 py-0.5 rounded', s.cesEnglish >= 85 ? 'bg-emerald-100 text-emerald-700' : s.cesEnglish >= 70 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700']">{{ s.cesEnglish }}</span>
+                            </td>
+                        </tr>
+                        <tr><td colspan="99" class="px-3 py-1.5 bg-slate-100 text-[9px] font-black text-slate-500 uppercase tracking-widest">Sea Service Breakdown</td></tr>
+                        <tr class="border-b hover:bg-gray-50">
+                            <td class="p-2 font-bold text-gray-500 uppercase text-[10px] bg-gray-50">At Rank<br><span class="text-[9px] font-normal">(trips / months)</span></td>
+                            <td v-for="s in rfaModal.selectedCandidates" :key="s.id" class="p-2 text-center">
+                                <div class="font-bold text-blue-800">{{ s.services[0].count }} trips</div>
+                                <div class="text-gray-500">{{ s.services[0].months }}m</div>
+                            </td>
+                        </tr>
+                        <tr class="border-b hover:bg-gray-50">
+                            <td class="p-2 font-bold text-gray-500 uppercase text-[10px] bg-gray-50">As Officer<br><span class="text-[9px] font-normal">(trips / months)</span></td>
+                            <td v-for="s in rfaModal.selectedCandidates" :key="s.id" class="p-2 text-center">
+                                <div class="font-bold text-blue-800">{{ s.services[1].count }} trips</div>
+                                <div class="text-gray-500">{{ s.services[1].months }}m</div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Proposal modal ───────────────────────────────────── -->
+    <div v-if="rfaModal.showProposal"
+         class="fixed inset-0 bg-slate-900/90 backdrop-blur-sm flex items-center justify-center p-6"
+         :style="{ zIndex: 10100 }">
+        <div class="bg-white w-full max-w-2xl rounded-lg shadow-2xl flex flex-col max-h-[90vh]">
+            <div class="p-4 bg-gray-50 border-b flex justify-between items-center shrink-0">
+                <h2 class="font-bold">Compose Proposal ({{ rfaModal.selectedCandidates.length }} Candidates)</h2>
+                <button @click="rfaModal.showProposal = false" class="text-xl">&times;</button>
+            </div>
+            <div class="p-6 overflow-y-auto space-y-4 text-xs">
+                <div class="grid grid-cols-6 items-center gap-1">
+                    <span class="text-gray-400">To:</span>
+                    <input type="text" :value="rfaModal.vessel && 'crewing@' + rfaModal.vessel.client.toLowerCase().replace(/ /g,'') + '.com'"
+                           class="col-span-5 border-b p-1 outline-none">
+                </div>
+                <div class="grid grid-cols-6 items-center gap-1">
+                    <span class="text-gray-400">Subject:</span>
+                    <input type="text" :value="'Proposal: ' + rfaModal.selectedCandidates.length + ' Candidates for ' + (rfaModal.vessel && rfaModal.vessel.name)"
+                           class="col-span-5 border-b p-1 outline-none font-medium text-sm">
+                </div>
+                <div class="mt-4 border rounded p-4 bg-white font-serif text-sm leading-relaxed shadow-inner space-y-3">
+                    <div>Dear {{ rfaModal.vessel && rfaModal.vessel.client }} Team,</div>
+                    <div>We are proposing the following {{ rfaModal.selectedCandidates.length }} candidate(s) for <strong>{{ rfaModal.vessel && rfaModal.vessel.name }}</strong> ({{ rfaModal.row && rfaModal.row.rank }}).</div>
+                    <div v-for="sea in rfaModal.selectedCandidates" :key="sea.id"
+                         class="p-3 border-l-4 border-sky-200 bg-gray-50 font-sans text-xs space-y-0.5">
+                        <div class="font-bold text-blue-900">{{ sea.name }}</div>
+                        <div class="text-gray-500">Age: {{ sea.age }} · {{ sea.nationality }} · CES STCW: {{ sea.cesStcw }}</div>
+                        <a href="#" class="text-sky-600 underline text-[10px]">Review Full Profile →</a>
+                    </div>
+                    <div>Best regards,<br>Ops Department</div>
+                </div>
+                <div class="space-y-2 border-t pt-4">
+                    <div class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Attached Documents ({{ rfaModal.selectedCandidates.length * 3 }})</div>
+                    <div v-for="sea in rfaModal.selectedCandidates" :key="'docs-'+sea.id" class="flex flex-wrap gap-2">
+                        <span class="bg-sky-50 border border-sky-200 px-2 py-1 rounded text-[10px] text-sky-700">📄 Passport_{{ sea.name.split(' ')[0] }}.pdf</span>
+                        <span class="bg-sky-50 border border-sky-200 px-2 py-1 rounded text-[10px] text-sky-700">📄 SeamansBook_{{ sea.name.split(' ')[0] }}.pdf</span>
+                        <span class="bg-sky-50 border border-sky-200 px-2 py-1 rounded text-[10px] text-sky-700">📄 STCW_Bundle.zip</span>
+                    </div>
+                </div>
+            </div>
+            <div class="p-4 border-t bg-gray-50 flex justify-end gap-3 shrink-0">
+                <button @click="rfaModal.showProposal = false"
+                        class="px-4 py-2 text-xs font-semibold border border-gray-300 text-gray-600 rounded hover:bg-gray-100 transition">Cancel</button>
+                <button @click="rfaModal.showProposal = false; rfaModal.visible = false"
+                        class="px-6 py-2 text-xs font-bold uppercase bg-sky-600 text-white rounded shadow-lg hover:bg-sky-700 transition">Send Proposal</button>
+            </div>
+        </div>
+    </div>
+
+</div>
+</script>
+
+<!-- ── Data layer ────────────────────────────────────────────── -->
+<script src="data/utils.js"></script>
+<script src="data/vessels.js"></script>
+<script src="data/seafarers.js"></script>
+
+<!-- ── Views ─────────────────────────────────────────────────── -->
+<script src="data/clients.js"></script>
+<script src="views/ClientsSetup.js"></script>
+<script src="views/RotationAll.js"></script>
+
+<!-- ── Stub views (replace each with a real view file when ready) ── -->
+<script>
+function makeStub(label) {
+    return {
+        template: `<div class="flex-1 flex flex-col items-center justify-center gap-3" style="color:#9ca3af">
+            <div style="font-size:3rem">🚧</div>
+            <div style="font-size:1.1rem;font-weight:600">${label}</div>
+            <div style="font-size:0.8rem">Coming soon</div>
+        </div>`
+    };
+}
+const AdminUsersView       = makeStub('Admin — Users');
+const AdminSettingsView    = makeStub('Admin — Settings');
+const RecruitmentCandidatesView = makeStub('Recruitment — Candidates');
+const RecruitmentPipelineView   = makeStub('Recruitment — Pipeline');
+const HomeView = makeStub('Select a module from the sidebar');
+</script>
+
+<!-- ── Router + App bootstrap ────────────────────────────────── -->
+<script>
+const { createApp, ref, reactive } = Vue;
+const { createRouter, createWebHashHistory } = VueRouter;
+
+const router = createRouter({
+    history: createWebHashHistory(),
+    routes: [
+        { path: '/',                       component: HomeView },
+        { path: '/admin/users',            component: AdminUsersView },
+        { path: '/admin/settings',         component: AdminSettingsView },
+        { path: '/admin/clients',          component: ClientsSetupView },
+        { path: '/recruitment/candidates', component: RecruitmentCandidatesView },
+        { path: '/recruitment/pipeline',   component: RecruitmentPipelineView },
+        { path: '/operations/rotation',    component: RotationAllView },
+    ],
+});
+
+const app = createApp({
+    setup() {
+        const sidebarOpen = ref(true);
+        const openSections = reactive({ admin: true, recruitment: false, operations: true });
+        function toggleSection(key) { openSections[key] = !openSections[key]; }
+        return { sidebarOpen, openSections, toggleSection };
+    }
+});
+app.use(router);
+app.mount('#app');
+</script>
+
+</body>
+</html>

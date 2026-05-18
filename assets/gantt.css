@@ -1,0 +1,104 @@
+/* ── gantt.css ────────────────────────────────────────────────────
+   Gantt chart visual rules for Maritime ERP — Fleet Rotation view.
+   Imported by index.html alongside erp-base.css.
+   Do NOT put layout, typography, or shared UI styles here.
+──────────────────────────────────────────────────────────────── */
+
+/* ── Generic bar ─────────────────────────────────────────────── */
+.gantt-bar {
+    position: absolute;
+    border-radius: 3px;
+    cursor: pointer;
+    overflow: hidden;
+    transition: filter 0.12s, box-shadow 0.12s;
+}
+.gantt-bar:hover { filter: brightness(0.88); box-shadow: 0 1px 8px rgba(0,0,0,0.2); z-index: 10; }
+
+/* ── Vertical zones in a 62px rank-row ───────────────────────
+   TOP    top:3%  height:22%  z-index:4  →  RFS / RFR sign-off
+   MIDDLE top:28% height:44%  z-index:2  →  onboard service bar
+   BOTTOM top:76% height:22%  z-index:3  →  RFE / RFR embark / RFX / RFP
+──────────────────────────────────────────────────────────────── */
+
+/* ── Service bars ────────────────────────────────────────────── */
+.bar-onboard        { top:28%; height:44%; z-index:2; background:#5b7fbd; border:1.5px solid #4a6da8; }
+.bar-future-service { top:28%; height:44%; z-index:2; background:#93b8d8; border:1.5px solid #7aaac8; }
+
+/* ── Signoff adjustment overlays (z-index 5, on top of onboard) */
+.bar-signoff-early {
+    top:28%; height:44%; border-radius:0 3px 3px 0; z-index:5;
+    background:repeating-linear-gradient(135deg,rgba(220,38,38,0.18) 0px,rgba(220,38,38,0.18) 4px,rgba(254,202,202,0.35) 4px,rgba(254,202,202,0.35) 8px);
+    border-top:1.5px dashed #f87171; border-bottom:1.5px dashed #f87171; border-right:2px solid #ef4444;
+}
+.bar-signoff-late {
+    top:28%; height:44%; border-radius:0 3px 3px 0; z-index:5;
+    background:#bbf7d0; border-top:1.5px solid #4ade80; border-bottom:1.5px solid #4ade80; border-right:2px solid #22c55e;
+}
+
+/* ── Unified RFA thin bars ───────────────────────────────────
+   Position classes (zone):
+     .rfa-top    → top zone    (RFS, RFR sign-off side)
+     .rfa-bottom → bottom zone (RFE, RFR embark side, RFX, RFP)
+
+   Colour classes (one per RF type):
+     .rfa-rfs  rose    #f43f5e
+     .rfa-rfr  amber   #f59e0b
+     .rfa-rfe  sky     #0ea5e9
+     .rfa-rfp  purple  #a855f7
+     .rfa-rfx  teal    #14b8a6
+
+   Status texture classes (::after overlay):
+     .rfa-active      → solid (no overlay)
+     .rfa-approval    → diagonal white stripes
+     .rfa-preparation → white dot grid
+     .rfa-completed   → desaturated
+──────────────────────────────────────────────────────────────── */
+
+.rfa-top    { top:3%;  height:22%; z-index:4; border-radius:2px; }
+.rfa-bottom { top:76%; height:22%; z-index:3; border-radius:2px; }
+
+/* Type colours */
+.rfa-rfs { background:#fda4af; border:1px solid #f43f5e; }   /* rose   */
+.rfa-rfr { background:#fcd34d; border:1px solid #f59e0b; }   /* amber  */
+.rfa-rfe { background:#7dd3fc; border:1px solid #0ea5e9; }   /* sky    */
+.rfa-rfp { background:#d8b4fe; border:1px solid #a855f7; }   /* purple */
+.rfa-rfx { background:#5eead4; border:1px solid #14b8a6; }   /* teal   */
+
+/* Status textures via ::after pseudo-element */
+.rfa-approval::after, .rfa-preparation::after {
+    content:''; position:absolute; inset:0; border-radius:inherit; pointer-events:none;
+}
+.rfa-approval::after {
+    background: repeating-linear-gradient(
+        135deg,
+        rgba(255,255,255,0) 0px, rgba(255,255,255,0) 3px,
+        rgba(255,255,255,0.55) 3px, rgba(255,255,255,0.55) 5px,
+        rgba(255,255,255,0) 5px, rgba(255,255,255,0) 10px
+    );
+}
+.rfa-preparation::after {
+    background: radial-gradient(circle, rgba(255,255,255,0.7) 1.5px, transparent 1.5px);
+    background-size: 6px 6px;
+}
+.rfa-completed { filter: saturate(0.3) brightness(1.15); }
+
+/* ── Bar label ───────────────────────────────────────────────── */
+.bar-label {
+    position: absolute; inset: 0;
+    display: flex; align-items: center;
+    padding: 0 6px;
+    font-size: 9px; font-weight: 700;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    pointer-events: none; letter-spacing: 0.01em;
+}
+
+/* ── Reference lines ─────────────────────────────────────────── */
+.today-line        { position:absolute; top:0; bottom:0; width:2px; background:#16a34a; z-index:20; pointer-events:none; box-shadow:0 0 4px rgba(22,163,74,0.4); }
+.today-label       { position:absolute; top:3px; font-size:9px; font-weight:800; color:#15803d; transform:translateX(-50%); white-space:nowrap; z-index:21; pointer-events:none; }
+.rfa-horizon-line  { position:absolute; top:0; bottom:0; width:2px; background:#d97706; z-index:19; pointer-events:none; box-shadow:0 0 4px rgba(217,119,6,0.4); }
+.rfa-horizon-label { position:absolute; top:3px; font-size:9px; font-weight:800; color:#b45309; transform:translateX(-50%); white-space:nowrap; z-index:20; pointer-events:none; }
+
+/* ── Row types ───────────────────────────────────────────────── */
+.rank-row { border-bottom:1px solid #e5e7eb; height:62px; overflow:visible; }
+.rank-row:last-child { border-bottom:none; }
+.rfe-row  { border-bottom:1px solid #e5e7eb; height:50px; overflow:visible; background:#f8faff; }

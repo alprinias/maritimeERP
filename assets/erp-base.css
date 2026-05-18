@@ -1,0 +1,21 @@
+/* ── erp-base.css ─────────────────────────────────────────────
+   Shared styles for Maritime ERP shell.
+   Apply to every view via index.html.
+──────────────────────────────────────────────────────────────── */
+
+/* Thin scrollbars everywhere */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+/* Active sub-nav tab indicator */
+.active-tab { border-bottom: 3px solid #2563eb; color: #2563eb; font-weight: bold; }
+
+/* Tooltip (shared across views that need hover popups) */
+.tt {
+    display: none; position: fixed; z-index: 300;
+    background: #0f172a; color: white;
+    font-size: 11px; padding: 10px 14px; border-radius: 7px;
+    pointer-events: none; min-width: 230px; max-width: 290px;
+    box-shadow: 0 10px 32px rgba(0,0,0,0.55);
+}
+.tt.show { display: block; }
