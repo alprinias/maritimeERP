@@ -94,19 +94,6 @@ var allVessels = [
         classificationSociety:"Lloyd's Register", piClub:'North P&I Club',
         hullInsurer:'Gard Marine', hullValue:'USD 22,000,000',
         vesselRanks: null,
-        vesselContract: [
-            { rank:'Captain',        cba:'PNO IBF', hoursOfWork:40, otRate:null,  basicSalary:3460, guaranteedOt:3114, fixedOt:null, leavePay:1038, leaveSubsistence:70, allowance:10, suppWages:5 },
-            { rank:'Chief Officer',  cba:'PNO IBF', hoursOfWork:40, otRate:null,  basicSalary:1850, guaranteedOt:1665, fixedOt:null, leavePay:555,  leaveSubsistence:70, allowance:10, suppWages:5 },
-            { rank:'Second Officer', cba:'PNO IBF', hoursOfWork:40, otRate:null,  basicSalary:1405, guaranteedOt:1265, fixedOt:null, leavePay:422,  leaveSubsistence:70, allowance:10, suppWages:5 },
-            { rank:'Third Officer',  cba:'PNO IBF', hoursOfWork:40, otRate:null,  basicSalary:1160, guaranteedOt:1044, fixedOt:null, leavePay:348,  leaveSubsistence:70, allowance:10, suppWages:5 },
-            { rank:'Chief Engineer', cba:'PNO IBF', hoursOfWork:40, otRate:null,  basicSalary:3328, guaranteedOt:2995, fixedOt:null, leavePay:998,  leaveSubsistence:70, allowance:10, suppWages:5 },
-            { rank:'Second Engineer',cba:'PNO IBF', hoursOfWork:40, otRate:null,  basicSalary:1850, guaranteedOt:1665, fixedOt:null, leavePay:555,  leaveSubsistence:70, allowance:10, suppWages:5 },
-            { rank:'Third Engineer', cba:'PNO IBF', hoursOfWork:40, otRate:null,  basicSalary:1405, guaranteedOt:1265, fixedOt:null, leavePay:422,  leaveSubsistence:70, allowance:10, suppWages:5 },
-            { rank:'Bosun',          cba:'PNO IBF', hoursOfWork:40, otRate:6.16,  basicSalary:854,  guaranteedOt:null, fixedOt:634,  leavePay:256,  leaveSubsistence:70, allowance:10, suppWages:5 },
-            { rank:'AB Deck',        cba:'PNO IBF', hoursOfWork:40, otRate:5.09,  basicSalary:706,  guaranteedOt:null, fixedOt:524,  leavePay:212,  leaveSubsistence:70, allowance:10, suppWages:5 },
-            { rank:'Oiler',          cba:'PNO IBF', hoursOfWork:40, otRate:5.09,  basicSalary:706,  guaranteedOt:null, fixedOt:524,  leavePay:212,  leaveSubsistence:70, allowance:10, suppWages:5 },
-            { rank:'Ordinary Seaman',cba:'PNO IBF', hoursOfWork:40, otRate:3.85,  basicSalary:534,  guaranteedOt:null, fixedOt:397,  leavePay:160,  leaveSubsistence:70, allowance:10, suppWages:5 },
-        ],
         ranks:[
             {
                 rank:'Captain',

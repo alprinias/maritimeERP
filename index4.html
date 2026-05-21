@@ -169,7 +169,7 @@
     </div>
 
     <!-- Client detail panel -->
-    <div v-else class="flex-1 overflow-auto px-5 py-5">
+    <div v-else class="flex-1 overflow-auto px-8 py-6">
 
         <!-- Tab bar -->
         <div class="flex gap-0 border-b mb-6">
@@ -318,13 +318,13 @@
             </div>
 
             <!-- Vessel detail panel -->
-            <div v-else class="w-full">
+            <div v-else class="max-w-3xl">
 
                 <!-- Vessel sub-tab bar -->
                 <div class="flex gap-0 border-b mb-5">
-                    <button v-for="vt in [{id:'vdetails',label:'Details'},{id:'vranks',label:'Ranks & Manning'},{id:'vcontract',label:'Contract Definition'}]"
+                    <button v-for="vt in [{id:'vdetails',label:'Details'},{id:'vranks',label:'Ranks & Manning'}]"
                             :key="vt.id"
-                            @click="vesselTab = vt.id; vesselEditing = false; vesselRanksEditing = false"
+                            @click="vesselTab = vt.id; vesselEditing = false"
                             :class="['px-5 py-2 text-xs font-semibold border-b-2 transition -mb-px',
                                      vesselTab === vt.id
                                        ? 'border-slate-700 text-slate-800'
@@ -576,168 +576,6 @@
                     <div class="mt-3 flex items-center gap-4 text-[10px] text-gray-400">
                         <span><span class="font-mono font-semibold text-emerald-700">5,800</span> = vessel override</span>
                         <span><span class="font-mono italic text-gray-300">5,800</span> = inherited from client</span>
-                    </div>
-
-                </div>
-
-                <!-- ── CONTRACT DEFINITION sub-tab ── -->
-                <div v-show="vesselTab === 'vcontract'">
-
-                    <div class="flex items-center justify-between mb-4">
-                        <div class="text-[10px] font-black uppercase text-gray-400 tracking-widest">
-                            Contract definition — {{ selectedVessel.name }}
-                        </div>
-                        <div class="flex items-center gap-3">
-                            <button v-show="!contractEditing" @click="startContractEdit"
-                                    class="px-4 py-2 text-xs font-bold rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 transition">✏ Edit</button>
-                            <template v-if="contractEditing">
-                                <button @click="contractEditing = false"
-                                        class="px-4 py-2 text-xs font-semibold rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 transition">Cancel</button>
-                                <button @click="saveContract"
-                                        class="px-4 py-2 text-xs font-bold rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition">Save</button>
-                            </template>
-                        </div>
-                    </div>
-
-                    <div class="rounded-xl border border-gray-200 bg-white overflow-hidden">
-                        <table class="w-full text-xs border-collapse">
-
-                            <!-- Header -->
-                            <thead class="sticky top-0 z-10">
-                                <tr class="bg-slate-800 text-white">
-                                    <th class="px-3 py-3 text-left text-[10px] font-black uppercase tracking-widest sticky left-0 bg-slate-800 z-20 whitespace-nowrap"
-                                        style="width:12%;box-shadow:2px 0 5px rgba(0,0,0,0.2)">Rank</th>
-                                    <th class="px-2 py-3 text-center text-[10px] font-black uppercase tracking-widest whitespace-nowrap" style="width:9%">CBA</th>
-                                    <th class="px-2 py-3 text-center text-[10px] font-black uppercase tracking-widest" style="width:6%">Hours<br>of Work</th>
-                                    <th class="px-2 py-3 text-center text-[10px] font-black uppercase tracking-widest" style="width:7%">OT Rate<br>&gt;103h</th>
-                                    <th class="px-2 py-3 text-center text-[10px] font-black uppercase tracking-widest" style="width:8%">Basic<br>Salary</th>
-                                    <th class="px-2 py-3 text-center text-[10px] font-black uppercase tracking-widest" style="width:8%">Guaranteed<br>OT</th>
-                                    <th class="px-2 py-3 text-center text-[10px] font-black uppercase tracking-widest" style="width:7%">Fixed<br>OT</th>
-                                    <th class="px-2 py-3 text-center text-[10px] font-black uppercase tracking-widest" style="width:7%">Leave<br>Pay</th>
-                                    <th class="px-2 py-3 text-center text-[10px] font-black uppercase tracking-widest" style="width:8%">Leave<br>Subsistence</th>
-                                    <th class="px-2 py-3 text-center text-[10px] font-black uppercase tracking-widest" style="width:7%">Allowance</th>
-                                    <th class="px-2 py-3 text-center text-[10px] font-black uppercase tracking-widest" style="width:8%">Supplementary<br>Wages</th>
-                                    <th class="px-2 py-3 text-center text-[10px] font-black uppercase tracking-widest whitespace-nowrap"
-                                        style="width:9%;background:#1e293b">Total</th>
-                                </tr>
-                            </thead>
-
-                            <tbody>
-                                <tr v-for="(row, idx) in contractEditing ? editContractRows : contractRows"
-                                    :key="row.rank"
-                                    :class="['border-b border-gray-100 last:border-b-0 group transition-colors',
-                                             idx % 2 === 0 ? 'bg-white' : 'bg-gray-50']">
-
-                                    <!-- Rank — sticky -->
-                                    <td class="px-3 py-2 font-semibold text-slate-700 sticky left-0 z-10 whitespace-nowrap group-hover:bg-blue-50 transition-colors"
-                                        :class="idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'"
-                                        style="box-shadow:2px 0 4px rgba(0,0,0,0.07)">{{ row.rank }}</td>
-
-                                    <!-- CBA -->
-                                    <td class="px-2 py-1.5 text-center">
-                                        <span v-show="!contractEditing" class="text-slate-700 font-semibold text-xs">{{ row.cba || '—' }}</span>
-                                        <select v-show="contractEditing" v-model="row.cba"
-                                                class="w-full border border-gray-300 rounded px-1.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white">
-                                            <option value="">—</option>
-                                            <option>PNO IBF</option>
-                                            <option>PNO ITF</option>
-                                            <option>Cyprus</option>
-                                            <option>Italy</option>
-                                            <option>ICMB</option>
-                                        </select>
-                                    </td>
-
-                                    <!-- Hours of Work (integer) -->
-                                    <td class="px-2 py-1.5 text-center">
-                                        <span v-show="!contractEditing" class="font-mono text-slate-700">{{ row.hoursOfWork || '—' }}</span>
-                                        <input v-show="contractEditing" type="number" v-model.number="row.hoursOfWork"
-                                               min="0" step="1" placeholder="0"
-                                               class="w-full border border-gray-300 rounded px-2 py-1.5 text-xs text-center font-mono focus:outline-none focus:ring-2 focus:ring-blue-400">
-                                    </td>
-
-                                    <!-- OT Rate >103h -->
-                                    <td class="px-2 py-1.5 text-center">
-                                        <span v-show="!contractEditing" class="font-mono text-slate-700">{{ row.otRate != null ? fmtDec(row.otRate) : '—' }}</span>
-                                        <input v-show="contractEditing" type="number" v-model.number="row.otRate"
-                                               min="0" step="0.01" placeholder="0.00"
-                                               class="w-full border border-gray-300 rounded px-2 py-1.5 text-xs text-right font-mono focus:outline-none focus:ring-2 focus:ring-blue-400">
-                                    </td>
-
-                                    <!-- Basic Salary -->
-                                    <td class="px-2 py-1.5 text-center">
-                                        <span v-show="!contractEditing" class="font-mono text-slate-700">{{ row.basicSalary != null ? fmtDec(row.basicSalary) : '—' }}</span>
-                                        <input v-show="contractEditing" type="number" v-model.number="row.basicSalary"
-                                               min="0" step="0.01" placeholder="0.00"
-                                               class="w-full border border-gray-300 rounded px-2 py-1.5 text-xs text-right font-mono focus:outline-none focus:ring-2 focus:ring-blue-400">
-                                    </td>
-
-                                    <!-- Guaranteed OT -->
-                                    <td class="px-2 py-1.5 text-center">
-                                        <span v-show="!contractEditing" class="font-mono text-slate-700">{{ row.guaranteedOt != null ? fmtDec(row.guaranteedOt) : '—' }}</span>
-                                        <input v-show="contractEditing" type="number" v-model.number="row.guaranteedOt"
-                                               min="0" step="0.01" placeholder="0.00"
-                                               class="w-full border border-gray-300 rounded px-2 py-1.5 text-xs text-right font-mono focus:outline-none focus:ring-2 focus:ring-blue-400">
-                                    </td>
-
-                                    <!-- Fixed OT -->
-                                    <td class="px-2 py-1.5 text-center">
-                                        <span v-show="!contractEditing" class="font-mono text-slate-700">{{ row.fixedOt != null ? fmtDec(row.fixedOt) : '—' }}</span>
-                                        <input v-show="contractEditing" type="number" v-model.number="row.fixedOt"
-                                               min="0" step="0.01" placeholder="0.00"
-                                               class="w-full border border-gray-300 rounded px-2 py-1.5 text-xs text-right font-mono focus:outline-none focus:ring-2 focus:ring-blue-400">
-                                    </td>
-
-                                    <!-- Leave Pay -->
-                                    <td class="px-2 py-1.5 text-center">
-                                        <span v-show="!contractEditing" class="font-mono text-slate-700">{{ row.leavePay != null ? fmtDec(row.leavePay) : '—' }}</span>
-                                        <input v-show="contractEditing" type="number" v-model.number="row.leavePay"
-                                               min="0" step="0.01" placeholder="0.00"
-                                               class="w-full border border-gray-300 rounded px-2 py-1.5 text-xs text-right font-mono focus:outline-none focus:ring-2 focus:ring-blue-400">
-                                    </td>
-
-                                    <!-- Leave Subsistence -->
-                                    <td class="px-2 py-1.5 text-center">
-                                        <span v-show="!contractEditing" class="font-mono text-slate-700">{{ row.leaveSubsistence != null ? fmtDec(row.leaveSubsistence) : '—' }}</span>
-                                        <input v-show="contractEditing" type="number" v-model.number="row.leaveSubsistence"
-                                               min="0" step="0.01" placeholder="0.00"
-                                               class="w-full border border-gray-300 rounded px-2 py-1.5 text-xs text-right font-mono focus:outline-none focus:ring-2 focus:ring-blue-400">
-                                    </td>
-
-                                    <!-- Allowance -->
-                                    <td class="px-2 py-1.5 text-center">
-                                        <span v-show="!contractEditing" class="font-mono text-slate-700">{{ row.allowance != null ? fmtDec(row.allowance) : '—' }}</span>
-                                        <input v-show="contractEditing" type="number" v-model.number="row.allowance"
-                                               min="0" step="0.01" placeholder="0.00"
-                                               class="w-full border border-gray-300 rounded px-2 py-1.5 text-xs text-right font-mono focus:outline-none focus:ring-2 focus:ring-blue-400">
-                                    </td>
-
-                                    <!-- Supplementary Wages -->
-                                    <td class="px-2 py-1.5 text-center">
-                                        <span v-show="!contractEditing" class="font-mono text-slate-700">{{ row.suppWages != null ? fmtDec(row.suppWages) : '—' }}</span>
-                                        <input v-show="contractEditing" type="number" v-model.number="row.suppWages"
-                                               min="0" step="0.01" placeholder="0.00"
-                                               class="w-full border border-gray-300 rounded px-2 py-1.5 text-xs text-right font-mono focus:outline-none focus:ring-2 focus:ring-blue-400">
-                                    </td>
-
-                                    <!-- Total — read-only, calculated -->
-                                    <td class="px-3 py-2 text-center" style="background:rgba(30,41,59,0.04)">
-                                        <span :class="['font-mono font-bold text-xs',
-                                                       contractRowTotal(row) > 0 ? 'text-blue-700' : 'text-gray-300']">
-                                            {{ contractRowTotal(row) > 0 ? fmtDec(contractRowTotal(row)) : '—' }}
-                                        </span>
-                                    </td>
-
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <!-- Legend -->
-                    <div class="mt-3 flex items-center gap-6 text-[10px] text-gray-400">
-                        <span>All monetary values in vessel contract currency</span>
-                        <span class="ml-auto font-semibold text-slate-500">
-                            Total = sum of all monetary columns per rank
-                        </span>
                     </div>
 
                 </div>

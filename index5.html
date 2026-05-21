@@ -169,7 +169,7 @@
     </div>
 
     <!-- Client detail panel -->
-    <div v-else class="flex-1 overflow-auto px-5 py-5">
+    <div v-else class="flex-1 overflow-auto px-8 py-6">
 
         <!-- Tab bar -->
         <div class="flex gap-0 border-b mb-6">
@@ -318,7 +318,7 @@
             </div>
 
             <!-- Vessel detail panel -->
-            <div v-else class="w-full">
+            <div v-else class="max-w-3xl">
 
                 <!-- Vessel sub-tab bar -->
                 <div class="flex gap-0 border-b mb-5">
@@ -599,26 +599,26 @@
                         </div>
                     </div>
 
-                    <div class="rounded-xl border border-gray-200 bg-white overflow-hidden">
-                        <table class="w-full text-xs border-collapse">
+                    <div class="overflow-auto rounded-xl border border-gray-200 bg-white" style="max-height:68vh">
+                        <table class="text-xs border-collapse" style="min-width:max-content;width:100%">
 
                             <!-- Header -->
                             <thead class="sticky top-0 z-10">
                                 <tr class="bg-slate-800 text-white">
-                                    <th class="px-3 py-3 text-left text-[10px] font-black uppercase tracking-widest sticky left-0 bg-slate-800 z-20 whitespace-nowrap"
-                                        style="width:12%;box-shadow:2px 0 5px rgba(0,0,0,0.2)">Rank</th>
-                                    <th class="px-2 py-3 text-center text-[10px] font-black uppercase tracking-widest whitespace-nowrap" style="width:9%">CBA</th>
-                                    <th class="px-2 py-3 text-center text-[10px] font-black uppercase tracking-widest" style="width:6%">Hours<br>of Work</th>
-                                    <th class="px-2 py-3 text-center text-[10px] font-black uppercase tracking-widest" style="width:7%">OT Rate<br>&gt;103h</th>
-                                    <th class="px-2 py-3 text-center text-[10px] font-black uppercase tracking-widest" style="width:8%">Basic<br>Salary</th>
-                                    <th class="px-2 py-3 text-center text-[10px] font-black uppercase tracking-widest" style="width:8%">Guaranteed<br>OT</th>
-                                    <th class="px-2 py-3 text-center text-[10px] font-black uppercase tracking-widest" style="width:7%">Fixed<br>OT</th>
-                                    <th class="px-2 py-3 text-center text-[10px] font-black uppercase tracking-widest" style="width:7%">Leave<br>Pay</th>
-                                    <th class="px-2 py-3 text-center text-[10px] font-black uppercase tracking-widest" style="width:8%">Leave<br>Subsistence</th>
-                                    <th class="px-2 py-3 text-center text-[10px] font-black uppercase tracking-widest" style="width:7%">Allowance</th>
-                                    <th class="px-2 py-3 text-center text-[10px] font-black uppercase tracking-widest" style="width:8%">Supplementary<br>Wages</th>
-                                    <th class="px-2 py-3 text-center text-[10px] font-black uppercase tracking-widest whitespace-nowrap"
-                                        style="width:9%;background:#1e293b">Total</th>
+                                    <th class="px-4 py-3 text-left text-[10px] font-black uppercase tracking-widest sticky left-0 bg-slate-800 z-20 whitespace-nowrap"
+                                        style="min-width:155px;box-shadow:2px 0 5px rgba(0,0,0,0.2)">Rank</th>
+                                    <th class="px-3 py-3 text-center text-[10px] font-black uppercase tracking-widest whitespace-nowrap" style="min-width:128px">CBA</th>
+                                    <th class="px-3 py-3 text-center text-[10px] font-black uppercase tracking-widest" style="min-width:80px">Hours<br>of Work</th>
+                                    <th class="px-3 py-3 text-center text-[10px] font-black uppercase tracking-widest" style="min-width:92px">OT Rate<br>&gt;103h</th>
+                                    <th class="px-3 py-3 text-center text-[10px] font-black uppercase tracking-widest" style="min-width:92px">Basic<br>Salary</th>
+                                    <th class="px-3 py-3 text-center text-[10px] font-black uppercase tracking-widest" style="min-width:100px">Guaranteed<br>OT</th>
+                                    <th class="px-3 py-3 text-center text-[10px] font-black uppercase tracking-widest" style="min-width:88px">Fixed<br>OT</th>
+                                    <th class="px-3 py-3 text-center text-[10px] font-black uppercase tracking-widest" style="min-width:88px">Leave<br>Pay</th>
+                                    <th class="px-3 py-3 text-center text-[10px] font-black uppercase tracking-widest" style="min-width:100px">Leave<br>Subsistence</th>
+                                    <th class="px-3 py-3 text-center text-[10px] font-black uppercase tracking-widest" style="min-width:88px">Allowance</th>
+                                    <th class="px-3 py-3 text-center text-[10px] font-black uppercase tracking-widest" style="min-width:108px">Supplementary<br>Wages</th>
+                                    <th class="px-3 py-3 text-center text-[10px] font-black uppercase tracking-widest whitespace-nowrap"
+                                        style="min-width:100px;background:#1e293b">Total</th>
                                 </tr>
                             </thead>
 
@@ -629,7 +629,7 @@
                                              idx % 2 === 0 ? 'bg-white' : 'bg-gray-50']">
 
                                     <!-- Rank — sticky -->
-                                    <td class="px-3 py-2 font-semibold text-slate-700 sticky left-0 z-10 whitespace-nowrap group-hover:bg-blue-50 transition-colors"
+                                    <td class="px-4 py-2 font-semibold text-slate-700 sticky left-0 z-10 whitespace-nowrap group-hover:bg-blue-50 transition-colors"
                                         :class="idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'"
                                         style="box-shadow:2px 0 4px rgba(0,0,0,0.07)">{{ row.rank }}</td>
 

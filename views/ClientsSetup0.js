@@ -31,10 +31,6 @@ const ClientsSetupView = {
             newDocTypeName: '',
             editingDocName: null,   // doc.id being renamed
             editDocNameVal: '',
-
-            // ── Contract Definition tab
-            contractEditing: false,
-            editContractRows: [],
         };
     },
 
@@ -76,28 +72,6 @@ const ClientsSetupView = {
             });
         },
 
-        // Contract definition rows — merges stored vesselContract data with rank order
-        contractRows() {
-            if (!this.selectedVessel) return [];
-            const stored = this.selectedVessel.vesselContract || [];
-            return this.rankOrder.map(rank => {
-                const ov = stored.find(r => r.rank === rank) || {};
-                return {
-                    rank,
-                    cba:              ov.cba              || '',
-                    hoursOfWork:      ov.hoursOfWork      || null,
-                    otRate:           ov.otRate            != null ? ov.otRate           : null,
-                    basicSalary:      ov.basicSalary       != null ? ov.basicSalary      : null,
-                    guaranteedOt:     ov.guaranteedOt      != null ? ov.guaranteedOt     : null,
-                    fixedOt:          ov.fixedOt           != null ? ov.fixedOt          : null,
-                    leavePay:         ov.leavePay          != null ? ov.leavePay         : null,
-                    leaveSubsistence: ov.leaveSubsistence  != null ? ov.leaveSubsistence : null,
-                    allowance:        ov.allowance         != null ? ov.allowance        : null,
-                    suppWages:        ov.suppWages         != null ? ov.suppWages        : null,
-                };
-            });
-        },
-
         // Document types for the selected client (guaranteed array)
         clientDocTypes() {
             return this.selectedClient ? (this.selectedClient.docTypes || []) : [];
@@ -125,7 +99,6 @@ const ClientsSetupView = {
             this.vesselTab = 'vdetails';
             this.vesselEditing = false;
             this.vesselRanksEditing = false;
-            this.contractEditing = false;
         },
     },
 
@@ -232,27 +205,6 @@ const ClientsSetupView = {
             const val = this.editDocNameVal.trim();
             if (val) doc.name = val;
             this.editingDocName = null;
-        },
-
-        // ── Contract Definition tab ────────────────────────
-        startContractEdit() {
-            this.editContractRows = this.contractRows.map(r => ({ ...r }));
-            this.contractEditing = true;
-        },
-        saveContract() {
-            // Persist only rows that have at least one value set
-            this.selectedVessel.vesselContract = this.editContractRows
-                .filter(r => r.cba || r.hoursOfWork || r.basicSalary != null)
-                .map(r => ({ ...r }));
-            this.contractEditing = false;
-        },
-        contractRowTotal(row) {
-            const fields = ['otRate','basicSalary','guaranteedOt','fixedOt',
-                            'leavePay','leaveSubsistence','allowance','suppWages'];
-            return fields.reduce((sum, f) => sum + (Number(row[f]) || 0), 0);
-        },
-        fmtDec(n) {
-            return Number(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
         },
 
         // ── Display helpers ────────────────────────────────
