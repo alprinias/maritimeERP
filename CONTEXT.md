@@ -1,17 +1,17 @@
 # CONTEXT.md — Maritime ERP Mockup
-**For AI model continuation. Last updated after publishing to GitHub Pages.**
+**For AI model continuation. Updated after completing the RFAs view (Replacement, Embarkation, Sign-Off, Extension, Promotion tabs).**
 
 ---
 
 ## Project overview
 
-A **single-page web application** mockup for a maritime manning agency ERP system. No build step, no framework CLI, no backend. Pure static files: Vue 3 + Vue Router 4 + Tailwind CSS, all loaded via CDN. Hosted on GitHub Pages.
+A **single-page web application** mockup for a maritime manning agency ERP system. Pure static files — no build step, no backend. Hosted on GitHub Pages.
 
 **Tech stack:**
-- Vue 3 via CDN (`vue.global.js`) — `createApp`, Options API throughout
-- Vue Router 4 via CDN (`vue-router.global.js`) — hash-based routing (`#/path`)
-- Tailwind CSS via CDN (`cdn.tailwindcss.com`)
-- No build step, no `npm`, no bundler
+- Vue 3 via CDN (`vue.global.js`) — Options API throughout
+- Vue Router 4 via CDN — hash-based routing (`#/path`)
+- Tailwind CSS via CDN
+- No npm, no bundler, no compilation
 
 ---
 
@@ -19,35 +19,44 @@ A **single-page web application** mockup for a maritime manning agency ERP syste
 
 ```
 maritimeERP/
-├── index.html              ← App shell: sidebar nav, top bar, router-view, ALL x-templates, bootstrap
+├── index.html              ← App shell + ALL x-templates + router bootstrap
 ├── assets/
-│   ├── erp-base.css        ← Shared: scrollbar, active-tab, tooltip
-│   └── gantt.css           ← Gantt-specific: bar zones, RFA colours, status textures, reference lines
+│   ├── erp-base.css        ← Shared: scrollbar, .active-tab
+│   └── gantt.css           ← Gantt bars, RFA colours, reference lines
 ├── data/
-│   ├── utils.js            ← Date helpers: TODAY, d(), addM(), daysB(), isoDate(), fmtShort(), shortName()
-│   ├── vessels.js          ← var allVessels — 6 vessels, 4 clients, full rank rows + RFA data
+│   ├── utils.js            ← Date helpers (var TODAY, d, addM, daysB, isoDate, fmtShort, shortName)
+│   ├── vessels.js          ← var allVessels (6 vessels, 4 clients, full rank/RFA data)
 │   ├── seafarers.js        ← var allSeafarers, var seedRfeRows
-│   └── clients.js          ← var allClientsData — 4 clients with salaryRanges, docTypes, vesselIds
-└── views/
-    ├── RotationAll.js      ← Fleet Rotation view component (pure JS, no HTML tags)
-    └── ClientsSetup.js     ← Admin → Clients Setup view component (pure JS, no HTML tags)
+│   └── clients.js          ← var allClientsData (4 clients, salaryRanges, docTypes, vesselIds)
+├── views/
+│   ├── RotationAll.js      ← Fleet Rotation Gantt view
+│   ├── ClientsSetup.js     ← Admin → Clients Setup view
+│   └── RFAs.js             ← Operations → RFAs view (+ RfaCardComponent)
+└── CONTEXT.md
 ```
 
-**Total size:** ~2,700 lines across all files.
+**Line counts:** index.html 2868 · RFAs.js 485 · RotationAll.js 310 · ClientsSetup.js 273 · vessels.js 307 · clients.js 140 · seafarers.js 66 · utils.js 18
 
 ---
 
 ## Critical architecture rules
 
 ### Template pattern
-Vue component templates are NOT inline strings. They use `<script type="text/x-template" id="tpl-NAME">` tags embedded directly in `index.html`. Each view `.js` file references its template by id:
+All Vue component templates are `<script type="text/x-template" id="tpl-NAME">` tags embedded in `index.html`. View `.js` files are **pure JavaScript only** — no HTML tags. Each component references its template by id:
 ```js
-const RotationAllView = { template: '#tpl-rotation-all', data() {...}, ... }
+const MyView = { template: '#tpl-my-view', data() {...}, ... }
 ```
-**Templates must live in `index.html`, not in `.js` files.** A `.js` file is loaded as JavaScript — the browser never parses HTML tags inside it.
 
-### Global variable scoping
-All data files use `var` (not `const`) so variables are hoisted onto `window`. Additionally, `index.html` has an explicit bridge block between the data `<script src>` tags and view `<script src>` tags:
+### x-template ids in index.html (in order)
+| id | Used by |
+|---|---|
+| `tpl-clients-setup` | `ClientsSetupView` |
+| `tpl-rfa-card` | `RfaCardComponent` (local to RFAsView) |
+| `tpl-rfas` | `RFAsView` |
+| `tpl-rotation-all` | `RotationAllView` |
+
+### Global variable scoping — CRITICAL
+Data files use `var` (not `const`/`let`) at top level. An explicit bridge block in `index.html` pins them onto `window` after the data scripts load but before the view scripts:
 ```js
 window.allVessels     = allVessels;
 window.allClientsData = allClientsData;
@@ -55,34 +64,26 @@ window.allSeafarers   = allSeafarers;
 window.seedRfeRows    = seedRfeRows;
 window.TODAY          = TODAY;
 ```
-**Never use `const` or `let` at the top level of a data `.js` file.** They do not attach to `window` and will be invisible to other script files.
+**Never use `const` or `let` at the top level of a data `.js` file.** Never use Python to edit these files — all edits are done with str_replace tool directly.
 
 ### Script load order in index.html
 ```
-CDN scripts (Vue, VueRouter, Tailwind)
-↓
-assets/ CSS files
-↓
-x-template blocks (inside index.html)
-↓
-data/utils.js
-data/vessels.js
-data/seafarers.js
-[inline script: window.* bridge]
-data/clients.js
-views/ClientsSetup.js
-views/RotationAll.js
-[inline script: stub views]
-[inline script: router + createApp + mount]
+CDN: Vue → VueRouter → Tailwind
+assets/erp-base.css + gantt.css
+x-template blocks (tpl-clients-setup, tpl-rfa-card, tpl-rfas, tpl-rotation-all)
+data/utils.js → data/vessels.js → data/seafarers.js
+[inline: window.* bridge + data/clients.js]
+views/ClientsSetup.js → views/RFAs.js → views/RotationAll.js
+[inline: makeStub() + stub views + router + createApp().mount()]
 ```
 
-### Vue template rules (runtime compiler constraints)
-- No inner `v-if` inside a `v-if/v-else-if` chain — use `v-show` for conditional visibility inside a branch
-- Tailwind bracket classes like `text-[11px]` are fine in HTML attributes but would break JS template literals — another reason to keep templates in x-template tags, not strings
-- `v-for` + `v-if` on the same element: always use `<template v-for>` wrapper instead
+### str_replace safety rule
+When inserting a new method before an existing one using str_replace, the `old_str` must include the **full function signature line** of the existing method (e.g. `buildSignoffRows() {`), not just a comment or closing brace. Otherwise the function header gets swallowed and causes `rows is not defined` runtime errors. Always verify with `node -e "new Function(src)()"` after every edit.
 
-### String literals in data files
-Use double quotes for any string containing an apostrophe (e.g. `"Lloyd's Register"` not `'Lloyd\'s Register'`). Escaped apostrophes in single-quoted JS strings cause `SyntaxError` in some contexts.
+### Vue template constraints (runtime compiler)
+- No inner `v-if` inside a `v-if/v-else-if` chain — use `v-show` for sub-conditions
+- `v-for` + `v-if` on same element: wrap with `<template v-for>`
+- String apostrophes in JS data files: use double quotes for strings containing apostrophes (e.g. `"Lloyd's Register"`)
 
 ---
 
@@ -90,19 +91,11 @@ Use double quotes for any string containing an apostrophe (e.g. `"Lloyd's Regist
 
 ### Layout
 ```
-┌─────────────────────────────────────────────────────────┐
-│ Top bar (48px): hamburger | MARITIMEERP logo | user info│
-├──────────┬──────────────────────────────────────────────┤
-│ Sidebar  │  <router-view>  (content area)               │
-│ (w-52 or │                                              │
-│  w-0)    │                                              │
-└──────────┴──────────────────────────────────────────────┘
+Top bar (48px): hamburger | MARITIMEERP | user info
+├── Sidebar (w-52 collapsible) | Content area (flex-1)
 ```
 
-### Sidebar
-Collapsible via hamburger (toggles `sidebarOpen` ref). Three expandable sections with chevron, state in `openSections` reactive object (admin, recruitment, operations). Admin and Operations open by default.
-
-**Sidebar menu structure:**
+### Sidebar sections (openSections reactive: admin=true, recruitment=false, operations=true)
 ```
 ⚙ Admin
     Users              → /admin/users        (stub)
@@ -113,19 +106,7 @@ Collapsible via hamburger (toggles `sidebarOpen` ref). Three expandable sections
     Pipeline           → /recruitment/pipeline    (stub)
 🚢 Operations
     Rotation Plan      → /operations/rotation     (BUILT)
-```
-
-### Root Vue app setup()
-```js
-const app = createApp({
-    setup() {
-        const sidebarOpen = ref(true);
-        const openSections = reactive({ admin: true, recruitment: false, operations: true });
-        function toggleSection(key) { openSections[key] = !openSections[key]; }
-        return { sidebarOpen, openSections, toggleSection };
-    }
-});
-app.use(router).mount('#app');
+    RFAs               → /operations/rfas         (BUILT)
 ```
 
 ### Routes
@@ -137,332 +118,299 @@ app.use(router).mount('#app');
 { path: '/recruitment/candidates', component: RecruitmentCandidatesView },   // stub
 { path: '/recruitment/pipeline',   component: RecruitmentPipelineView },     // stub
 { path: '/operations/rotation',    component: RotationAllView },             // BUILT
+{ path: '/operations/rfas',        component: RFAsView },                    // BUILT
 ```
 
-Stub views are generated by `makeStub(label)` helper defined inline in `index.html`.
+### Root Vue app (setup())
+```js
+const sidebarOpen  = ref(true);
+const openSections = reactive({ admin: true, recruitment: false, operations: true });
+function toggleSection(key) { openSections[key] = !openSections[key]; }
+```
 
 ---
 
 ## Data layer
 
-### utils.js
+### utils.js globals
 ```js
 var TODAY = new Date();
-function d(s)        { return new Date(s); }
-function addM(dt, n) { ... }   // add n months to a Date
-function daysB(a, b) { ... }   // days between two Dates
-function isoDate(dt) { ... }   // → 'YYYY-MM-DD' string
-function fmtShort(s) { ... }   // → 'Jan 5' style
-function shortName(full) { ... } // 'JUAN DELA CRUZ' → 'J. Dela Cruz'
+d(s), addM(dt,n), daysB(a,b), isoDate(dt), fmtShort(s), shortName(full)
 ```
 
-### vessels.js — `var allVessels`
-Array of 6 vessel objects. Each vessel:
+### vessels.js — `var allVessels` (6 vessels)
+| id | Name | Type | Client |
+|---|---|---|---|
+| v1 | MV Sea Star | Oil Tanker | Global Shipping Ltd |
+| v2 | MV Atlantic Pride | Bulk Carrier | Global Shipping Ltd |
+| v3 | Oceanic Express | Container | Blue Water Corp |
+| v4 | Alpha Prime | Chemical Tanker | Alpha Tankers |
+| v5 | Alpha Horizon | Oil Tanker | Alpha Tankers |
+| v6 | Pacific Trader | RoRo | Pacific Logistics |
+
+**Full vessel object shape:**
 ```js
 {
-    id: 'v1',                        // 'v1'–'v6'
-    client: 'Global Shipping Ltd',   // must match allClientsData client names
-    name: 'MV Sea Star',
-    type: 'Oil Tanker',
-    flag: 'Panama',
-    imo: '9412831', built: 2011, gt: 29800,
-    engineType: 'MAN B&W 6S60MC-C', enginePower: '12 960 kW',
-    classificationSociety: 'Bureau Veritas',
-    piClub: 'UK P&I Club',
-    hullInsurer: "Lloyd's of London",
-    hullValue: 'USD 18,500,000',
-    vesselRanks: null,               // null until user saves overrides; then array (see below)
-    ranks: [                         // array of rank row objects (see below)
-        { rank, isRating?, onboard, rfa, rfs, rfr_rfe }
+    id, client, name, type, flag,
+    imo, built, gt, engineType, enginePower,
+    classificationSociety, piClub, hullInsurer, hullValue,
+    vesselRanks: null | [...],      // user-saved manning/salary overrides
+    vesselContract: null | [...],   // user-saved contract definition rows
+    ranks: [                        // array of rank row objects
+        {
+            rank, isRating?,
+            onboard: { name, shortName, embark, signoff, contract },
+            rfa: null | { rfaNo, type('Extend'|'Replace'|'Promote'), status,
+                          rfaStart, rfaEnd, newRank?, proposed:[], confirmedSeafarer },
+            rfs:     null | { rfaNo, dateCreated, signoffDate, port, status },
+            rfr_rfe: null | { rfaNo, dateCreated, embarkDate,  port, status },
+        }
     ]
 }
 ```
 
-**Rank row shape:**
+**RFR pairs (rows with BOTH rfs AND rfr_rfe):**
+- v1 Captain: RFS-4001 + RFE-4001 (status:'active' → OnSearch)
+- v2 Chief Engineer: RFS-4002 + RFE-4002 (status:'preparation' → OnPreparation)
+
+**Standalone RFS only (no rfr_rfe):**
+- v2 Second Officer: RFS-3001
+- v3 Ordinary Seaman: RFS-3002 (status:'preparation')
+- v4 Second Officer: RFS-3003
+
+**RFA types on `rfa` field:**
+- v3 Captain: RFX-1074 type:'Extend' status:'active'
+- v3 Bosun: RFP-1090 type:'Promote' status:'active'
+
+**vesselRanks override shape** (stored only for ranks with ≥1 value):
 ```js
-{
-    rank: 'Captain',
-    isRating: true,          // optional; if true = ratings (AB, OS, Oiler) excluded by default
-    onboard: { name, shortName, embark, signoff, contract },
-    rfa: null | {
-        rfaNo, type('Extend'|'Replace'|'Promote'), status,
-        rfaStart, rfaEnd, newRank?, proposed:[], confirmedSeafarer
-    },
-    rfs: null | { rfaNo, dateCreated, signoffDate, port, status },
-    rfr_rfe: null | { rfaNo, dateCreated, embarkDate, port, status }
-}
+vesselRanks: [{ rank, manning, salaryMin, salaryMax, currency }]
 ```
 
-**vesselRanks override shape** (stored on vessel when user edits Ranks & Manning tab):
+**vesselContract shape** (MV Atlantic Pride v2 pre-filled from PNO IMEC IBF CBA 2026):
 ```js
-vesselRanks: [
-    { rank: 'Captain', manning: 1, salaryMin: 10000, salaryMax: 13000, currency: 'USD' },
-    ...  // only ranks with at least one value set are stored
-]
+vesselContract: [{ rank, cba, hoursOfWork, otRate, basicSalary, guaranteedOt,
+                   fixedOt, leavePay, leaveSubsistence, allowance, suppWages }]
 ```
-
-**6 vessels across 4 clients:**
-- `v1` MV Sea Star — Oil Tanker — Global Shipping Ltd
-- `v2` MV Atlantic Pride — Bulk Carrier — Global Shipping Ltd
-- `v3` Oceanic Express — Container — Blue Water Corp (has RFX-1074, RFR-1051, RFP-1090)
-- `v4` Alpha Prime — Chemical Tanker — Alpha Tankers
-- `v5` Alpha Horizon — Oil Tanker — Alpha Tankers
-- `v6` Pacific Trader — RoRo — Pacific Logistics
+Contract Total = sum of: otRate + basicSalary + guaranteedOt + fixedOt + leavePay + leaveSubsistence + allowance + suppWages (all 2dp).
 
 ### seafarers.js
 ```js
-var allSeafarers  // 13 seafarer objects: { id, name, rank, age, bmi, availDate, cesStcw, cesEnglish, nationality, category, services[] }
-var seedRfeRows   // 3 standalone RFE rows: RFE-2011 (C/O, v1), RFE-2019 (Captain, v2), RFE-2024 (2/E, v4)
+var allSeafarers  // 13 seafarers: { id, name, rank, age, bmi, availDate, cesStcw,
+                  //                 cesEnglish, nationality, category, services[] }
+var seedRfeRows   // 3 RFEs: RFE-2011 (C/O, v1, active=OnSearch)
+                  //         RFE-2019 (Captain, v2, active=OnSearch)
+                  //         RFE-2024 (2nd Eng, v4, preparation=OnPreparation)
 ```
-Seafarer categories: `'Client Ex-Crew'`, `'Other Ex-Crew'`, `'New Candidates'`
 
-### clients.js — `var allClientsData`
-Array of 4 client objects:
+Seafarer categories → RFAs group mapping:
+- `'Client Ex-Crew'` → **Dedicated** (green)
+- `'Other Ex-Crew'`  → **Ex-Crew** (blue)
+- `'New Candidates'` → **New** (amber)
+
+Services array: `[{ count, months, label('At Rank'|'As Officer'|'Other'), rank }]`
+
+### clients.js — `var allClientsData` (4 clients)
 ```js
 {
-    id: 'c1',
-    name: 'Global Shipping Ltd', alias: 'GSL',
-    address: '...', contactEmail: '...', contactPhone: '...',
-    isActive: true,
-    vesselIds: ['v1', 'v2'],           // references into allVessels
-    salaryRanges: [                    // 11 rank entries
-        { rank: 'Captain', min: 8500, max: 11000, currency: 'USD' },
-        ...
-    ],
-    docTypes: [                        // 8 seed document types per client
-        { id: 'dt1', name: 'STCW Basic Safety (BST)', required: {} },
-        // required: { 'Captain': true, 'Chief Officer': true, ... }
-        ...
-    ]
+    id, name, alias, address, contactEmail, contactPhone, isActive,
+    vesselIds: ['v1','v2'],
+    salaryRanges: [{ rank, min, max, currency }],   // 11 ranks
+    docTypes: [{ id, name, required: { 'Captain': true, ... } }]  // 8 seed doc types
 }
 ```
-**4 clients:** Global Shipping Ltd (c1), Blue Water Corp (c2), Alpha Tankers (c3), Pacific Logistics (c4, isActive: false).
+Clients: c1 Global Shipping Ltd, c2 Blue Water Corp, c3 Alpha Tankers, c4 Pacific Logistics (inactive).
 
 ---
 
 ## View: RotationAll (`/operations/rotation`)
+**Template:** `tpl-rotation-all` · **Component:** `RotationAllView`
 
-**Template id:** `tpl-rotation-all`
-**Component file:** `views/RotationAll.js`
+Gantt-style fleet rotation planner. The most complex view (~1000 lines of template).
 
-A Gantt-style fleet rotation planner. The largest and most complex view.
-
-### Layout
+### Gantt bar zones (62px rank row)
 ```
-Sub-nav bar (sticky)
-Filter bar: Client → Vessel → Rank → RF Type segmented | Window 6/12/18mo | Include Ratings | From date + Reset
-─────────────────────────────────────────────────────────────────────────────
-Sticky month ruler
-Scrollable chart body:
-  For each vessel:
-    Vessel header row (dark slate) [client · name · type · + Embark button]
-    Rank rows (62px each): sticky label | chart zone with bars
-    RFE rows (50px, bg-blue-50): label+badge | chart zone with future bar + RFE bar
-Footer ruler (today / horizon labels)
+top:3%  h:22%  z:4  → RFS/RFR sign-off (TOP)
+top:28% h:44%  z:2  → Onboard service bar (MIDDLE)
+top:76% h:22%  z:3  → RFE/RFR embark/RFX/RFP (BOTTOM)
 ```
 
-### Gantt bar zones (within 62px rank row)
-```
-top:3%  height:22%  z-index:4  → RFS/RFR sign-off thin bar  (TOP zone)
-top:28% height:44%  z-index:2  → Onboard service bar         (MIDDLE zone)
-top:76% height:22%  z-index:3  → RFE/RFR embark/RFX/RFP     (BOTTOM zone)
-```
+### RF type colours
+RFS=rose, RFR=amber, RFE=sky, RFP=purple, RFX=teal.
+Status textures: active=solid, approval=diagonal stripes, preparation=dot grid, completed=desaturated.
 
-### RF type system
-| Code | Colour | Meaning |
-|------|--------|---------|
-| RFS-xxxx | Rose `#f43f5e` | Request For Sign-off |
-| RFR-xxxx | Amber `#f59e0b` | Request For Replacement (creates both RFS + RFE) |
-| RFE-xxxx | Sky `#0ea5e9` | Request For Embarkation (standalone) |
-| RFP-xxxx | Purple `#a855f7` | Request For Promotion |
-| RFX-xxxx | Teal `#14b8a6` | Request For Extension |
-
-Status textures: `active` (solid), `approval` (diagonal stripes), `preparation` (dot grid), `completed` (desaturated).
-
-### Key reactive state (data())
-```js
-viewMonths, dayWidth: 3.0, rankColWidth: 240, ganttStartStr,
-includeRatings, filterClient, filterVessel, filterRank, filterRfType,
-ctxMenu: { visible, x, y, vessel, row },
-modal: { visible, action, vessel, row },
-extendForm, replaceForm, promoteForm, embarkForm, signoffForm,
-rfaModal: { visible, kind, data, row, vessel, editStatus, confirmDelete,
-            rfcIssued, selectedCandidates, availFilter, showCompare, showProposal },
-todayStr, rfeRows (copy of seedRfeRows), allSeafarers
-```
-
-### Key computed
-- `ganttStart/End/TotalDays`, `todayOffset`, `rfaHorizonOffset` (today+2mo), `ganttMonths`
-- `allClients`, `clientVessels`, `allRanks`
-- `allFlatRows` — filtered vessel+rank list for rendering
-- `vesselRankRows`, `higherRanks`, `rfaModalTypeName/HeaderClass/StatusBadgeClass/StatusOptions`
-- `candidateCategories`, `rfaModalAvailDefault`
+### Key state
+`viewMonths, dayWidth:3.0, rankColWidth:240, ganttStartStr, includeRatings, filterClient/Vessel/Rank/RfType, ctxMenu, modal, rfaModal, rfeRows (reactive copy of seedRfeRows), allSeafarers`
 
 ### Modals
-1. **Action modal** — opened from `+ Embark` button or context menu. Actions: Embark (RFE), Extend (RFX), Replace (RFR), Sign Off (RFS), Promote (RFP). Each has its own form section shown with `v-else-if`.
-2. **RFA detail modal** — single-pane for RFX/RFP/RFS/RFR, two-pane (960px) for active RFE. Two-pane has candidate pool on right grouped by category with checkboxes, Compare modal, Proposal email modal.
-3. **Context menu** — right-click on onboard bar, shows seafarer info + action buttons.
+1. **Action modal** — Embark(RFE) / Extend(RFX) / Replace(RFR) / Sign Off(RFS) / Promote(RFP)
+2. **RFA detail modal** — single-pane for RFX/RFP/RFS/RFR; two-pane (960px) for active RFE with candidate pool, Compare, Proposal email
+3. **Context menu** — right-click on onboard bar
 
 ### Replace (RFR) creates 3 things simultaneously:
-```js
-row.rfs     = { rfaNo: 'RFS-xxxx', ... }
-row.rfr_rfe = { rfaNo: 'RFE-xxxx', ... }
-rfeRows.push({ vesselId, rfaNo: 'RFE-xxxx', ... })  // standalone RFE row
-```
+`row.rfs`, `row.rfr_rfe`, and a new entry pushed to `rfeRows`.
 
-### Standalone RFE rows
-`openRfaModal(rfe, 'rfe', null, vessel)` — `row` is null. All code reading `rfaModal.row.rank` must fall back to `rfaModal.data.rank`.
+### Standalone RFE: `openRfaModal(rfe, 'rfe', null, vessel)` — row is null; always fall back to `rfaModal.data.rank`.
 
 ---
 
 ## View: ClientsSetup (`/admin/clients`)
+**Template:** `tpl-clients-setup` · **Component:** `ClientsSetupView`
 
-**Template id:** `tpl-clients-setup`
-**Component file:** `views/ClientsSetup.js`
+### Client-level tabs: Details | Vessels | Salary Ranges | Documents
 
-### Layout
-```
-Sub-nav: "CLIENTS SETUP"
-Selector bar: Client dropdown + Active/Inactive badge
-─────────────────────────────────────────────
-[Empty state if no client selected]
-[Client detail panel]:
-  Tab bar: Details | Vessels | Salary Ranges | Documents
-```
+**Details tab** — editable 2-col card (name, alias, address, email, phone, isActive). Edit/Save/Cancel inline.
 
-### Details tab
-View mode: 2-col info card (name, alias, address, email, phone, status, vessel count) + Edit button.
-Edit mode: inline form, saves back to `allClientsData` object with `Object.assign`.
+**Vessels tab** — vessel dropdown (filtered to client's vesselIds). When selected, shows two sub-tabs:
 
-### Vessels tab
-Vessel dropdown (filtered to `selectedClient.vesselIds`). When vessel selected, shows two sub-tabs:
+- **Details sub-tab** — 11-field card: IMO, built, GT, flag, type, classification society, engine type/power, P&I club, hull insurer, hull value. All editable.
 
-**Details sub-tab** — 11-field card (IMO, built, GT, flag, type, classification society, engine type, engine power, P&I club, hull insurer, hull value). Edit saves with `Object.assign`.
+- **Ranks & Manning sub-tab** — table: rank × (Manning count, Min, Max, Currency). Vessel values override client defaults. Empty vessel cells show client rate greyed as placeholder. Saves to `vessel.vesselRanks` (only rows with ≥1 value stored).
 
-**Ranks & Manning sub-tab** — table of all 11 ranks × 4 columns (Manning count, Min Salary, Max Salary, Currency). Vessel values override client values. Empty vessel cells show client rate in grey italic as placeholder. On save, only rows with ≥1 value are persisted to `vessel.vesselRanks`.
+- **Contract Definition sub-tab** — full-width table: rank × (CBA dropdown, Hours of Work integer, OT Rate>103h, Basic Salary, Guaranteed OT, Fixed OT, Leave Pay, Leave Subsistence, Allowance, Supplementary Wages, **Total** read-only). CBA options: PNO IBF / PNO ITF / Cyprus / Italy / ICMB. All monetary fields 2dp. Total = sum of all starred fields. Saves to `vessel.vesselContract`.
 
-### Salary Ranges tab
-Table of 11 ranks × min/max/currency, editable inline. Saves to `client.salaryRanges`.
+**Salary Ranges tab** — table: rank × (min, max, currency). Editable. 11 ranks.
 
-### Documents tab
-**Matrix grid:** document types as rows (sticky left column), ranks as column headers (rotated vertically). Intersection = custom checkbox (blue when checked, grey border when not).
+**Documents tab** — rank-vs-document matrix. Document types as sticky-left rows, ranks as vertical-header columns. Custom blue checkbox at each intersection. Features: add new doc type (inline input), rename (pencil icon on hover), delete (× on hover). Data: `doc.required = { 'Captain': true, ... }`.
 
-Features:
-- **+ Add document type** → inline input form (Enter to confirm, Escape to cancel)
-- **Rename** → hover row → click ✏ pencil → inline input, blur/Enter saves
-- **Delete row** → hover row → × button appears on right
-- **Toggle** → click any cell in the matrix body
-
-Data model per doc type:
+### Key state (ClientsSetupView.data())
 ```js
-{ id: 'dt1', name: 'STCW Basic Safety (BST)', required: { 'Captain': true, 'Chief Officer': true } }
-```
-
-**Key component state:**
-```js
-selectedClientId, activeTab,           // client level
+selectedClientId, activeTab('details'|'vessels'|'salary'|'documents'),
 editing, editForm, editSalary,
-selectedVesselId, vesselTab,           // vessel level
+selectedVesselId, vesselTab('vdetails'|'vranks'|'vcontract'),
 vesselEditing, vesselEditForm,
 vesselRanksEditing, editVesselRanks,
-addingDocType, newDocTypeName,         // documents tab
-editingDocName, editDocNameVal
+contractEditing, editContractRows,
+addingDocType, newDocTypeName, editingDocName, editDocNameVal
 ```
 
-**Key methods:** `startEdit/cancelEdit/saveEdit`, `startVesselEdit/saveVesselEdit`, `startVesselRanksEdit/saveVesselRanks`, `clientRateFor(rank, 'min'|'max')`, `clientCurrencyFor(rank)`, `addDocType`, `confirmAddDocType`, `removeDocType(docId)`, `toggleDocRequirement(doc, rank)`, `isRequired(doc, rank)`, `startEditDocName(doc)`, `saveDocName(doc)`
+### Key computed
+`selectedClient, clientVessels, selectedVessel, rankOrder(11 ranks), vesselRankRows, contractRows, clientDocTypes, docRankOrder`
+
+### Key methods
+`startEdit/cancelEdit/saveEdit, startVesselEdit/saveVesselEdit, startVesselRanksEdit/saveVesselRanks, startContractEdit/saveContract, contractRowTotal(row), fmtDec(n), clientRateFor(rank,'min'|'max'), clientCurrencyFor(rank), addDocType, confirmAddDocType, removeDocType(id), toggleDocRequirement(doc,rank), isRequired(doc,rank), startEditDocName(doc), saveDocName(doc)`
+
+---
+
+## View: RFAs (`/operations/rfas`)
+**Templates:** `tpl-rfa-card` (component) + `tpl-rfas` (view) · **Files:** `views/RFAs.js`
+
+### Registered local component: `rfa-card` (`RfaCardComponent`)
+Shared summary card used as list items in Sign-Off, Extension, Promotion left panes.
+**Props:** `rfa` (object), `selected` (boolean). **Emits:** `select`.
+**Always shows:** RFA number badge (colour by prefix), status badge, client·vessel, rank, deadline with overdue/soon flags.
+**Conditionally shows:** `rfa.seafarer` when present (RFS/RFX/RFP only).
+**Computed:** `typeBadgeClass, statusClass, isOverdue, isDueSoon, deadlineClass`
+
+### Filter bar (top, all tabs)
+Client dropdown → Vessel dropdown (filtered to client) → Rank dropdown → Deadline date (upper bound). Reset button clears all. All filters apply across tabs.
+
+### Five tabs
+
+#### Replacement tab (`replacement`) — BUILT
+- **Left pane:** list of RFR cards. Each shows: RFR number badge (amber), OnSearch/OnPreparation status, client·vessel, rank, signing-off seafarer name (↑ rose), replacement status (↓ violet).
+- **Right pane — top (RFS):** rose header (RFS number, seafarer name, sign-off date+port), RFS task list (independent checkboxes+costs), rose progress bar.
+- **Right pane — bottom (RFE):**
+  - OnSearch: violet header + candidate search UI (Dedicated/Ex-Crew/New groups, Ask for Acceptance, Compare ≥2, Send for Approval ≥1 accepted). Candidates from `allSeafarers` filtered by rank.
+  - OnPreparation: amber header + RFE task list + amber progress bar.
+- **Data source:** `allVessels` rows where both `row.rfs` AND `row.rfr_rfe` are set.
+- **RFR row shape:** `{ rfaNo(display), rfsNo, rfeNo, client, vesselId, vesselName, vesselType, rank, seafarer(signing-off), signoffDate, signoffPort, deadline(embarkDate), embarkPort, status, rfeStatus('OnSearch'|'OnPreparation'), rfsTasks[], rfeTasks[], rfeCandidates[] }`
+
+#### Embarkation tab (`embarkation`) — BUILT
+- **Left pane:** segmented radio filter (All/On Search/On Preparation) + count. RFE cards with OnSearch(violet)/OnPreparation(amber) badge.
+- **Right pane — OnSearch:** sky header (RFE number, rank, vessel, deadline, contract), Compare+Send for Approval buttons, three candidate groups (Dedicated/Ex-Crew/New). Each candidate card: name, nationality, age, availability, Total Services/On Rank/As Officer stat boxes, Ask for Acceptance → Accepted/Refused radio flow.
+- **Right pane — OnPreparation:** amber header + RFE task list (8 deployment tasks) + progress bar.
+- **Data source:** `seedRfeRows`. `rfeStatus` derived: `status==='active'` → OnSearch, else → OnPreparation.
+- **Candidate state:** `candidateState[rfaNo]` — built lazily on first selection. Persists across list navigation.
+
+#### Sign-Off tab (`signoff`) — BUILT
+- Two-pane. Left: `rfa-card` list. Right: rose header + task list + progress bar.
+- **Data source:** `allVessels` rows with `row.rfs` set (but no `row.rfr_rfe`).
+- **Row shape:** `{ rfaNo, client, vesselId, vesselName, vesselType, rank, seafarer, deadline(signoffDate), port, status, tasks[] }`
+
+#### Extension tab (`extension`) — BUILT
+- Two-pane. Left: `rfa-card` list. Right: teal header + task list + progress bar.
+- **Data source:** `allVessels` rows with `row.rfa.type === 'Extend'`.
+
+#### Promotion tab (`promotion`) — BUILT
+- Two-pane. Left: `rfa-card` list. Right: purple header + task list + progress bar.
+- **Data source:** `allVessels` rows with `row.rfa.type === 'Promote'`.
+
+### Default task lists (DEFAULT_TASKS in RFAs.js)
+| Type | Count | Key tasks |
+|---|---|---|
+| `rfs` | 7 | notify, travel, port agent, docs, wages, medical, crew list |
+| `rfx` | 6 | consent, cert validity, medical, amend contract, MLC, rotation |
+| `rfp` | 6 | eligibility, CoC, contract, flag state, crew list, salary |
+| `rfe` | 8 | confirm acceptance, certs, medical, travel, port agent, joining instructions, contract, crew list |
+
+`makeTasks(type)` returns a fresh copy with `{ id, name, cost, done:false }`.
+
+### Key state (RFAsView.data())
+```js
+activeTab('replacement'|'embarkation'|'signoff'|'extension'|'promotion'),
+filterClient, filterVessel, filterRank, filterDeadline,
+selectedRfa: null,
+rfeStatusFilter: ''|'OnSearch'|'OnPreparation',
+todayStr: isoDate(TODAY),
+compareOpen: false,
+candidateState: {},          // keyed by rfaNo, built lazily for OnSearch RFEs
+allRows: { signoff, extension, promotion, embarkation, replacement }  // built in created()
+```
+
+### Key computed (RFAsView)
+`tabs, allClientNames, filteredVesselOptions, rankOptions, filteredRfeRows(embarkation+rfeStatusFilter), activeCandidates, candidateGroups, totalCandidatesForRfe, checkedCandidates, acceptedCandidates, rfrCheckedCandidates, rfrAcceptedCandidates, rfrCandidateGroups, completedTaskCount, totalCost, progressPct, progressColor, progressBarClass`
+
+### Key methods (RFAsView)
+`filteredRows(tabId), selectRfa(rfa), buildCandidatesForRfe(rfe), totalTrips(c), totalMonths(c), serviceAt(c,label), rfrSectionCost(tasks), rfrSectionPct(tasks), resetFilters, buildReplacementRows, buildSignoffRows, buildExtensionRows, buildEmbarkationRows, buildPromotionRows`
 
 ---
 
 ## CSS architecture
 
 ### gantt.css classes
-- `.gantt-bar` — base positioning + hover effect
-- `.bar-onboard` — `#5b7fbd`, middle zone
-- `.bar-future-service` — `#93b8d8`, middle zone (RFE rows)
-- `.bar-signoff-early` / `.bar-signoff-late` — adjustment overlays (z-index 5)
-- `.rfa-top` / `.rfa-bottom` — zone positioning
-- `.rfa-rfs/rfr/rfe/rfp/rfx` — type colours
-- `.rfa-active/approval/preparation/completed` — status textures via `::after`
-- `.bar-label` — text overlay on bars
-- `.today-line` (green `#16a34a`) / `.rfa-horizon-line` (amber `#d97706`) — reference lines
-- `.rank-row` (62px) / `.rfe-row` (50px) — row heights
+`.gantt-bar, .bar-onboard(#5b7fbd), .bar-future-service(#93b8d8), .bar-signoff-early, .bar-signoff-late, .rfa-top, .rfa-bottom, .rfa-rfs/rfr/rfe/rfp/rfx, .rfa-active/approval/preparation/completed, .bar-label, .today-line(green #16a34a), .rfa-horizon-line(amber #d97706), .rank-row(62px), .rfe-row(50px)`
 
-### erp-base.css classes
-- `::-webkit-scrollbar` — thin scrollbar
-- `.active-tab` — blue bottom border, used in sub-nav bars
-- `.tt` — shared tooltip base
+### Styling conventions
+- Sub-nav: `bg-white border-b flex px-8 shadow-sm shrink-0` with `.active-tab` button
+- Filter bars: `bg-white border-b px-6 py-3 flex items-center gap-4 shrink-0 flex-wrap`
+- Section labels: `text-[9px] font-black uppercase text-gray-400 tracking-widest`
+- Info cards: `bg-white rounded-xl border border-gray-200 px-6 py-5`
+- Slate table header: `bg-slate-800 text-white text-[10px] font-black uppercase tracking-widest`
+- Primary button: `bg-blue-600 text-white hover:bg-blue-700 rounded-lg text-xs font-bold`
+- Client-level tab active: `border-blue-600 text-blue-600`
+- Vessel sub-tab active: `border-slate-700 text-slate-800` (darker, visually nested)
+- RFAs tab active: type-coloured (amber=replacement, sky=embarkation, rose=signoff, teal=extension, purple=promotion)
 
 ---
 
-## Styling conventions
+## Adding a new view — pattern
 
-- Sub-nav bars: `bg-white border-b flex px-8 shadow-sm shrink-0` with `.active-tab` button
-- Filter bars: `bg-white border-b px-8 py-3 flex items-center gap-4 shrink-0`
-- Section labels: `text-[9px] font-black uppercase text-gray-400 tracking-widest`
-- Info cards: `bg-white rounded-xl border border-gray-200 px-6 py-5`
-- Primary action button: `bg-blue-600 text-white hover:bg-blue-700 rounded-lg text-xs font-bold`
-- Slate table header: `bg-slate-800 text-white text-[10px] font-black uppercase tracking-widest`
-- Alternating table rows: `bg-white` / `bg-gray-50`
-- Tab bar (client-level): `border-blue-600 text-blue-600` active
-- Tab bar (vessel sub-level): `border-slate-700 text-slate-800` active (darker, to visually nest)
+1. Add `<script type="text/x-template" id="tpl-my-view">` in `index.html` before the RotationAll template comment.
+2. Create `views/MyView.js` (pure JS): `const MyView = { template: '#tpl-my-view', ... }`
+3. Add `<script src="views/MyView.js"></script>` after the window bridge block.
+4. Add route to the router array.
+5. Add sidebar link.
+6. For new data: `data/mydata.js` with `var myData = [...]`, add script src before bridge, add `window.myData = myData` to bridge.
 
 ---
 
 ## What is NOT yet built (stub views)
 
-These routes exist but show a "Coming soon 🚧" placeholder:
 - `/admin/users` — user management
 - `/admin/settings` — system settings
-- `/recruitment/candidates` — candidate pool / seafarer database
-- `/recruitment/pipeline` — recruitment workflow
-- `/` (home) — dashboard / landing
+- `/recruitment/candidates` — seafarer database / profiles (data partially in `allSeafarers`)
+- `/recruitment/pipeline` — RFC → shortlist → proposal → confirmation workflow
+- `/` (home) — dashboard
 
-**The next logical views to build:**
-- **Recruitment → Candidates** — full seafarer profiles, documents, certificates, availability calendar. Data already partially exists in `allSeafarers`.
-- **Recruitment → Pipeline** — RFC → candidate shortlist → proposal → confirmation workflow (ties into the RFE two-pane modal already in RotationAll).
-- **Admin → Users** — user accounts, roles (Ops, Recruitment, Admin).
-- **Home dashboard** — summary cards: vessels at risk, upcoming sign-offs, open RFEs, etc.
-
----
-
-## Adding a new view — step-by-step pattern
-
-1. **Add x-template** in `index.html`, just before the `<!-- ── RotationAll x-template` comment:
-```html
-<script type="text/x-template" id="tpl-my-view">
-<div class="flex-1 flex flex-col overflow-hidden">
-    <nav class="bg-white border-b flex px-8 shadow-sm shrink-0">
-        <button class="active-tab py-3 px-1 text-sm">MY VIEW TITLE</button>
-    </nav>
-    <!-- content here -->
-</div>
-</script>
-```
-
-2. **Create `views/MyView.js`** (pure JS, no HTML tags):
-```js
-const MyView = {
-    template: '#tpl-my-view',
-    data() { return { ... }; },
-    computed: { ... },
-    methods: { ... },
-};
-```
-
-3. **Add `<script src="views/MyView.js"></script>`** in `index.html` after the window bridge block, before the stub views script.
-
-4. **Add route** in the router routes array in `index.html`.
-
-5. **Add sidebar link** in the appropriate section in `index.html`.
-
-6. **If adding new data**, create `data/mydata.js` using `var myData = [...]`, add `<script src="data/mydata.js"></script>` before the window bridge, and add `window.myData = myData;` to the bridge block.
+**Next logical views:**
+- **Recruitment → Candidates** — full seafarer profiles, documents, certificates, availability
+- **Recruitment → Pipeline** — ties into the RFE two-pane candidate flow already built in RFAs
+- **Home dashboard** — summary cards: open RFEs, upcoming sign-offs, vessels at risk
 
 ---
 
 ## GitHub Pages deployment
-
-- **Repo:** on GitHub (public)
-- **Pages:** enabled from `main` branch, root `/`
-- **Live URL:** `https://USERNAME.github.io/REPO-NAME/`
-- **Deploy cycle:** edit files locally → stage → commit → push → auto-deploys in ~30s
-- **No build step needed** — GitHub Pages serves static files directly
+- Repo on GitHub (public), Pages enabled from `main` branch root `/`
+- Live URL: `https://USERNAME.github.io/REPO-NAME/`
+- Deploy: edit → commit → push → auto-deploys in ~30s

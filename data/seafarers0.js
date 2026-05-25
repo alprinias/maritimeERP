@@ -56,11 +56,11 @@ var seedRfeRows = [
         port: 'Port of Rotterdam', contractMonths: 6, contractVariation: 1,
         serviceEnd: '2026-12-20', status: 'active',
     },
-    // Alpha Prime (v4) — Second Engineer vacancy (on preparation)
+    // Alpha Prime (v4) — Second Engineer vacancy
     {
         vesselId: 'v4', rfaNo: 'RFE-2024', rank: 'Second Engineer',
         dateCreated: '2026-05-08', embarkDate: '2026-07-15',
         port: 'Piraeus', contractMonths: 7, contractVariation: 1,
-        serviceEnd: '2027-02-15', status: 'preparation',
+        serviceEnd: '2027-02-15', status: 'active',
     },
 ];

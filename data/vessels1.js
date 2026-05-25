@@ -32,9 +32,7 @@ var allVessels = [
                       proposed:[
                           { name:'NIKOS PAPADOPOULOS', nationality:'Greek',   service:228 },
                           { name:'VLADIM. PETROV',     nationality:'Russian', service:192 },
-                      ], confirmedSeafarer:null },
-                rfs:    { rfaNo:'RFS-4001', dateCreated:'2026-04-15', signoffDate:'2026-06-15', port:'Port of Manila', status:'active' },
-                rfr_rfe:{ rfaNo:'RFE-4001', dateCreated:'2026-04-15', embarkDate:'2026-06-15',  port:'Port of Manila', status:'active' },
+                      ], confirmedSeafarer:null }
             },
             {
                 rank:'Chief Officer',
@@ -131,15 +129,12 @@ var allVessels = [
                       rfaStart:'2026-05-15', rfaEnd:'2027-01-15',
                       proposed:[
                           { name:'MARCO ESPOSITO', nationality:'Italian', service:63 },
-                      ], confirmedSeafarer:null },
-                rfs:    { rfaNo:'RFS-4002', dateCreated:'2026-05-15', signoffDate:'2026-07-15', port:'Rotterdam', status:'active' },
-                rfr_rfe:{ rfaNo:'RFE-4002', dateCreated:'2026-05-15', embarkDate:'2026-07-15',  port:'Rotterdam', status:'preparation' },
+                      ], confirmedSeafarer:null }
             },
             {
                 rank:'Second Officer',
                 onboard:{ name:'FELIX GARCIA',    shortName:'F. Garcia',    embark:'2026-04-01', signoff:'2026-10-01', contract:'6 months' },
-                rfa: null,
-                rfs:{ rfaNo:'RFS-3001', dateCreated:'2026-05-10', signoffDate:'2026-10-01', port:'Rotterdam', status:'active' },
+                rfa: null
             },
             {
                 rank:'Bosun', isRating: true,
@@ -188,8 +183,7 @@ var allVessels = [
             {
                 rank:'Ordinary Seaman', isRating: true,
                 onboard:{ name:'NOEL BACALTOS',   shortName:'N. Bacaltos',  embark:'2026-04-01', signoff:'2026-10-01', contract:'6 months' },
-                rfa: null,
-                rfs:{ rfaNo:'RFS-3002', dateCreated:'2026-05-12', signoffDate:'2026-10-01', port:'Singapore', status:'preparation' },
+                rfa: null
             },
         ]
     },
@@ -228,8 +222,7 @@ var allVessels = [
             {
                 rank:'Second Officer',
                 onboard:{ name:'ARIS NIKOLAOU',   shortName:'A. Nikolaou',  embark:'2026-04-10', signoff:'2026-10-10', contract:'6 months' },
-                rfa: null,
-                rfs:{ rfaNo:'RFS-3003', dateCreated:'2026-05-15', signoffDate:'2026-10-10', port:'Piraeus', status:'active' },
+                rfa: null
             },
         ]
     },

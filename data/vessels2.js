@@ -32,9 +32,7 @@ var allVessels = [
                       proposed:[
                           { name:'NIKOS PAPADOPOULOS', nationality:'Greek',   service:228 },
                           { name:'VLADIM. PETROV',     nationality:'Russian', service:192 },
-                      ], confirmedSeafarer:null },
-                rfs:    { rfaNo:'RFS-4001', dateCreated:'2026-04-15', signoffDate:'2026-06-15', port:'Port of Manila', status:'active' },
-                rfr_rfe:{ rfaNo:'RFE-4001', dateCreated:'2026-04-15', embarkDate:'2026-06-15',  port:'Port of Manila', status:'active' },
+                      ], confirmedSeafarer:null }
             },
             {
                 rank:'Chief Officer',
@@ -131,9 +129,7 @@ var allVessels = [
                       rfaStart:'2026-05-15', rfaEnd:'2027-01-15',
                       proposed:[
                           { name:'MARCO ESPOSITO', nationality:'Italian', service:63 },
-                      ], confirmedSeafarer:null },
-                rfs:    { rfaNo:'RFS-4002', dateCreated:'2026-05-15', signoffDate:'2026-07-15', port:'Rotterdam', status:'active' },
-                rfr_rfe:{ rfaNo:'RFE-4002', dateCreated:'2026-05-15', embarkDate:'2026-07-15',  port:'Rotterdam', status:'preparation' },
+                      ], confirmedSeafarer:null }
             },
             {
                 rank:'Second Officer',
