@@ -265,7 +265,7 @@ const RFAsView = {
             return this.activeCandidates.filter(c => c.checked);
         },
 
-        // Checked AND acceptance === 'accepted' (enables Send for Approval)
+        // Checked AND acceptance === 'accepted'
         acceptedCandidates() {
             return this.activeCandidates.filter(c => c.checked && c.acceptance === 'accepted');
         },
@@ -286,60 +286,9 @@ const RFAsView = {
 
         selectRfa(rfa) {
             this.selectedRfa = rfa;
-            // Build candidate state for OnSearch RFEs (Embarkation tab)
+            // Build candidate state for this RFE if not already done
             if (rfa.rfeStatus === 'OnSearch' && !this.candidateState[rfa.rfaNo]) {
                 this.candidateState[rfa.rfaNo] = this.buildCandidatesForRfe(rfa);
-            }
-        },
-
-        // Mark checked+accepted candidates as 'onApproval' and clear their checkboxes.
-        // source: undefined (Embarkation tab) | 'rfr' (Replacement RFE bottom section)
-        sendForApproval(rfa, source) {
-            const candidates = source === 'rfr'
-                ? rfa.rfeCandidates
-                : this.candidateState[rfa.rfaNo];
-            if (!candidates) return;
-            candidates.forEach(c => {
-                if (c.checked && c.acceptance === 'accepted') {
-                    c.acceptance = 'onApproval';
-                    c.checked = false;
-                }
-            });
-        },
-
-        // Set exactly one candidate as 'approved'; all others revert to 'onApproval'.
-        // Then transition the RFE to OnPreparation and record the confirmed seafarer.
-        setApproved(rfa, candidateId, source) {
-            const candidates = source === 'rfr'
-                ? rfa.rfeCandidates
-                : this.candidateState[rfa.rfaNo];
-            if (!candidates) return;
-            const target = candidates.find(c => c.id === candidateId);
-            if (!target) return;
-            // Toggle off if already approved
-            if (target.acceptance === 'approved') {
-                target.acceptance = 'onApproval';
-                rfa.rfeStatus = 'OnSearch';
-                rfa.confirmedSeafarer = null;
-                return;
-            }
-            // Clear any previous approval
-            candidates.forEach(c => {
-                if (c.acceptance === 'approved') c.acceptance = 'onApproval';
-            });
-            // Approve this candidate
-            target.acceptance = 'approved';
-            rfa.rfeStatus = 'OnPreparation';
-            rfa.confirmedSeafarer = target.name;
-            // Initialise the correct task list depending on context
-            if (source === 'rfr') {
-                if (!rfa.rfeTasks || rfa.rfeTasks.length === 0) {
-                    rfa.rfeTasks = makeTasks('rfe');
-                }
-            } else {
-                if (!rfa.tasks || rfa.tasks.length === 0) {
-                    rfa.tasks = makeTasks('rfe');
-                }
             }
         },
 
