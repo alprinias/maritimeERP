@@ -123,9 +123,6 @@ const RFAsView = {
             rfeStatusFilter: '',       // '' | 'OnSearch' | 'OnPreparation'
             todayStr:       isoDate(TODAY),
             compareOpen:    false,
-            // candidateState keyed by rfe.rfaNo → array of candidate objects with
-            // checked and acceptance state. Built lazily on first selection.
-            candidateState: {},
 
             // All aggregated rows, built once and mutated (tasks toggled in place)
             allRows: { signoff: [], extension: [], promotion: [] },
@@ -234,10 +231,10 @@ const RFAsView = {
             });
         },
 
-        // Candidates for the currently selected RFE (from candidateState)
+        // Candidates for the currently selected RFE — stored directly on the rfa object
         activeCandidates() {
             if (!this.selectedRfa) return [];
-            return this.candidateState[this.selectedRfa.rfaNo] || [];
+            return this.selectedRfa.candidates || [];
         },
 
         // Three groups: Dedicated / Ex-Crew / New
@@ -286,9 +283,10 @@ const RFAsView = {
 
         selectRfa(rfa) {
             this.selectedRfa = rfa;
-            // Build candidate state for OnSearch RFEs (Embarkation tab)
-            if (rfa.rfeStatus === 'OnSearch' && !this.candidateState[rfa.rfaNo]) {
-                this.candidateState[rfa.rfaNo] = this.buildCandidatesForRfe(rfa);
+            // Build candidate list directly on the rfa object — guaranteed reactive
+            // since allRows entries are already tracked by Vue.
+            if (rfa.rfeStatus === 'OnSearch' && !rfa.candidates) {
+                rfa.candidates = this.buildCandidatesForRfe(rfa);
             }
         },
 
@@ -297,7 +295,7 @@ const RFAsView = {
         sendForApproval(rfa, source) {
             const candidates = source === 'rfr'
                 ? rfa.rfeCandidates
-                : this.candidateState[rfa.rfaNo];
+                : rfa.candidates;
             if (!candidates) return;
             candidates.forEach(c => {
                 if (c.checked && c.acceptance === 'accepted') {
@@ -312,7 +310,7 @@ const RFAsView = {
         setApproved(rfa, candidateId, source) {
             const candidates = source === 'rfr'
                 ? rfa.rfeCandidates
-                : this.candidateState[rfa.rfaNo];
+                : rfa.candidates;
             if (!candidates) return;
             const target = candidates.find(c => c.id === candidateId);
             if (!target) return;
@@ -504,6 +502,8 @@ const RFAsView = {
                     rfeStatus,
                     contractMonths:    rfe.contractMonths,
                     contractVariation: rfe.contractVariation,
+                    confirmedSeafarer: null,
+                    candidates: null,   // populated lazily by selectRfa() — on the row so Vue tracks it
                     tasks: rfeStatus === 'OnPreparation' ? makeTasks('rfe') : [],
                 });
             });
