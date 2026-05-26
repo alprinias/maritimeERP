@@ -305,49 +305,39 @@ const RFAsView = {
             });
         },
 
-        // Set one candidate's approvalChoice to 'approved' — mutually exclusive.
-        // Clears approvalChoice on all others that were 'approved'.
-        // Triggers OnPreparation transition.
+        // Set exactly one candidate as 'approved'; all others revert to 'onApproval'.
+        // Then transition the RFE to OnPreparation and record the confirmed seafarer.
         setApproved(rfa, candidateId, source) {
-            const candidates = source === 'rfr' ? rfa.rfeCandidates : rfa.candidates;
+            const candidates = source === 'rfr'
+                ? rfa.rfeCandidates
+                : rfa.candidates;
             if (!candidates) return;
             const target = candidates.find(c => c.id === candidateId);
             if (!target) return;
-            // Toggle off — revert to no choice, go back to OnSearch
-            if (target.approvalChoice === 'approved') {
-                target.approvalChoice = null;
+            // Toggle off if already approved
+            if (target.acceptance === 'approved') {
+                target.acceptance = 'onApproval';
                 rfa.rfeStatus = 'OnSearch';
                 rfa.confirmedSeafarer = null;
                 return;
             }
-            // Clear any previously approved candidate
+            // Clear any previous approval
             candidates.forEach(c => {
-                if (c.approvalChoice === 'approved') c.approvalChoice = null;
+                if (c.acceptance === 'approved') c.acceptance = 'onApproval';
             });
-            // Approve this one
-            target.approvalChoice = 'approved';
+            // Approve this candidate
+            target.acceptance = 'approved';
             rfa.rfeStatus = 'OnPreparation';
             rfa.confirmedSeafarer = target.name;
-            // Initialise task list
+            // Initialise the correct task list depending on context
             if (source === 'rfr') {
-                if (!rfa.rfeTasks || rfa.rfeTasks.length === 0) rfa.rfeTasks = makeTasks('rfe');
+                if (!rfa.rfeTasks || rfa.rfeTasks.length === 0) {
+                    rfa.rfeTasks = makeTasks('rfe');
+                }
             } else {
-                if (!rfa.tasks || rfa.tasks.length === 0) rfa.tasks = makeTasks('rfe');
-            }
-        },
-
-        // Set one candidate's approvalChoice to 'rejected' — independent per candidate.
-        setRejected(rfa, candidateId, source) {
-            const candidates = source === 'rfr' ? rfa.rfeCandidates : rfa.candidates;
-            if (!candidates) return;
-            const target = candidates.find(c => c.id === candidateId);
-            if (!target) return;
-            // Toggle off if already rejected
-            target.approvalChoice = target.approvalChoice === 'rejected' ? null : 'rejected';
-            // If this candidate was previously approved, revert the RFE
-            if (rfa.confirmedSeafarer === target.name && target.approvalChoice !== 'approved') {
-                rfa.rfeStatus = 'OnSearch';
-                rfa.confirmedSeafarer = null;
+                if (!rfa.tasks || rfa.tasks.length === 0) {
+                    rfa.tasks = makeTasks('rfe');
+                }
             }
         },
 
@@ -361,16 +351,15 @@ const RFAsView = {
             return allSeafarers
                 .filter(s => s.rank === rfe.rank)
                 .map(s => ({
-                    id:             s.id,
-                    name:           s.name,
-                    age:            s.age,
-                    nationality:    s.nationality,
-                    availDate:      s.availDate,
-                    services:       s.services,
-                    groupId:        groupMap[s.category] || 'new',
-                    checked:        false,
-                    acceptance:     null,   // null|'pending'|'accepted'|'refused'|'onApproval'
-                    approvalChoice: null,   // null|'approved'|'rejected' (set during onApproval phase)
+                    id:          s.id,
+                    name:        s.name,
+                    age:         s.age,
+                    nationality: s.nationality,
+                    availDate:   s.availDate,
+                    services:    s.services,
+                    groupId:     groupMap[s.category] || 'new',
+                    checked:     false,
+                    acceptance:  null,   // null | 'pending' | 'accepted' | 'refused'
                 }));
         },
 
@@ -420,7 +409,7 @@ const RFAsView = {
                                 nationality: s.nationality, availDate: s.availDate,
                                 services: s.services,
                                 groupId: groupMap[s.category] || 'new',
-                                checked: false, acceptance: null, approvalChoice: null,
+                                checked: false, acceptance: null,
                             }))
                         : [];
                     rows.push({

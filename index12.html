@@ -1332,16 +1332,15 @@
                             <div class="space-y-2">
                                 <div v-for="c in group.candidates" :key="c.id"
                                      :class="['rounded-xl border transition-all',
-                                              c.approvalChoice === 'approved'   ? 'border-emerald-400 bg-emerald-50 shadow-sm' :
-                                              c.approvalChoice === 'rejected'   ? 'border-red-200 bg-red-50' :
-                                              c.acceptance === 'onApproval'     ? 'border-violet-300 bg-violet-50' :
+                                              c.acceptance === 'approved'   ? 'border-emerald-400 bg-emerald-50 shadow-sm' :
+                                              c.acceptance === 'onApproval' ? 'border-violet-300 bg-violet-50' :
                                               c.checked ? 'border-blue-400 bg-blue-50 shadow-sm'
                                                         : 'border-gray-200 bg-white hover:border-gray-300']">
                                     <div class="px-4 py-3 flex items-start gap-3">
 
                                         <!-- Checkbox -->
                                         <input type="checkbox" v-model="c.checked"
-                                               :disabled="c.acceptance === 'onApproval'"
+                                               :disabled="c.acceptance === 'onApproval' || c.acceptance === 'approved'"
                                                class="w-4 h-4 mt-1 accent-blue-600 shrink-0 cursor-pointer">
 
                                         <!-- Seafarer info -->
@@ -1411,34 +1410,21 @@
                                                   class="text-[10px] font-black px-2.5 py-1 rounded-full bg-red-100 text-red-600 border border-red-200">
                                                 ✕ Refused
                                             </span>
-                                            <!-- On Approval state: pill + Approved/Rejected radios -->
-                                            <template v-else-if="c.acceptance === 'onApproval'">
-                                                <span :class="['text-[10px] font-black px-2.5 py-1 rounded-full whitespace-nowrap border',
-                                                               c.approvalChoice === 'approved' ? 'bg-emerald-100 text-emerald-700 border-emerald-300' :
-                                                               c.approvalChoice === 'rejected' ? 'bg-red-50 text-red-500 border-red-200' :
-                                                               'bg-violet-100 text-violet-700 border-violet-300']">
-                                                    {{ c.approvalChoice === 'approved' ? '✓ Approved' : c.approvalChoice === 'rejected' ? '✕ Rejected' : '⏳ On Approval' }}
+                                            <!-- On Approval state: pill + Approved checkbox -->
+                                            <template v-else-if="c.acceptance === 'onApproval' || c.acceptance === 'approved'">
+                                                <span class="text-[10px] font-black px-2.5 py-1 rounded-full bg-violet-100 text-violet-700 border border-violet-300 whitespace-nowrap">
+                                                    ⏳ On Approval
                                                 </span>
-                                                <div class="flex flex-col gap-1.5 mt-1.5">
-                                                    <label class="flex items-center gap-1.5 cursor-pointer">
-                                                        <input type="radio"
-                                                               :name="'approval-' + selectedRfa.rfaNo"
-                                                               value="approved"
-                                                               :checked="c.approvalChoice === 'approved'"
-                                                               @change="setApproved(selectedRfa, c.id)"
-                                                               class="accent-emerald-600 w-3.5 h-3.5">
-                                                        <span :class="['text-[11px] font-bold', c.approvalChoice === 'approved' ? 'text-emerald-700' : 'text-gray-500']">Approved</span>
-                                                    </label>
-                                                    <label class="flex items-center gap-1.5 cursor-pointer">
-                                                        <input type="radio"
-                                                               :name="'rejected-' + c.id"
-                                                               value="rejected"
-                                                               :checked="c.approvalChoice === 'rejected'"
-                                                               @change="setRejected(selectedRfa, c.id)"
-                                                               class="accent-red-500 w-3.5 h-3.5">
-                                                        <span :class="['text-[11px] font-bold', c.approvalChoice === 'rejected' ? 'text-red-600' : 'text-gray-500']">Rejected</span>
-                                                    </label>
-                                                </div>
+                                                <label class="flex items-center gap-1.5 cursor-pointer mt-1">
+                                                    <input type="checkbox"
+                                                           :checked="c.acceptance === 'approved'"
+                                                           @change="setApproved(selectedRfa, c.id)"
+                                                           class="w-4 h-4 accent-emerald-600 cursor-pointer">
+                                                    <span :class="['text-[11px] font-bold',
+                                                                   c.acceptance === 'approved' ? 'text-emerald-700' : 'text-gray-500']">
+                                                        Approved
+                                                    </span>
+                                                </label>
                                             </template>
                                         </div>
 
@@ -1720,13 +1706,12 @@
                                     <div class="space-y-2">
                                         <div v-for="c in group.candidates" :key="c.id"
                                              :class="['rounded-xl border transition-all',
-                                                      c.approvalChoice === 'approved'   ? 'border-emerald-400 bg-emerald-50' :
-                                                      c.approvalChoice === 'rejected'   ? 'border-red-200 bg-red-50' :
-                                                      c.acceptance === 'onApproval'     ? 'border-violet-300 bg-violet-50' :
+                                                      c.acceptance === 'approved'  ? 'border-emerald-400 bg-emerald-50' :
+                                                      c.acceptance === 'onApproval'? 'border-violet-300 bg-violet-50' :
                                                       c.checked ? 'border-blue-400 bg-blue-50' : 'border-gray-200 bg-white hover:border-gray-300']">
                                             <div class="px-4 py-3 flex items-start gap-3">
                                                 <input type="checkbox" v-model="c.checked"
-                                                       :disabled="c.acceptance === 'onApproval'"
+                                                       :disabled="c.acceptance === 'onApproval' || c.acceptance === 'approved'"
                                                        class="w-4 h-4 mt-1 accent-blue-600 shrink-0 cursor-pointer">
                                                 <div class="flex-1 min-w-0">
                                                     <div class="flex items-baseline gap-2 flex-wrap">
@@ -1771,33 +1756,17 @@
                                                     <span v-else-if="c.acceptance === 'accepted'" class="text-[10px] font-black px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-300">✓ Accepted</span>
                                                     <span v-else-if="c.acceptance === 'refused'" class="text-[10px] font-black px-2.5 py-1 rounded-full bg-red-100 text-red-600 border border-red-200">✕ Refused</span>
                                                     <!-- On Approval + Approved checkbox -->
-                                                    <template v-else-if="c.acceptance === 'onApproval'">
-                                                        <span :class="['text-[10px] font-black px-2.5 py-1 rounded-full whitespace-nowrap border',
-                                                                       c.approvalChoice === 'approved' ? 'bg-emerald-100 text-emerald-700 border-emerald-300' :
-                                                                       c.approvalChoice === 'rejected' ? 'bg-red-50 text-red-500 border-red-200' :
-                                                                       'bg-violet-100 text-violet-700 border-violet-300']">
-                                                            {{ c.approvalChoice === 'approved' ? '✓ Approved' : c.approvalChoice === 'rejected' ? '✕ Rejected' : '⏳ On Approval' }}
+                                                    <template v-else-if="c.acceptance === 'onApproval' || c.acceptance === 'approved'">
+                                                        <span class="text-[10px] font-black px-2.5 py-1 rounded-full bg-violet-100 text-violet-700 border border-violet-300 whitespace-nowrap">
+                                                            ⏳ On Approval
                                                         </span>
-                                                        <div class="flex flex-col gap-1.5 mt-1.5">
-                                                            <label class="flex items-center gap-1.5 cursor-pointer">
-                                                                <input type="radio"
-                                                                       :name="'rfr-approval-' + selectedRfa.rfaNo"
-                                                                       value="approved"
-                                                                       :checked="c.approvalChoice === 'approved'"
-                                                                       @change="setApproved(selectedRfa, c.id, 'rfr')"
-                                                                       class="accent-emerald-600 w-3.5 h-3.5">
-                                                                <span :class="['text-[11px] font-bold', c.approvalChoice === 'approved' ? 'text-emerald-700' : 'text-gray-500']">Approved</span>
-                                                            </label>
-                                                            <label class="flex items-center gap-1.5 cursor-pointer">
-                                                                <input type="radio"
-                                                                       :name="'rfr-rejected-' + c.id"
-                                                                       value="rejected"
-                                                                       :checked="c.approvalChoice === 'rejected'"
-                                                                       @change="setRejected(selectedRfa, c.id, 'rfr')"
-                                                                       class="accent-red-500 w-3.5 h-3.5">
-                                                                <span :class="['text-[11px] font-bold', c.approvalChoice === 'rejected' ? 'text-red-600' : 'text-gray-500']">Rejected</span>
-                                                            </label>
-                                                        </div>
+                                                        <label class="flex items-center gap-1.5 cursor-pointer mt-1">
+                                                            <input type="checkbox"
+                                                                   :checked="c.acceptance === 'approved'"
+                                                                   @change="setApproved(selectedRfa, c.id, 'rfr')"
+                                                                   class="w-4 h-4 accent-emerald-600 cursor-pointer">
+                                                            <span :class="['text-[11px] font-bold', c.acceptance === 'approved' ? 'text-emerald-700' : 'text-gray-500']">Approved</span>
+                                                        </label>
                                                     </template>
                                                 </div>
                                             </div>
