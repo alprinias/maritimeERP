@@ -10,9 +10,10 @@
    principalApprove / principalRejectAll (RFAs.js), so the internal RFAs view
    shows them read-only.
 
-   - ClientApprovalsView  — page: List (waiting by default, or all requests in
-                            a join-date period) | Rotation Plan filtered to
-                            Approval bars. Both open the approval dialog.
+   - ClientApprovalsView  — page: list of requests, waiting for approval by
+                            default or all requests in a join-date period;
+                            each opens the approval dialog (the Rotation Plan
+                            page opens it from its relief bars too).
    - ApprovalDialog       — global <approval-dialog>, opened by setting
                             erpStore.clientUi.approvalRef (request number).
 
@@ -216,7 +217,6 @@ const ClientApprovalsView = {
     data() {
         return {
             store:        erpStore,
-            view:         'list',          // 'list' | 'gantt'
             mode:         'pending',       // 'pending' | 'all'
             filterVessel: null,
             from:         isoDate(addM(TODAY, -3)),

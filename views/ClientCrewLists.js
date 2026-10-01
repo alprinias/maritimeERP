@@ -24,7 +24,7 @@ const _dateCol = (key, title, def, stKey) =>
 const _fixedCols = () => [
     { key: 'fullName', title: 'Full Name', fixed: true, type: 'link' },
     { key: 'rank',     title: 'Rank',      fixed: true },
-    { key: 'age',      title: 'Age',       fixed: true },
+    { key: 'age',      title: 'Age',       fixed: true, cardPrefix: 'Age ' },
 ];
 const _docCols = () => [
     { key: 'passportNo', title: 'Passport No.' },
@@ -165,6 +165,7 @@ const ClientCrewListsView = {
             filterRanks:  [],
             filterNats:   [],
             filterMenu:   false,
+            filterSheet:  false,     // phone: filters in a bottom sheet
             visible,
         };
     },
@@ -177,10 +178,10 @@ const ClientCrewListsView = {
     computed: {
         lists() {
             return [
-                { id: 'onboard',  label: 'On Board',                 icon: 'mdi-ferry' },
-                { id: 'ashore',   label: 'Ashore',                   icon: 'mdi-beach' },
-                { id: 'approved', label: 'Approved for Embarkation', icon: 'mdi-account-check' },
-                { id: 'changes',  label: 'Crew Changes',             icon: 'mdi-swap-vertical' },
+                { id: 'onboard',  label: 'On Board',                 short: 'On Board', icon: 'mdi-ferry' },
+                { id: 'ashore',   label: 'Ashore',                   short: 'Ashore',   icon: 'mdi-beach' },
+                { id: 'approved', label: 'Approved for Embarkation', short: 'Approved', icon: 'mdi-account-check' },
+                { id: 'changes',  label: 'Crew Changes',             short: 'Changes',  icon: 'mdi-swap-vertical' },
             ];
         },
         client() { return allClientsData.find(c => c.id === this.store.clientUi.clientId) || null; },
@@ -218,6 +219,15 @@ const ClientCrewListsView = {
                 (!this.filterNats.length  || this.filterNats.includes(r.nationality)));
         },
 
+        // Phone: one-line summary of the primary filters under the tabs
+        phoneSummary() {
+            const parts = [this.vesselName];
+            if (this.list === 'onboard')  parts.push(atlDate(this.onDate));
+            if (this.list === 'ashore')   parts.push('today');
+            if (this.list === 'approved') parts.push(atlDate(this.approvedFrom) + ' – ' + atlDate(this.approvedTo));
+            if (this.list === 'changes')  parts.push(atlDate(this.changesFrom) + ' – ' + atlDate(this.changesTo));
+            return parts.join(' · ');
+        },
         pdfTitle() { return 'Crew List — ' + this.lists.find(l => l.id === this.list).label; },
         pdfSubtitle() {
             const parts = [this.client ? this.client.name : '', 'Vessel: ' + this.vesselName];

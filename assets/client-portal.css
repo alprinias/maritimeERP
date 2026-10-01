@@ -51,7 +51,11 @@
 
 /* ── Page layout ─────────────────────────────────────────────── */
 .atl-main { background: #fff; }
-.atl-page { height: calc(100vh - 64px); display: flex; flex-direction: column; overflow: hidden; }
+/* v-main sets --v-layout-top / --v-layout-bottom (app bar, phone bottom navigation) */
+.atl-page {
+    height: calc(100dvh - var(--v-layout-top, 64px) - var(--v-layout-bottom, 0px));
+    display: flex; flex-direction: column; overflow: hidden;
+}
 .atl-filterbar {
     margin: 12px 12px 0; padding: 4px 16px 16px;
     border: 1px solid var(--atl-border); border-radius: 6px;
@@ -265,8 +269,6 @@
 .atl-gantt-tip__hint { margin-top: 8px; padding-top: 8px; border-top: 1px solid #EEEEEE; color: var(--atl-blue); font-size: 13px; }
 .atl-bar.is-clickable { cursor: pointer; }
 .atl-bar.is-clickable:hover { filter: brightness(0.94); outline: 2px solid rgba(21, 101, 192, 0.35); }
-.atl-page--embedded { height: auto; flex: 1; min-height: 0; }
-.atl-page--embedded > .atl-filterbar { margin-top: 8px; }
 
 /* ── Dashboard ───────────────────────────────────────────────── */
 .atl-dash__scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 20px 24px 32px; background: #FAFAFA; }
@@ -350,3 +352,131 @@
 .atl-cand__svc { display: flex; flex-direction: column; min-width: 130px; }
 .atl-cand__svc span { font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #616161; }
 .atl-cand__svc strong { font-size: 16px; font-weight: 600; }
+
+/* ══ Phase 8 — phones and tablets ═══════════════════════════════
+   Phone layouts are switched in templates with isPhone (width < 600, or a
+   phone held sideways); the rules below style them. Tablet fixes use
+   media queries. */
+
+/* Shared phone pieces */
+.atl-pagetab--phone { height: 56px; padding: 0 8px; margin-left: 0; font-size: 16px; border-bottom: none; }
+.atl-bottomnav .v-btn { min-width: 0 !important; font-size: 11px; letter-spacing: 0; text-transform: none; }
+.atl-hscroll { display: flex; gap: 6px; overflow-x: auto; white-space: nowrap; scrollbar-width: none; }
+.atl-hscroll::-webkit-scrollbar { display: none; }
+.atl-sheet { border-radius: 16px 16px 0 0 !important; }
+.atl-sheet__body { max-height: 70dvh; overflow-y: auto; padding: 8px 16px 16px; }
+.atl-sheet__item { padding: 12px 0; border-bottom: 1px solid #EEEEEE; }
+.atl-sheet__item:last-child { border-bottom: none; }
+
+/* AtlTable as cards */
+.atl-mcards { flex: 1; min-height: 0; overflow-y: auto; padding-bottom: 8px; }
+.atl-mcards__section {
+    display: flex; align-items: center; margin: 10px 0 6px; padding: 8px 10px; border-radius: 6px;
+    background: #F1F6FD; color: var(--atl-blue); font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em;
+}
+.atl-mcard { border: 1px solid var(--atl-border); border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; background: #fff; }
+.atl-mcard.is-selected { border-color: var(--atl-blue); background: #F5F9FF; }
+.atl-mcard__head { display: flex; align-items: flex-start; gap: 6px; }
+.atl-mcard__titles { flex: 1; min-width: 0; }
+.atl-mcard__title { font-size: 15px; display: block; }
+.atl-mcard__sub { font-size: 13px; color: #616161; margin-top: 1px; }
+.atl-mcard__actions { display: flex; flex: 0 0 auto; margin: -6px -6px 0 0; }
+.atl-mcard__body { display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; margin-top: 8px; font-size: 13px; }
+.atl-mcard__label { color: #757575; }
+.atl-mcard__value { color: var(--atl-text); text-align: right; overflow-wrap: anywhere; }
+
+/* Rotation Plan — phone crew plan */
+.atl-pfilters { padding-top: 12px; }
+.atl-agenda { flex: 1; min-height: 0; overflow-y: auto; padding: 8px 12px 16px; }
+.atl-agenda__vessel { display: block; height: auto; padding: 10px 14px; margin: 6px 0 8px; border-radius: 6px; }
+.atl-pcard { border: 1px solid var(--atl-border); border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; background: #fff; cursor: pointer; }
+.atl-pcard.is-extra { background: #F2F2F2; }
+.atl-pcard__head { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.atl-pcard__rank { font-size: 13px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+.atl-pcard__line { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 14px; }
+.atl-pcard__meta { font-size: 12px; color: #757575; }
+.atl-pcard__prev { font-size: 12px; color: #9E9E9E; margin-top: 2px; }
+.atl-pchip {
+    flex: 0 0 auto; display: inline-block; padding: 2px 8px; border-radius: 4px;
+    font-size: 11px; font-weight: 700; color: #fff; white-space: nowrap;
+}
+.atl-pchip.atl-bar--search, .atl-pchip.atl-bar--approval, .atl-pchip.atl-bar--preparation, .atl-pchip.atl-bar--rfx { color: #1A3A66; }
+.atl-pchip.atl-bar--approval { box-shadow: inset 0 -3px 0 #7E57C2; }
+.atl-swatch--sm  { width: 18px; height: 10px; }
+.atl-swatch--dot { flex: 0 0 10px; width: 10px; height: 10px; border-radius: 50%; }
+
+/* Approval dialog — phone */
+.atl-approval.is-phone .atl-approval__head { grid-template-columns: 1fr; }
+.atl-approval.is-phone .atl-approval__cell { border-right: none; padding: 10px 14px; font-size: 14px; }
+.atl-approval.is-phone .atl-approval__client,
+.atl-approval.is-phone .atl-approval__dates { grid-column: auto; }
+.atl-approval.is-phone .atl-approval__ref { font-size: 18px; }
+.atl-approval.is-phone .atl-approval__body { padding: 12px !important; }
+.atl-approval.is-phone .atl-approval__section { padding: 12px 10px; border-left-width: 4px; }
+.atl-approval.is-phone .atl-cand { padding: 10px 12px; }
+.atl-approval.is-phone .atl-cand__top { flex-wrap: wrap; gap: 6px 14px; }
+.atl-approval.is-phone .atl-cand__name { max-width: 100%; flex: 1 1 100%; font-size: 16px; }
+.atl-approval.is-phone .atl-cand__kv strong { font-size: 15px; }
+.atl-approval.is-phone .atl-cand__radio { margin-left: 0; }
+.atl-approval.is-phone .atl-cand__services { flex-wrap: wrap; gap: 8px 16px; padding: 10px 12px; }
+.atl-approval.is-phone .atl-cand__svc-title { flex: 1 1 100%; font-size: 13px; }
+.atl-approval.is-phone .atl-cand__svc { min-width: 0; flex: 1; }
+.atl-approval.is-phone .atl-cand__svc strong { font-size: 13px; }
+.atl-approval__actions {
+    position: sticky; bottom: 0; padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+    background: #fff; border-top: 1px solid var(--atl-border); box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.08);
+}
+.atl-approval__actions-text { font-size: 14px; margin-bottom: 8px; }
+
+/* Profile / document viewer — phone */
+.atl-profile.is-phone { height: 100%; }
+.atl-profile.is-phone .atl-profile__head { padding: 12px; gap: 12px; }
+.atl-profile.is-phone .atl-profile__name { font-size: 18px; }
+.atl-profile.is-phone .atl-profile__meta,
+.atl-profile.is-phone .atl-profile__status { font-size: 13px; }
+.atl-profile.is-phone .atl-profile__body { flex-direction: column; }
+.atl-profile.is-phone .atl-profile__content { padding: 0 10px; }
+.atl-profile__tabs { flex: 0 0 auto; border-bottom: 1px solid var(--atl-border); }
+.atl-docview.is-phone .atl-docview__body { flex-direction: column; min-height: 0; }
+.atl-docview.is-phone .atl-docview__form { border-right: none; padding: 16px; }
+.atl-docview.is-phone .atl-form-grid { grid-template-columns: 1fr; gap: 12px; }
+.atl-docview__phoneactions { display: flex; flex-direction: column; gap: 10px; padding: 0 16px 20px; }
+
+/* Dashboard — phone (isPhone ≈ width < 600) */
+@media (max-width: 599px) {
+    .atl-dash__scroll { padding: 14px 12px 20px; }
+    .atl-dash__title { font-size: 20px; }
+    .atl-dash__tiles { grid-template-columns: 1fr 1fr; gap: 10px; }
+    .atl-tile { padding: 12px !important; }
+    .atl-tile__label { font-size: 10px; }
+    .atl-tile__icon { flex-basis: 28px; height: 28px; }
+    .atl-tile__value { font-size: 26px; }
+    .atl-tile__sub { font-size: 11px; }
+    .atl-dash__panel { padding: 12px; }
+    .atl-dash__item { gap: 10px; font-size: 14px; }
+    .atl-dash__date { flex-basis: 52px; }
+    .atl-filterbar { margin: 8px 8px 0; padding: 4px 12px 12px; }
+    .atl-content { padding: 4px 8px 0; }
+    .atl-seg button { padding: 7px 10px; font-size: 12px; }
+}
+
+/* ── Tablets (Gantt kept) ── */
+@media (max-width: 1279px) {
+    .atl-seg--types { max-width: 100%; overflow-x: auto; }
+    .atl-seg--types button, .atl-seg--types .atl-seg-label--inside { flex: 0 0 auto; white-space: nowrap; }
+    .atl-gantt__month { font-size: 12px; letter-spacing: 0.04em; white-space: nowrap; overflow: hidden; }
+}
+@media (max-width: 1023px) {
+    .atl-portal { --atl-rank-col: 200px; }
+    .atl-gantt__rank { font-size: 12px; padding-left: 12px; }
+    .atl-viewas { width: 240px; margin-right: 12px; }
+}
+@media (max-width: 959px) {
+    .atl-profile__nav { width: 64px; flex-basis: 64px; }
+    .atl-profile__nav .v-list-item-title { display: none; }
+    .atl-approval__head { grid-template-columns: 1fr 1fr; }
+    .atl-approval__dates { grid-column: span 2; border-right: none; }
+    .atl-approval__cell:nth-child(2) { border-right: none; }
+    .atl-approval__cell:nth-child(4) { grid-column: auto; border-right: 1px solid var(--atl-border); }
+    .atl-cand__top { flex-wrap: wrap; }
+}

@@ -2,6 +2,8 @@
    Client UI shell — mockup of the separate client portal in the Atlantis
    (Vuetify / Material) look. Rendered full screen instead of the internal
    ERP shell for every /client/* route (see isClientUi in index.html).
+   On phones (isPhone, global mixin in index.html) the app bar is compact with
+   an account menu, and a bottom navigation bar mirrors the drawer menu.
    Templates live in index.html: tpl-client-portal, tpl-client-placeholder
 
    Depends on globals: erpStore, allClientsData
@@ -25,10 +27,10 @@ const ClientPortal = {
         pendingCount() { return clientApprovalItems(this.client).filter(i => i.status === 'pending').length; },
         menu() {
             return [
-                { to: '/client/dashboard',  title: 'Dashboard',         icon: 'mdi-view-dashboard-outline' },
-                { to: '/client/crew-lists', title: 'Crew Lists',        icon: 'mdi-account-group' },
-                { to: '/client/rotation',   title: 'Rotation Plan',     icon: 'mdi-chart-gantt' },
-                { to: '/client/approvals',  title: 'Pending Approvals', icon: 'mdi-account-check-outline', badge: this.pendingCount },
+                { to: '/client/dashboard',  title: 'Dashboard',         short: 'Dashboard', icon: 'mdi-view-dashboard-outline' },
+                { to: '/client/crew-lists', title: 'Crew Lists',        short: 'Crew',      icon: 'mdi-account-group' },
+                { to: '/client/rotation',   title: 'Rotation Plan',     short: 'Rotation',  icon: 'mdi-chart-gantt' },
+                { to: '/client/approvals',  title: 'Pending Approvals', short: 'Approvals', icon: 'mdi-account-check-outline', badge: this.pendingCount },
             ];
         },
         toastOpen: {

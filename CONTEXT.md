@@ -1,5 +1,5 @@
 # CONTEXT.md — Maritime ERP Mockup
-**For AI model continuation. Updated after Client UI phase 7 (client Dashboard) — all Client UI phases built.**
+**For AI model continuation. Updated after Client UI phase 8 (phones and tablets).**
 
 ---
 
@@ -44,7 +44,7 @@ maritimeERP/
 │   ├── ClientPortal.js     ← Client UI shell (ClientPortal)
 │   ├── ClientDashboard.js  ← Client UI → Dashboard (landing page)
 │   ├── ClientCrewLists.js  ← Client UI → Crew Lists view
-│   ├── ClientRotation.js   ← Client UI → Rotation Plan (Atlantis Gantt) — also <client-rotation>
+│   ├── ClientRotation.js   ← Client UI → Rotation Plan (Atlantis Gantt; crew plan on phones)
 │   └── ClientApprovals.js  ← Client UI → Pending Approvals + <approval-dialog>, cvPdf()
 └── CONTEXT.md
 ```
@@ -75,7 +75,7 @@ const MyView = { template: '#tpl-my-view', data() {...}, ... }
 | `tpl-client-crew-lists` | `ClientCrewListsView` |
 | `tpl-client-approvals` | `ClientApprovalsView` |
 | `tpl-approval-dialog` | `ApprovalDialog` (global `approval-dialog`) |
-| `tpl-client-rotation` | `ClientRotationView` (route + global `client-rotation`) |
+| `tpl-client-rotation` | `ClientRotationView` |
 | `tpl-rotation-all` | `RotationAllView` |
 
 ### Global variable scoping — CRITICAL
@@ -438,9 +438,9 @@ Deep links: Crew Lists reads `?list=onboard|ashore|approved|changes` and `?vesse
 4. *Crew Changes* — period; section "Completed" (past tour sign-ons/offs ≤ today) and "Planned" (`crewEvents`).
 FILTERS menu: Rank, Nationality.
 
-**Rotation Plan** — Atlantis Gantt, read-only. Filters: Vessel, Rank, WINDOW 6/12/18 mo, From (default 1st of month 3 months back) + reset, RESET; RF TYPE toggle ALL / ANY RF / RFR / RFS / RFP / RFX / RFE: SEARCH · APPROVAL · PREPARATION · READY (filters rows); legend Today / +2mo horizon. Timeline positions are percentages of the window (`pct()`); full-height lines use `lineLeft()` = calc over `--atl-rank-col`. `clientGanttRows(vessel)` builds one row per position (rank order, counter "pos/total" when a rank has several positions, grey when `safeManning === false`) plus a "NEW" row per standalone RFE. Bar kinds / classes `.atl-bar--*`: past (grey hatched), running (blue; ends at the promotion date for a promoted seafarer), rfs (maroon, last ≤45 days before sign-off), rfx (gold, contract end → extended date), rfp (orange) + diamond and dashed arrow to the target rank's position, relief stages search / approval (hatched, approval with purple underline) / preparation (light green) / ready (dark green). Relief bars show the request number until approved, then the seafarer. Hover card (`atl-gantt-tip`) per bar in Atlantis style. Relief bars backed by an RFA row (`findApprovalItem(ref)`) are clickable and open the approval dialog; nothing opens for running / past services. Props `pendingOnly` (RF type preset to APPROVAL) and `embedded` (fills the parent) for use inside Pending Approvals.
+**Rotation Plan** — Atlantis Gantt, read-only. Filters: Vessel, Rank, WINDOW 6/12/18 mo, From (default 1st of month 3 months back) + reset, RESET; RF TYPE toggle ALL / ANY RF / RFR / RFS / RFP / RFX / RFE: SEARCH · APPROVAL · PREPARATION · READY (filters rows); legend Today / +2mo horizon. Timeline positions are percentages of the window (`pct()`); full-height lines use `lineLeft()` = calc over `--atl-rank-col`. `clientGanttRows(vessel)` builds one row per position (rank order, counter "pos/total" when a rank has several positions, grey when `safeManning === false`) plus a "NEW" row per standalone RFE. Bar kinds / classes `.atl-bar--*`: past (grey hatched), running (blue; ends at the promotion date for a promoted seafarer), rfs (maroon, last ≤45 days before sign-off), rfx (gold, contract end → extended date), rfp (orange) + diamond and dashed arrow to the target rank's position, relief stages search / approval (hatched, approval with purple underline) / preparation (light green) / ready (dark green). Relief bars show the request number until approved, then the seafarer. Hover card (`atl-gantt-tip`) per bar in Atlantis style. Relief bars backed by an RFA row (`findApprovalItem(ref)`) are clickable and open the approval dialog; nothing opens for running / past services.
 
-**Pending Approvals** — tabs **List** (atl-table; "Waiting for approval" by default, or "All requests" with a join-date period; vessel filter; columns Request (opens dialog) / Vessel / Rank fixed + join date, approval due (= join − 14 days), days left, candidates, relieving, status, approved seafarer, last decision) and **Rotation Plan** (`<client-rotation pending-only embedded>`). Drawer menu shows a purple badge with the pending count.
+**Pending Approvals** — one list (atl-table; "Waiting for approval" by default, or "All requests" with a join-date period; vessel filter; columns Request (opens dialog) / Vessel / Rank fixed + join date, approval due (= join − 14 days), days left, candidates, relieving, status, approved seafarer, last decision). No Gantt tab — users open the Rotation Plan page for that. Drawer menu / bottom navigation show a purple badge with the pending count.
 
 **Approval dialog (`approval-dialog`)** — opened by setting `erpStore.clientUi.approvalRef` (RFE number); hosted in the portal. Atlantis layout: header grid (RFE number + Pool Search / Principal Approval chips, rank, Due / Join Date with days left, client, vessel – type – port; CANCEL hidden), purple "Principal Approval (n)" section with REJECT ALL and decision-history menu, candidate cards (name → profile modal, "Dedicated to X" chip, age, available, Approve radio, CV icon → `cvPdf()` in the document viewer, services strip Total / At Rank / As Officer). Approve = radio + confirmation bar → `principalApprove`; Reject all = reason required → `principalRejectAll` (request returns to candidate search). Decided requests show the outcome and history; a snackbar (`erpStore.clientUi.toast`) confirms.
 
@@ -501,6 +501,17 @@ FILTERS menu: Rank, Nationality.
 - `/recruitment/candidates` — seafarer database / profiles (data partially in `allSeafarers`)
 - `/recruitment/pipeline` — RFC → shortlist → proposal → confirmation workflow
 - `/` (home) — dashboard
+
+### Phones and tablets (phase 8)
+- Global mixin (index.html bootstrap): `isPhone` = width < 600, or a phone held sideways (height < 500 and width < 1000), from `this.$vuetify.display` (reactive, follows rotation); `isTouch` = `(hover: none)`. Templates switch layouts with `isPhone`; tablets (600–1280) keep the desktop layout with media-query fixes.
+- `.atl-page` height uses `--v-layout-top` / `--v-layout-bottom` (app bar, bottom navigation).
+- **Portal (phone):** compact app bar with account menu (viewing-as, user, exit); `v-bottom-navigation` with Dashboard · Crew · Rotation · Approvals (badge).
+- **AtlTable (phone):** cards — title = first link column, subtitle = other fixed columns (`cardPrefix` e.g. "Age "), body = visible optional columns as label / value; "Show more" (20 at a time) instead of paging; COLUMNS and Export PDF as icon buttons; PRESETS hidden. Applies to Crew Lists, Pending Approvals and profile Documents.
+- **Crew Lists (phone):** short tab labels, filter summary line, all filters in a bottom sheet.
+- **Dashboard (phone):** tiles 2 per row, fleet and documents as cards.
+- **Rotation Plan (phone):** crew plan (`phoneGroups`): vessel chips, RF type chips, rank; one card per position with current holder (since / until / days left), RFS/RFX/RFP chips, next relief stage (Review button for Principal Approval), previous tour; tap → bottom sheet with every bar's card. **Tablets** keep the Gantt: shorter month labels (JUL '26 or JUL), rank column 200 px below 1024, RF type toggles scroll; on touch a tap shows the bar card in a bottom sheet (Review candidates).
+- **Approval dialog (phone):** fullscreen, stacked header and candidate cards, sticky bottom bar Reject all / Confirm approval. Tablet (< 960): 2-column header.
+- **Profile (phone):** fullscreen, tabs instead of the side menu (icons-only side menu below 960). **Document viewer (phone):** fullscreen, fields + "Open PDF" (native viewer) / Download instead of the iframe preview.
 
 **Client UI:** all planned phases built (portal, Crew Lists, profile + documents, Rotation Plan, Pending Approvals, Dashboard). Open items: profile tabs other than Documents are placeholders; PRESETS is look-only; dashboard figures to be customised with stakeholders.
 

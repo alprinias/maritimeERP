@@ -14,7 +14,12 @@
      search / approval / preparation / ready — the planned relief service
    Standalone RFEs get their own row. Hover shows an Atlantis hover card.
    Clicking a relief bar backed by an RFE opens the approval dialog; nothing
-   opens for running / past services.
+   opens for running / past services. On touch screens a tap shows the bar's
+   card in a bottom sheet (with Review where relevant).
+
+   Phones get a crew plan instead of the Gantt (phoneGroups): one card per
+   position with the current holder, requests, next relief (Review button when
+   awaiting approval) and previous tour; a tap shows all its bars in a sheet.
 
    Depends on globals: erpStore, allVessels, allClientsData, utils.js,
      crew.js, atlDate (ClientCommon.js)
@@ -125,22 +130,17 @@ function clientGanttRows(vessel) {
 const ClientRotationView = {
     template: '#tpl-client-rotation',
 
-    // Also used as <client-rotation pending-only embedded> inside Pending Approvals
-    props: {
-        pendingOnly: { type: Boolean, default: false },   // start filtered to Approval bars
-        embedded:    { type: Boolean, default: false },   // fill the parent instead of the page
-    },
-
     data() {
         return {
             store:        erpStore,
             todayStr:     isoDate(TODAY),
-            filterVessel: (!this.embedded && this.$route.query.vessel) || null,   // dashboard deep link
+            filterVessel: this.$route.query.vessel || null,   // dashboard deep link
             filterRank:   null,
-            rfType:       this.pendingOnly ? 'approval' : '',
+            rfType:       '',
             windowMonths: 12,
             fromStr:      this.defaultFrom(),
-            tip:          null,          // { bar, x, y }
+            tip:          null,          // { bar, x, y } — hover card (mouse)
+            sheet:        null,          // { title, bars } — bottom sheet (touch / phone)
         };
     },
 
@@ -185,8 +185,14 @@ const ClientRotationView = {
                 const next = new Date(Date.UTC(cur.getUTCFullYear(), cur.getUTCMonth() + 1, 1));
                 const from = cur < this.start ? this.start : cur;
                 const to   = next > this.end ? this.end : next;
-                out.push({ key: cur.toISOString(),
-                           label: ATL_MONTHS[cur.getUTCMonth()].toUpperCase() + ' ' + cur.getUTCFullYear(),
+                const mon = ATL_MONTHS[cur.getUTCMonth()].toUpperCase();
+                const yy  = " '" + String(cur.getUTCFullYear()).slice(2);
+                const w   = this.$vuetify.display.width;
+                // narrow screens (tablets): JUL '26, narrowest: JUL with the year on the first month and January
+                const label = w >= 1280 ? mon + ' ' + cur.getUTCFullYear()
+                            : w >= 1024 || (this.windowMonths <= 6) ? mon + yy
+                            : (out.length === 0 || cur.getUTCMonth() === 0) ? mon + yy : mon;
+                out.push({ key: cur.toISOString(), label,
                            left: this.pct(isoDate(from)), width: this.pct(isoDate(to)) - this.pct(isoDate(from)) });
                 cur = next;
             }
@@ -205,6 +211,26 @@ const ClientRotationView = {
                     return { vessel: v, rows, promos: this.promoArrows(rows) };
                 })
                 .filter(g => g.rows.length);
+        },
+
+        // Phone crew plan: each row summarised as current holder / requests / relief / previous
+        phoneGroups() {
+            return this.groups.map(g => Object.assign({}, g, {
+                rows: g.rows.map(r => {
+                    const cur  = r.bars.find(b => b.kind === 'running') || null;
+                    // most recent completed tour
+                    const prev = r.bars.filter(b => b.kind === 'past').sort((a, b) => b.to.localeCompare(a.to))[0] || null;
+                    return Object.assign({}, r, {
+                        cur, prev,
+                        requests: r.bars.filter(b => ['rfs', 'rfx', 'rfp'].includes(b.kind)),
+                        relief:   r.bars.find(b => GANTT_STAGE_LABEL[b.kind]) || null,
+                    });
+                }),
+            }));
+        },
+        sheetOpen: {
+            get() { return !!this.sheet; },
+            set(v) { if (!v) this.sheet = null; },
         },
     },
 
@@ -264,11 +290,26 @@ const ClientRotationView = {
         openBar(bar) {
             if (!this.canOpen(bar)) return;
             this.tip = null;
+            this.sheet = null;
             this.store.clientUi.approvalRef = bar.ref;
+        },
+        // Touch screens can't hover: a tap shows the bar's card in a bottom sheet
+        onBarClick(bar, row, vessel) {
+            if (this.isTouch) this.sheet = { title: row.rank.toUpperCase() + ' · ' + vessel.name.toUpperCase(), bars: [bar] };
+            else this.openBar(bar);
+        },
+        // Phone crew plan: a tap on a position shows all its bars, newest first
+        openRowSheet(row, vessel) {
+            this.sheet = { title: row.rank.toUpperCase() + ' · ' + vessel.name.toUpperCase(),
+                           bars: row.bars.slice().sort((a, b) => b.from.localeCompare(a.from)) };
+        },
+        daysText(iso) {
+            const n = daysB(d(this.todayStr), d(iso));
+            return n < 0 ? Math.abs(n) + ' d overdue' : n + ' d left';
         },
 
         // ── Hover card ────────────────────────────────────────
-        showTip(e, bar) { this.tip = { bar, x: e.clientX, y: e.clientY }; },
+        showTip(e, bar) { if (!this.isTouch) this.tip = { bar, x: e.clientX, y: e.clientY }; },
         moveTip(e)      { if (this.tip) { this.tip.x = e.clientX; this.tip.y = e.clientY; } },
         hideTip()       { this.tip = null; },
         tipStyle() {

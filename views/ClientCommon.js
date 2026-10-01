@@ -7,6 +7,8 @@
                               PRESETS (visual only), sortable headers, optional
                               row selection and section header rows, Atlantis
                               pagination footer, Export PDF of visible columns.
+                              On phones it renders cards (title / subtitle /
+                              label-value lines) with "Show more" instead.
    - SeafarerProfileDialog  — profile modal opened by setting
                               erpStore.clientUi.profileId. Only the Documents
                               tab has content (view, download, ZIP of selection).
@@ -100,7 +102,8 @@ const AtlTable = {
     emits: ['update:visible', 'update:selected', 'open', 'refresh'],
 
     data() {
-        return { sKey: this.sortKey, sDesc: this.sortDesc, page: 1, perPage: 20, colMenu: false };
+        return { sKey: this.sortKey, sDesc: this.sortDesc, page: 1, perPage: 20, colMenu: false,
+                 phoneLimit: 20 };   // phone: cards shown before "Show more"
     },
 
     computed: {
@@ -119,9 +122,11 @@ const AtlTable = {
         },
         pageCount() { return Math.max(1, Math.ceil(this.sorted.length / this.perPage)); },
         // Page rows with section headers inserted where the section changes
+        // (phone: the first phoneLimit rows instead of a page)
         pageRows() {
-            const start = (this.page - 1) * this.perPage;
-            const slice = this.sorted.slice(start, start + this.perPage);
+            const slice = this.isPhone
+                ? this.sorted.slice(0, this.phoneLimit)
+                : this.sorted.slice((this.page - 1) * this.perPage, this.page * this.perPage);
             if (!this.sections) return slice.map(r => ({ row: r }));
             const out = [];
             let last = null;
@@ -135,6 +140,11 @@ const AtlTable = {
             });
             return out;
         },
+        // Phone card layout: title = first link column (or first column), subtitle =
+        // the other fixed columns, body = the visible optional columns as label / value
+        cardTitleCol() { return this.shownColumns.find(c => c.type === 'link') || this.shownColumns[0]; },
+        cardSubCols()  { return this.shownColumns.filter(c => c.fixed && c !== this.cardTitleCol); },
+        cardBodyCols() { return this.shownColumns.filter(c => !c.fixed && c !== this.cardTitleCol); },
         rangeText() {
             const n = this.sorted.length;
             if (!n) return '0 of 0';
@@ -147,7 +157,7 @@ const AtlTable = {
     },
 
     watch: {
-        items()   { if (this.page > this.pageCount) this.page = 1; },
+        items()   { if (this.page > this.pageCount) this.page = 1; this.phoneLimit = 20; },
         perPage() { this.page = 1; },
     },
 

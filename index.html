@@ -1861,22 +1861,39 @@
 <script type="text/x-template" id="tpl-client-portal">
 <v-app class="atl-portal">
 
-    <v-app-bar flat height="64" class="atl-appbar">
+    <v-app-bar flat :height="isPhone ? 56 : 64" class="atl-appbar">
         <v-app-bar-nav-icon @click="drawer = !drawer"></v-app-bar-nav-icon>
-        <div class="atl-pagetab">
+        <div :class="['atl-pagetab', { 'atl-pagetab--phone': isPhone }]">
             <v-icon :icon="pageIcon" size="20"></v-icon>
             <span>{{ pageTitle }}</span>
         </div>
         <v-spacer></v-spacer>
-        <div class="atl-viewas">
-            <v-select v-model="store.clientUi.clientId" :items="portalClients" item-title="name" item-value="id"
-                      label="Viewing as (mockup)" prepend-inner-icon="mdi-domain"></v-select>
-        </div>
-        <div class="atl-user" v-if="client">
-            <div class="atl-user__name">{{ client.alias }} Crewing Department</div>
-            <div class="atl-user__mail">{{ client.contactEmail }}</div>
-        </div>
-        <v-btn icon="mdi-logout" variant="text" class="mr-2" title="Exit client portal (back to the ERP mockup)" @click="exit"></v-btn>
+        <template v-if="!isPhone">
+            <div class="atl-viewas">
+                <v-select v-model="store.clientUi.clientId" :items="portalClients" item-title="name" item-value="id"
+                          label="Viewing as (mockup)" prepend-inner-icon="mdi-domain"></v-select>
+            </div>
+            <div class="atl-user" v-if="client">
+                <div class="atl-user__name">{{ client.alias }} Crewing Department</div>
+                <div class="atl-user__mail">{{ client.contactEmail }}</div>
+            </div>
+            <v-btn icon="mdi-logout" variant="text" class="mr-2" title="Exit client portal (back to the ERP mockup)" @click="exit"></v-btn>
+        </template>
+        <!-- Phone: account menu holds the client selector, user and exit -->
+        <v-menu v-else :close-on-content-click="false" location="bottom end">
+            <template #activator="{ props }">
+                <v-btn v-bind="props" icon="mdi-account-circle-outline" variant="text" class="mr-1" title="Account"></v-btn>
+            </template>
+            <v-card width="300" class="pa-4">
+                <div v-if="client" class="mb-4">
+                    <div class="atl-user__name">{{ client.alias }} Crewing Department</div>
+                    <div class="atl-user__mail">{{ client.contactEmail }}</div>
+                </div>
+                <v-select v-model="store.clientUi.clientId" :items="portalClients" item-title="name" item-value="id"
+                          label="Viewing as (mockup)" prepend-inner-icon="mdi-domain"></v-select>
+                <v-btn block variant="tonal" prepend-icon="mdi-logout" class="mt-4" @click="exit">Exit portal</v-btn>
+            </v-card>
+        </v-menu>
     </v-app-bar>
 
     <v-navigation-drawer v-model="drawer" temporary width="320" class="atl-drawer">
@@ -1904,6 +1921,17 @@
         <router-view></router-view>
     </v-main>
 
+    <!-- Phone: bottom navigation -->
+    <v-bottom-navigation v-if="isPhone" grow color="primary" class="atl-bottomnav">
+        <v-btn v-for="m in menu" :key="m.to" :to="m.to">
+            <v-badge v-if="m.badge" :content="m.badge" color="deep-purple" floating>
+                <v-icon :icon="m.icon"></v-icon>
+            </v-badge>
+            <v-icon v-else :icon="m.icon"></v-icon>
+            <span>{{ m.short }}</span>
+        </v-btn>
+    </v-bottom-navigation>
+
     <approval-dialog></approval-dialog>
     <seafarer-profile-dialog></seafarer-profile-dialog>
     <v-snackbar v-model="toastOpen" color="grey-darken-4" timeout="4000" location="bottom right">{{ store.clientUi.toast }}</v-snackbar>
@@ -1920,12 +1948,15 @@
         <slot name="toolbar-left"></slot>
         <v-spacer></v-spacer>
 
-        <!-- COLUMNS: column visibility -->
+        <!-- COLUMNS: column visibility (phone: icon only; it also sets the card lines) -->
         <v-menu v-model="colMenu" :close-on-content-click="false" location="bottom end">
             <template #activator="{ props }">
-                <v-btn v-bind="props" variant="text" class="atl-tool-btn" prepend-icon="mdi-view-column" append-icon="mdi-menu-down">
+                <v-btn v-if="!isPhone" v-bind="props" variant="text" class="atl-tool-btn" prepend-icon="mdi-view-column" append-icon="mdi-menu-down">
                     Columns
                     <v-badge :content="shownColumns.length" color="primary" inline></v-badge>
+                </v-btn>
+                <v-btn v-else v-bind="props" icon variant="text" title="Columns">
+                    <v-badge :content="shownColumns.length" color="primary" floating><v-icon icon="mdi-view-column"></v-icon></v-badge>
                 </v-btn>
             </template>
             <v-card width="320" class="atl-colmenu">
@@ -1953,10 +1984,11 @@
             </v-card>
         </v-menu>
 
-        <v-btn variant="text" class="atl-tool-btn" prepend-icon="mdi-file-pdf-box" :disabled="!sorted.length" @click="exportPdf">Export PDF</v-btn>
+        <v-btn v-if="!isPhone" variant="text" class="atl-tool-btn" prepend-icon="mdi-file-pdf-box" :disabled="!sorted.length" @click="exportPdf">Export PDF</v-btn>
+        <v-btn v-else icon="mdi-file-pdf-box" variant="text" title="Export PDF" :disabled="!sorted.length" @click="exportPdf"></v-btn>
 
         <!-- PRESETS (Atlantis look only — not functional in the mockup) -->
-        <div class="atl-presets" title="Presets are not part of the mockup">
+        <div v-if="!isPhone" class="atl-presets" title="Presets are not part of the mockup">
             <v-chip size="small" variant="outlined" color="primary" prepend-icon="mdi-bookmark">Default</v-chip>
             <v-btn variant="text" color="primary" size="small" prepend-icon="mdi-bookmark" append-icon="mdi-menu-down" class="atl-tool-btn">Presets</v-btn>
             <v-btn icon="mdi-content-save" color="primary" size="small"></v-btn>
@@ -1964,7 +1996,7 @@
     </div>
 
     <!-- Grid -->
-    <div class="atl-table__scroll">
+    <div v-if="!isPhone" class="atl-table__scroll">
         <v-table class="atl-table__grid" hover>
             <thead>
                 <tr>
@@ -2011,8 +2043,44 @@
         </v-table>
     </div>
 
+    <!-- Phone: cards — title (link) · fixed columns · visible columns as label / value -->
+    <div v-else class="atl-mcards">
+        <div v-if="!pageRows.length" class="atl-empty">{{ emptyText }}</div>
+        <template v-for="(e, i) in pageRows" :key="e.header ? 'h-' + e.header.id + '-' + i : e.row._key">
+            <div v-if="e.header" class="atl-mcards__section">
+                <v-icon v-if="e.header.icon" :icon="e.header.icon" size="18" class="mr-2"></v-icon>{{ e.header.label }}
+                <span class="atl-section-count">{{ e.count }}</span>
+            </div>
+            <div v-else :class="['atl-mcard', { 'is-selected': selected.includes(e.row._key) }]">
+                <div class="atl-mcard__head">
+                    <v-checkbox-btn v-if="selectable" :model-value="selected.includes(e.row._key)" density="compact" color="primary"
+                                    style="flex:0 0 auto" @update:model-value="toggleRow(e.row._key)"></v-checkbox-btn>
+                    <div class="atl-mcard__titles">
+                        <a v-if="cardTitleCol.type === 'link' && e.row[cardTitleCol.key + '_link'] !== false" href="#"
+                           class="atl-link atl-mcard__title" @click.prevent="$emit('open', e.row, cardTitleCol)">{{ cell(cardTitleCol, e.row) }}</a>
+                        <span v-else class="atl-mcard__title atl-muted">{{ cell(cardTitleCol, e.row) }}</span>
+                        <div v-if="cardSubCols.length" class="atl-mcard__sub">{{ cardSubCols.map(c => (c.cardPrefix || '') + cell(c, e.row)).join(' · ') }}</div>
+                    </div>
+                    <div v-if="$slots['row-actions']" class="atl-mcard__actions"><slot name="row-actions" :row="e.row"></slot></div>
+                </div>
+                <div v-if="cardBodyCols.length" class="atl-mcard__body">
+                    <template v-for="c in cardBodyCols" :key="c.key">
+                        <span class="atl-mcard__label">{{ c.title }}</span>
+                        <span :class="['atl-mcard__value', c.cls ? c.cls(e.row) : '']">
+                            <v-chip v-if="c.type === 'chip' && c.chip(e.row)" :color="c.chip(e.row).color" size="x-small" variant="tonal" label>{{ c.chip(e.row).text }}</v-chip>
+                            <template v-else>{{ c.type === 'chip' ? '—' : cell(c, e.row) }}</template>
+                        </span>
+                    </template>
+                </div>
+            </div>
+        </template>
+        <v-btn v-if="sorted.length > phoneLimit" variant="tonal" color="primary" block class="my-3" @click="phoneLimit += 20">
+            Show more ({{ sorted.length - phoneLimit }})
+        </v-btn>
+    </div>
+
     <!-- Footer (Atlantis pagination) -->
-    <div class="atl-table__footer">
+    <div v-if="!isPhone" class="atl-table__footer">
         <span>Rows:</span>
         <v-select v-model="perPage" :items="[10, 20, 50, 100]" class="atl-rows-select"></v-select>
         <span class="atl-footer-range">{{ rangeText }}</span>
@@ -2027,8 +2095,8 @@
 
 <!-- ── Seafarer profile modal x-template ─────────────────────── -->
 <script type="text/x-template" id="tpl-seafarer-profile">
-<v-dialog v-model="open" max-width="1440" scrollable>
-    <v-card v-if="s" class="atl-profile">
+<v-dialog v-model="open" max-width="1440" scrollable :fullscreen="isPhone">
+    <v-card v-if="s" :class="['atl-profile', { 'is-phone': isPhone }]">
         <div class="atl-profile__head">
             <v-avatar size="56" color="grey-lighten-3"><v-icon icon="mdi-account" size="40" color="grey"></v-icon></v-avatar>
             <div class="atl-profile__id">
@@ -2047,10 +2115,13 @@
         </div>
         <v-divider></v-divider>
         <div class="atl-profile__body">
-            <v-list nav density="comfortable" class="atl-profile__nav">
+            <v-list v-if="!isPhone" nav density="comfortable" class="atl-profile__nav">
                 <v-list-item v-for="t in tabs" :key="t.id" :prepend-icon="t.icon" :title="t.label"
                              :active="tab === t.id" color="primary" @click="tab = t.id"></v-list-item>
             </v-list>
+            <v-tabs v-else v-model="tab" color="primary" density="compact" :show-arrows="false" class="atl-profile__tabs">
+                <v-tab v-for="t in tabs" :key="t.id" :value="t.id">{{ t.label }}</v-tab>
+            </v-tabs>
             <div class="atl-profile__content">
                 <atl-table v-if="tab === 'documents'" :columns="docColumns" :items="docRows"
                            v-model:visible="docVisible" selectable v-model:selected="selectedDocs"
@@ -2081,8 +2152,8 @@
 
 <!-- ── Document viewer x-template ────────────────────────────── -->
 <script type="text/x-template" id="tpl-document-viewer">
-<v-dialog :model-value="!!doc" max-width="1320" @update:model-value="v => !v && $emit('close')">
-    <v-card v-if="doc" class="atl-docview">
+<v-dialog :model-value="!!doc" max-width="1320" :fullscreen="isPhone" @update:model-value="v => !v && $emit('close')">
+    <v-card v-if="doc" :class="['atl-docview', { 'is-phone': isPhone }]">
         <div class="atl-docview__bar">
             <span>View Document</span>
             <v-btn icon="mdi-close" variant="text" size="small" @click="$emit('close')"></v-btn>
@@ -2106,7 +2177,12 @@
                     <span>{{ doc.fileName }}</span>
                 </div>
             </div>
-            <div class="atl-docview__preview">
+            <!-- Phone: in-page PDF previews are unreliable — open in the phone's viewer instead -->
+            <div v-if="isPhone" class="atl-docview__phoneactions">
+                <v-btn color="primary" variant="flat" block prepend-icon="mdi-file-eye-outline" class="atl-tool-btn" :href="url" target="_blank">Open PDF</v-btn>
+                <v-btn color="primary" variant="tonal" block prepend-icon="mdi-download" class="atl-tool-btn" @click="download">Download</v-btn>
+            </div>
+            <div v-else class="atl-docview__preview">
                 <div class="d-flex justify-end">
                     <v-btn icon="mdi-download" variant="text" color="primary" title="Download" @click="download"></v-btn>
                 </div>
@@ -2123,10 +2199,14 @@
 
     <!-- List type + primary filters -->
     <div class="atl-filterbar">
-        <v-tabs v-model="list" color="primary" density="comfortable">
-            <v-tab v-for="l in lists" :key="l.id" :value="l.id" :prepend-icon="l.icon">{{ l.label }}</v-tab>
+        <v-tabs v-model="list" color="primary" density="comfortable" :show-arrows="false">
+            <v-tab v-for="l in lists" :key="l.id" :value="l.id" :prepend-icon="isPhone ? undefined : l.icon">{{ isPhone ? l.short : l.label }}</v-tab>
         </v-tabs>
-        <div class="atl-filterbar__fields">
+        <!-- Phone: primary filters live in the Filters sheet; show a summary -->
+        <div v-if="isPhone" class="atl-hint mt-2" @click="filterSheet = true">
+            <v-icon icon="mdi-filter-outline" size="16"></v-icon>{{ phoneSummary }}
+        </div>
+        <div v-else class="atl-filterbar__fields">
             <v-select v-model="filterVessel" :items="vesselItems" item-title="name" item-value="id"
                       :label="list === 'ashore' ? 'Last vessel' : 'Vessel'" placeholder="All vessels" persistent-placeholder
                       clearable style="max-width:300px; min-width:240px"></v-select>
@@ -2156,8 +2236,40 @@
         <atl-table :key="list" :columns="columns" :items="filteredRows" v-model:visible="visible[list]"
                    :sections="sections" :pdf-title="pdfTitle" :pdf-subtitle="pdfSubtitle" @open="openProfile">
             <template #toolbar-left>
+                <!-- Phone: all filters in a bottom sheet -->
+                <template v-if="isPhone">
+                    <v-btn variant="text" class="atl-tool-btn ml-1" prepend-icon="mdi-filter" @click="filterSheet = true">
+                        Filters
+                        <v-badge v-if="activeFilterCount" :content="activeFilterCount" color="primary" inline></v-badge>
+                    </v-btn>
+                    <v-bottom-sheet v-model="filterSheet">
+                        <v-card class="atl-sheet">
+                            <div class="atl-filtermenu__head">
+                                <div class="d-flex align-center ga-3"><v-icon icon="mdi-filter"></v-icon><span class="atl-colmenu__title">Filters</span></div>
+                                <v-btn variant="text" size="small" :disabled="!activeFilterCount" @click="clearFilters">Clear all</v-btn>
+                            </div>
+                            <v-divider></v-divider>
+                            <div class="pa-4 d-flex flex-column ga-4">
+                                <v-select v-model="filterVessel" :items="vesselItems" item-title="name" item-value="id"
+                                          :label="list === 'ashore' ? 'Last vessel' : 'Vessel'" placeholder="All vessels" persistent-placeholder clearable></v-select>
+                                <v-text-field v-if="list === 'onboard'" v-model="onDate" type="date" label="On board on" :max="todayStr"></v-text-field>
+                                <div v-if="list === 'approved'" class="d-flex ga-3">
+                                    <v-text-field v-model="approvedFrom" type="date" label="Embarking from"></v-text-field>
+                                    <v-text-field v-model="approvedTo" type="date" label="Embarking to"></v-text-field>
+                                </div>
+                                <div v-if="list === 'changes'" class="d-flex ga-3">
+                                    <v-text-field v-model="changesFrom" type="date" label="Period from"></v-text-field>
+                                    <v-text-field v-model="changesTo" type="date" label="Period to"></v-text-field>
+                                </div>
+                                <v-autocomplete v-model="filterRanks" :items="rankOptions" label="Rank" multiple chips closable-chips></v-autocomplete>
+                                <v-autocomplete v-model="filterNats" :items="natOptions" label="Nationality" multiple chips closable-chips></v-autocomplete>
+                                <v-btn color="primary" variant="flat" block @click="filterSheet = false">Show {{ filteredRows.length }} results</v-btn>
+                            </div>
+                        </v-card>
+                    </v-bottom-sheet>
+                </template>
                 <!-- FILTERS: secondary filters (Atlantis dropdown) -->
-                <v-menu v-model="filterMenu" :close-on-content-click="false" location="bottom start">
+                <v-menu v-else v-model="filterMenu" :close-on-content-click="false" location="bottom start">
                     <template #activator="{ props }">
                         <v-btn v-bind="props" variant="text" class="atl-tool-btn ml-2" prepend-icon="mdi-filter" append-icon="mdi-menu-down">
                             Filters
@@ -2191,7 +2303,7 @@
         <div class="atl-dash__hello">
             <div>
                 <div class="atl-dash__title">{{ client ? client.name : '' }}</div>
-                <div class="atl-dash__subtitle">{{ todayLong }} · {{ vessels.length }} vessels under Crossworld management</div>
+                <div class="atl-dash__subtitle">{{ todayLong }}<template v-if="!isPhone"> · {{ vessels.length }} vessels under Crossworld management</template></div>
             </div>
         </div>
 
@@ -2213,7 +2325,29 @@
             <div class="atl-dash__panelhead">
                 <span class="atl-section-title atl-dash__h">Fleet</span>
             </div>
-            <v-table class="atl-table__grid atl-dash__fleet" hover>
+            <!-- Phone: one card per vessel -->
+            <div v-if="isPhone">
+                <div v-for="f in fleet" :key="f.vessel.id" class="atl-dash__item atl-dash__vcard">
+                    <div class="atl-dash__itemmain">
+                        <div class="d-flex align-center">
+                            <strong class="flex-grow-1">{{ f.vessel.name.toUpperCase() }}</strong>
+                            <v-btn icon="mdi-account-group" variant="text" size="small" title="Crew list"
+                                   @click="$router.push('/client/crew-lists?list=onboard&vessel=' + f.vessel.id)"></v-btn>
+                            <v-btn icon="mdi-chart-gantt" variant="text" size="small" title="Rotation plan"
+                                   @click="$router.push('/client/rotation?vessel=' + f.vessel.id)"></v-btn>
+                        </div>
+                        <div class="atl-dash__meta">{{ f.vessel.type }} · {{ f.vessel.flag }} · {{ f.onboard }} / {{ f.positions }} on board</div>
+                        <div class="atl-dash__meta">Next: {{ f.next ? atlDate(f.next.date) + ' · ' + changeMeta(f.next).text + ' ' + f.next.rank.toUpperCase() : 'none planned' }}</div>
+                        <div class="d-flex flex-wrap ga-1 mt-2">
+                            <v-chip v-if="f.pending" color="deep-purple" prepend-icon="mdi-alert-circle-outline" size="small" variant="tonal"
+                                    @click="$router.push('/client/approvals')">{{ f.pending }} waiting</v-chip>
+                            <v-chip v-if="f.expired" color="error" prepend-icon="mdi-alert-circle" size="small" variant="tonal">{{ f.expired }} expired</v-chip>
+                            <v-chip v-if="f.expiring" color="warning" prepend-icon="mdi-clock-alert-outline" size="small" variant="tonal">{{ f.expiring }} expiring</v-chip>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <v-table v-else class="atl-table__grid atl-dash__fleet" hover>
                 <thead>
                     <tr>
                         <th class="atl-th">Vessel</th>
@@ -2292,7 +2426,7 @@
                 </div>
                 <div v-if="!upcomingList.length" class="atl-dash__empty">No crew changes in the next 30 days.</div>
                 <div v-for="(e, n) in upcomingList" :key="n" class="atl-dash__item">
-                    <div class="atl-dash__date">{{ atlDate(e.date) }}</div>
+                    <div class="atl-dash__date">{{ isPhone ? atlDate(e.date).slice(0, 6) : atlDate(e.date) }}</div>
                     <v-chip :color="changeMeta(e).color" :prepend-icon="changeMeta(e).icon" size="small" variant="tonal" label class="atl-dash__chip">{{ changeMeta(e).text }}</v-chip>
                     <div class="atl-dash__itemmain">
                         <a v-if="changeName(e) && e.seafarerId" href="#" class="atl-link" @click.prevent="openProfile(e.seafarerId)">{{ changeName(e) }}</a>
@@ -2310,6 +2444,19 @@
             </div>
             <div v-if="!docList.length" class="atl-dash__empty">
                 <v-icon icon="mdi-check-circle-outline" color="success"></v-icon> All documents of the crew on board are valid.
+            </div>
+            <!-- Phone: one line per document -->
+            <div v-else-if="isPhone">
+                <div v-for="(x, n) in (allDocs ? docList : docList.slice(0, 8))" :key="n" class="atl-dash__item">
+                    <div class="atl-dash__itemmain">
+                        <a href="#" class="atl-link" @click.prevent="openProfile(x.seafarerId)">{{ fullNameLF(person(x.seafarerId)) }}</a>
+                        <div class="atl-dash__meta">{{ x.rank.toUpperCase() }} · {{ x.vesselName.toUpperCase() }}</div>
+                        <div class="atl-dash__meta">{{ x.doc.name }} · {{ atlDate(x.doc.expiryDate) }}</div>
+                    </div>
+                    <v-chip :color="x.status === 'expired' ? 'error' : 'warning'"
+                            :prepend-icon="x.status === 'expired' ? 'mdi-alert-circle' : 'mdi-clock-alert-outline'"
+                            size="small" variant="tonal">{{ x.status === 'expired' ? 'Expired' : daysLeft(x.doc.expiryDate) + ' days' }}</v-chip>
+                </div>
             </div>
             <v-table v-else class="atl-table__grid" hover>
                 <thead>
@@ -2351,11 +2498,7 @@
 <script type="text/x-template" id="tpl-client-approvals">
 <div class="atl-page">
     <div class="atl-filterbar">
-        <v-tabs v-model="view" color="primary" density="comfortable">
-            <v-tab value="list" prepend-icon="mdi-format-list-bulleted">List</v-tab>
-            <v-tab value="gantt" prepend-icon="mdi-chart-gantt">Rotation Plan</v-tab>
-        </v-tabs>
-        <div v-if="view === 'list'" class="atl-filterbar__fields">
+        <div class="atl-filterbar__fields">
             <div class="atl-seg">
                 <button :class="{ 'is-on': mode === 'pending' }" @click="mode = 'pending'">
                     Waiting for approval
@@ -2369,30 +2512,25 @@
                 <v-text-field v-model="from" type="date" label="Joining from" style="max-width:190px"></v-text-field>
                 <v-text-field v-model="to"   type="date" label="Joining to"   style="max-width:190px"></v-text-field>
             </template>
-            <span class="atl-hint"><v-icon icon="mdi-information-outline" size="16"></v-icon>
+            <span v-if="!isPhone" class="atl-hint"><v-icon icon="mdi-information-outline" size="16"></v-icon>
                 {{ mode === 'pending' ? 'Embarkation requests with candidates waiting for your decision.' : 'All embarkation requests on your vessels joining in the period.' }}
             </span>
         </div>
-        <div v-else class="atl-filterbar__fields">
-            <span class="atl-hint"><v-icon icon="mdi-information-outline" size="16"></v-icon>
-                Rotation plan filtered to requests awaiting your approval — click a bar to review its candidates.</span>
-        </div>
     </div>
 
-    <div v-if="view === 'list'" class="atl-content">
+    <div class="atl-content">
         <atl-table :columns="columns" :items="rows" v-model:visible="visible"
                    pdf-title="Pending Approvals" :pdf-subtitle="pdfSubtitle"
                    :empty-text="mode === 'pending' ? 'Nothing is waiting for your approval.' : 'No requests in this period.'"
                    @open="openItem"></atl-table>
     </div>
-    <client-rotation v-else pending-only embedded></client-rotation>
 </div>
 </script>
 
 <!-- ── Approval dialog x-template (Atlantis "Principal Approval") ─ -->
 <script type="text/x-template" id="tpl-approval-dialog">
-<v-dialog v-model="open" max-width="1180" scrollable>
-    <v-card v-if="item" class="atl-approval">
+<v-dialog v-model="open" max-width="1180" scrollable :fullscreen="isPhone">
+    <v-card v-if="item" :class="['atl-approval', { 'is-phone': isPhone }]">
         <div class="atl-approval__top">
             <v-btn icon="mdi-close" variant="text" @click="open = false"></v-btn>
         </div>
@@ -2423,7 +2561,7 @@
                     <v-chip color="deep-purple" variant="tonal">Principal Approval</v-chip>
                     <v-badge :content="item.pending.length" color="deep-purple" inline></v-badge>
                     <v-spacer></v-spacer>
-                    <v-btn color="error" variant="tonal" class="atl-tool-btn" @click="rejectOpen = true">Reject all</v-btn>
+                    <v-btn v-if="!isPhone" color="error" variant="tonal" class="atl-tool-btn" @click="rejectOpen = true">Reject all</v-btn>
                     <v-menu location="bottom end">
                         <template #activator="{ props }">
                             <v-btn v-bind="props" icon="mdi-history" variant="text" color="grey" title="Decision history"></v-btn>
@@ -2459,8 +2597,8 @@
                     </div>
                 </div>
 
-                <!-- Confirmation -->
-                <div v-if="chosen" class="atl-approval__confirm">
+                <!-- Confirmation (phone: bottom action bar) -->
+                <div v-if="chosen && !isPhone" class="atl-approval__confirm">
                     <v-icon icon="mdi-account-check" color="primary"></v-icon>
                     <span>Approve <strong>{{ fullNameLF(chosen) }}</strong> as {{ item.rank.toUpperCase() }} on {{ item.vessel.name.toUpperCase() }}, joining {{ atlDate(item.joinDate) }}?</span>
                     <v-spacer></v-spacer>
@@ -2492,6 +2630,15 @@
             </div>
         </v-card-text>
 
+        <!-- Phone: fixed action bar -->
+        <div v-if="isPhone && item.status === 'pending'" class="atl-approval__actions">
+            <div v-if="chosen" class="atl-approval__actions-text">Approve <strong>{{ fullNameLF(chosen) }}</strong>?</div>
+            <div class="d-flex ga-2">
+                <v-btn color="error" variant="tonal" class="atl-tool-btn flex-grow-1" @click="rejectOpen = true">Reject all</v-btn>
+                <v-btn color="primary" variant="flat" class="atl-tool-btn flex-grow-1" :disabled="!chosen" @click="confirmApprove">Confirm approval</v-btn>
+            </div>
+        </div>
+
         <!-- Reject all: reason required -->
         <v-dialog v-model="rejectOpen" max-width="560">
             <v-card class="pa-2">
@@ -2515,8 +2662,67 @@
 
 <!-- ── Client UI: Rotation Plan x-template (Atlantis Gantt) ──── -->
 <script type="text/x-template" id="tpl-client-rotation">
-<div :class="embedded ? 'atl-page atl-page--embedded' : 'atl-page'">
+<div class="atl-page">
 
+    <!-- ══ Phone: crew plan (one card per position) ══ -->
+    <template v-if="isPhone">
+        <div class="atl-filterbar atl-pfilters">
+            <div class="atl-hscroll">
+                <v-chip :variant="!filterVessel ? 'flat' : 'outlined'" color="primary" size="small" @click="filterVessel = null">All vessels</v-chip>
+                <v-chip v-for="v in vesselItems" :key="v.id" :variant="filterVessel === v.id ? 'flat' : 'outlined'" color="primary" size="small"
+                        @click="filterVessel = v.id">{{ v.name }}</v-chip>
+            </div>
+            <div class="atl-hscroll mt-2">
+                <div class="atl-seg atl-seg--types">
+                    <template v-for="t in rfTypes" :key="t.id">
+                        <button :class="{ 'is-on': rfType === t.id }" @click="rfType = t.id">
+                            <span v-if="t.swatch" :class="['atl-swatch', 'atl-swatch--sm', 'atl-bar--' + t.swatch]"></span>{{ t.label }}
+                        </button>
+                    </template>
+                </div>
+            </div>
+            <v-select v-model="filterRank" :items="rankItems" label="Rank" placeholder="All ranks" persistent-placeholder clearable class="mt-3"></v-select>
+        </div>
+        <div class="atl-agenda">
+            <div v-if="!phoneGroups.length" class="atl-empty">No positions match the filters.</div>
+            <template v-for="g in phoneGroups" :key="g.vessel.id">
+                <div class="atl-gantt__vessel atl-agenda__vessel">
+                    <div class="atl-gantt__client">{{ g.vessel.client }}</div>
+                    <div class="atl-gantt__vname">{{ g.vessel.name }}</div>
+                </div>
+                <div v-for="r in g.rows" :key="r.key" :class="['atl-pcard', { 'is-extra': !r.safeManning }]" @click="openRowSheet(r, g.vessel)">
+                    <div class="atl-pcard__head">
+                        <span class="atl-pcard__rank">{{ r.rank }}</span>
+                        <span v-if="r.total > 1" class="atl-gantt__count">{{ r.pos }}/{{ r.total }}</span>
+                        <span v-if="r.extra" class="atl-gantt__count atl-gantt__count--new">New</span>
+                        <v-spacer></v-spacer>
+                        <v-icon icon="mdi-chevron-right" size="20" color="grey"></v-icon>
+                    </div>
+                    <div v-if="r.cur" class="atl-pcard__line">
+                        <span class="atl-swatch atl-swatch--dot atl-bar--running"></span>
+                        <div>
+                            <strong>{{ r.cur.tip.title }}</strong>
+                            <div class="atl-pcard__meta">Since {{ atlDate(r.cur.from) }} · until {{ atlDate(r.cur.to) }} ({{ daysText(r.cur.to) }})</div>
+                        </div>
+                    </div>
+                    <div v-for="q in r.requests" :key="q.label" class="atl-pcard__line">
+                        <span :class="['atl-pchip', 'atl-bar--' + q.kind]">{{ q.label }}</span>
+                        <span class="atl-pcard__meta">{{ q.tip.chip }} · {{ atlDate(q.to) }}<template v-if="q.kind === 'rfp' && r.promo"> → {{ r.promo.toRank.toUpperCase() }}</template></span>
+                    </div>
+                    <div v-if="r.relief" class="atl-pcard__line">
+                        <span :class="['atl-pchip', 'atl-bar--' + r.relief.kind]">{{ r.relief.tip.chip }}</span>
+                        <span class="atl-pcard__meta flex-grow-1">{{ r.relief.label }} · from {{ atlDate(r.relief.from) }}</span>
+                        <v-btn v-if="r.relief.kind === 'approval' && canOpen(r.relief)" size="small" color="primary" variant="flat"
+                               class="atl-tool-btn" @click.stop="openBar(r.relief)">Review</v-btn>
+                    </div>
+                    <div v-if="r.prev" class="atl-pcard__prev">Previous: {{ r.prev.label }} until {{ atlDate(r.prev.to) }}</div>
+                </div>
+            </template>
+        </div>
+    </template>
+
+    <!-- ══ Tablet / desktop: Atlantis Gantt ══ -->
+    <template v-else>
     <!-- Filters (Atlantis layout, internal controls such as Client / RFC ISSUED / + EMBARK hidden) -->
     <div class="atl-filterbar atl-gantt-filters">
         <div class="atl-filterbar__fields mt-3">
@@ -2584,7 +2790,7 @@
                         <div class="atl-gantt__lane">
                             <template v-for="(b, bi) in r.bars" :key="bi">
                                 <div v-if="inWindow(b)" :class="['atl-bar', 'atl-bar--' + b.kind, { 'is-clickable': canOpen(b) }]" :style="barStyle(b)"
-                                     @mouseenter="showTip($event, b)" @mousemove="moveTip" @mouseleave="hideTip" @click="openBar(b)">
+                                     @mouseenter="showTip($event, b)" @mousemove="moveTip" @mouseleave="hideTip" @click="onBarClick(b, r, g.vessel)">
                                     <span>{{ b.label }}</span>
                                 </div>
                             </template>
@@ -2612,6 +2818,31 @@
         <span v-if="todayPct > 0 && todayPct < 100" class="atl-gantt__foot-today" :style="{ left: lineLeft(todayPct) }">TODAY</span>
         <span v-if="horizonPct > 0 && horizonPct < 100" class="atl-gantt__foot-horizon" :style="{ left: lineLeft(horizonPct) }">+2 mo</span>
     </div>
+    </template>
+
+    <!-- Touch / phone: bar cards in a bottom sheet -->
+    <v-bottom-sheet v-model="sheetOpen">
+        <v-card v-if="sheet" class="atl-sheet">
+            <div class="atl-filtermenu__head">
+                <span class="atl-colmenu__title">{{ sheet.title }}</span>
+                <v-btn icon="mdi-close" variant="text" size="small" @click="sheet = null"></v-btn>
+            </div>
+            <v-divider></v-divider>
+            <div class="atl-sheet__body">
+                <div v-for="(b, i) in sheet.bars" :key="i" class="atl-sheet__item">
+                    <div class="atl-gantt-tip__head">
+                        <span class="atl-gantt-tip__title">{{ b.tip.title }}</span>
+                        <span :class="['atl-gantt-tip__chip', 'atl-bar--' + b.kind]">{{ b.tip.chip }}</span>
+                    </div>
+                    <div v-for="l in b.tip.lines" :key="l[0]" class="atl-gantt-tip__line">
+                        <span>{{ l[0] }}</span><strong>{{ l[1] }}</strong>
+                    </div>
+                    <v-btn v-if="canOpen(b)" block color="primary" :variant="b.kind === 'approval' ? 'flat' : 'tonal'" class="mt-2 atl-tool-btn"
+                           @click="openBar(b)">{{ b.kind === 'approval' ? 'Review candidates' : 'Request details' }}</v-btn>
+                </div>
+            </div>
+        </v-card>
+    </v-bottom-sheet>
 
     <!-- Hover card -->
     <div v-if="tip" class="atl-gantt-tip" :style="tipStyle()">
@@ -3768,12 +3999,21 @@ const app = createApp({
         return { sidebarOpen, openSections, toggleSection, isClientUi };
     }
 });
+// Client UI phone layout: narrow screens, or a phone held sideways. isTouch: no hover.
+app.mixin({
+    computed: {
+        isPhone() {
+            const d = this.$vuetify && this.$vuetify.display;
+            return !!d && (d.width < 600 || (d.height < 500 && d.width < 1000));
+        },
+        isTouch() { return window.matchMedia('(hover: none)').matches; },
+    },
+});
 app.component('client-portal',          ClientPortal);
 app.component('atl-table',              AtlTable);
 app.component('seafarer-profile-dialog', SeafarerProfileDialog);
 app.component('document-viewer',        DocumentViewerDialog);
 app.component('approval-dialog',        ApprovalDialog);
-app.component('client-rotation',        ClientRotationView);
 app.use(router);
 app.use(vuetify);
 app.mount('#app');
