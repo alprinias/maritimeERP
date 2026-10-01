@@ -5,6 +5,7 @@
      CREW_RANK_ORDER, crewSeafarers, crewReliefSeed, crewPastAssignments,
      seafarerById(), seafarerIdByName(), crewSignoffDate(), crewRelief(),
      crewOnDate(), crewEvents(), standaloneRfes(), rankPos(), isApprovedStage(),
+     rfeLiveStage(), rfeSeedStage(),
      fullNameLF(), barLabel(), seafarerAge(),
      CREW_PORTS, crewPort(), seafarerTours(), lastTourOf(), dedicatedClientOf(),
      availabilityOf()
@@ -150,6 +151,19 @@ function isApprovedStage(stage) {
     return stage === 'preparation' || stage === 'ready';
 }
 
+// Stage of an RFE row in erpStore.rfaRows: approval while candidates sent to
+// the principal are undecided, preparation once one is approved
+function rfeLiveStage(live) {
+    if (live.rfeStatus === 'OnPreparation') return 'preparation';
+    var cands = live.rfeCandidates || live.candidates || [];
+    return cands.some(c => c.acceptance === 'onApproval' && !c.approvalChoice) ? 'approval' : 'search';
+}
+
+// Stage of a seed RFE status (before the RFA rows are built)
+function rfeSeedStage(status) {
+    return { active: 'search', approval: 'approval' }[status] || 'preparation';
+}
+
 function seafarerById(id) {
     if (id == null) return null;
     return allSeafarers.find(s => s.id === id) || crewSeafarers.find(s => s.id === id) || null;
@@ -178,9 +192,7 @@ function crewRelief(vessel, row) {
         var live = erpStore.rfaRows && erpStore.rfaRows.replacement
             && erpStore.rfaRows.replacement.find(x => x.rfeNo === row.rfr_rfe.rfaNo);
         var name = live ? (live.confirmedSeafarer || null) : (row.rfr_rfe.confirmedSeafarer || null);
-        var stage = live
-            ? (live.rfeStatus === 'OnPreparation' ? 'preparation' : 'search')
-            : (row.rfr_rfe.status === 'active' ? 'search' : 'preparation');
+        var stage = live ? rfeLiveStage(live) : rfeSeedStage(row.rfr_rfe.status);
         return { date: row.rfr_rfe.embarkDate, port: row.rfr_rfe.port, ref: row.rfr_rfe.rfaNo,
                  name, seafarerId: seafarerIdByName(name), stage };
     }
@@ -284,9 +296,7 @@ function standaloneRfes(vessel) {
             var live = erpStore.rfaRows && erpStore.rfaRows.embarkation
                 && erpStore.rfaRows.embarkation.find(x => x.rfaNo === r.rfaNo);
             var name = live ? (live.confirmedSeafarer || null) : (r.confirmedSeafarer || null);
-            var stage = live
-                ? (live.rfeStatus === 'OnPreparation' ? 'preparation' : 'search')
-                : (r.status === 'active' ? 'search' : 'preparation');
+            var stage = live ? rfeLiveStage(live) : rfeSeedStage(r.status);
             return { ref: r.rfaNo, rank: r.rank, date: r.embarkDate,
                      end: r.serviceEnd || isoDate(addM(d(r.embarkDate), r.contractMonths || 6)),
                      port: r.port, name, seafarerId: seafarerIdByName(name), stage };

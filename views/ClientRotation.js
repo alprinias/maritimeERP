@@ -12,8 +12,9 @@
      rfp      — promotion request (orange) + diamond and dashed arrow to the
                 position of the new rank
      search / approval / preparation / ready — the planned relief service
-   Standalone RFEs get their own row. Hover shows an Atlantis hover card;
-   nothing opens on click (approval bars open the approval dialog in Phase 6).
+   Standalone RFEs get their own row. Hover shows an Atlantis hover card.
+   Clicking a relief bar backed by an RFE opens the approval dialog; nothing
+   opens for running / past services.
 
    Depends on globals: erpStore, allVessels, allClientsData, utils.js,
      crew.js, atlDate (ClientCommon.js)
@@ -124,13 +125,19 @@ function clientGanttRows(vessel) {
 const ClientRotationView = {
     template: '#tpl-client-rotation',
 
+    // Also used as <client-rotation pending-only embedded> inside Pending Approvals
+    props: {
+        pendingOnly: { type: Boolean, default: false },   // start filtered to Approval bars
+        embedded:    { type: Boolean, default: false },   // fill the parent instead of the page
+    },
+
     data() {
         return {
             store:        erpStore,
             todayStr:     isoDate(TODAY),
             filterVessel: null,
             filterRank:   null,
-            rfType:       '',
+            rfType:       this.pendingOnly ? 'approval' : '',
             windowMonths: 12,
             fromStr:      this.defaultFrom(),
             tip:          null,          // { bar, x, y }
@@ -250,6 +257,14 @@ const ClientRotationView = {
                 });
             });
             return out;
+        },
+
+        // Relief bars backed by an RFE open the approval dialog (Atlantis: approve on the Gantt line)
+        canOpen(bar) { return !!(GANTT_STAGE_LABEL[bar.kind] && bar.ref && findApprovalItem(bar.ref)); },
+        openBar(bar) {
+            if (!this.canOpen(bar)) return;
+            this.tip = null;
+            this.store.clientUi.approvalRef = bar.ref;
         },
 
         // ── Hover card ────────────────────────────────────────

@@ -228,7 +228,9 @@ const AtlTable = {
 const DocumentViewerDialog = {
     template: '#tpl-document-viewer',
     props: {
-        doc:       { type: Object, default: null },   // record from seafarerDocuments()
+        // record from seafarerDocuments(), or any doc-like object with its own
+        // pdf() generator and statusText (e.g. a candidate CV)
+        doc:       { type: Object, default: null },
         seafarer:  { type: Object, default: null },
     },
     emits: ['close'],
@@ -238,17 +240,19 @@ const DocumentViewerDialog = {
             immediate: true,
             handler(doc) {
                 if (this.url) URL.revokeObjectURL(this.url);
-                this.url = doc ? URL.createObjectURL(documentPdf(doc, this.seafarer).output('blob')) : null;
+                this.url = doc ? URL.createObjectURL(this.pdf(doc).output('blob')) : null;
             },
         },
     },
     beforeUnmount() { if (this.url) URL.revokeObjectURL(this.url); },
     methods: {
         atlDate,
+        pdf(doc) { return doc.pdf ? doc.pdf() : documentPdf(doc, this.seafarer); },
         statusLabel(doc) {
+            if (doc.statusText) return doc.statusText;
             return { valid: 'Valid', permanent: 'Valid (no expiry)', expiring: 'Expiring soon', expired: 'Expired' }[docStatus(doc)];
         },
-        download() { documentPdf(this.doc, this.seafarer).save(this.doc.fileName); },
+        download() { this.pdf(this.doc).save(this.doc.fileName); },
     },
 };
 

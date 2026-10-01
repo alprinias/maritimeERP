@@ -14,9 +14,10 @@ shiftSeedDates([allVessels, allSeafarers, seedRfeRows], seedMonthShift());
 
 var erpStore = Vue.reactive({
 
-    // Client UI — the client the portal is "logged in" as, and the seafarer
-    // whose profile modal is open (null = closed)
-    clientUi: { clientId: 'c1', profileId: null },
+    // Client UI — the client the portal is "logged in" as; the seafarer whose
+    // profile modal is open and the request whose approval dialog is open
+    // (null = closed); toast = snackbar message
+    clientUi: { clientId: 'c1', profileId: null, approvalRef: null, toast: '' },
 
     // Rotation Plan — standalone RFE rows (seeded once)
     rfeRows: seedRfeRows.map(r => Object.assign({}, r)),

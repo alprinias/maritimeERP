@@ -16,7 +16,11 @@
 
    Depends on globals: allVessels (vessels.js), isoDate, addM, TODAY (utils.js),
                        erpStore (store.js)
-   Exposes global: RFAsView
+   Exposes globals: RFAsView, ensureRfaRows(), rfaCandidates(), pendingCandidates(),
+                    principalApprove(), principalRejectAll()
+
+   Candidates "On Approval" are decided by the principal in the Client UI;
+   this view shows their state read-only (Awaiting / Approved / Rejected by principal).
 ──────────────────────────────────────────────────────────────── */
 
 // ── Default task lists per RFA type ──────────────────────────
@@ -131,24 +135,7 @@ const RFAsView = {
     },
 
     created() {
-        // Rebuild from allVessels (picks up RFAs created in Rotation Plan),
-        // but reuse row objects already in erpStore so task / candidate /
-        // approval state survives navigating away and back.
-        const fresh = {
-            signoff:     this.buildSignoffRows(),
-            extension:   this.buildExtensionRows(),
-            promotion:   this.buildPromotionRows(),
-            embarkation: this.buildEmbarkationRows(),
-            replacement: this.buildReplacementRows(),
-        };
-        const cached = erpStore.rfaRows || {};
-        Object.keys(fresh).forEach(tab => {
-            const byNo = {};
-            (cached[tab] || []).forEach(r => { byNo[r.rfaNo] = r; });
-            fresh[tab] = fresh[tab].map(r => byNo[r.rfaNo] || r);
-        });
-        erpStore.rfaRows = fresh;
-        this.allRows = erpStore.rfaRows;
+        this.allRows = ensureRfaRows();
     },
 
     computed: {
@@ -317,54 +304,12 @@ const RFAsView = {
             });
         },
 
-        // Set one candidate's approvalChoice to 'approved' — mutually exclusive.
-        // Clears approvalChoice on all others that were 'approved'.
-        // Triggers OnPreparation transition.
-        setApproved(rfa, candidateId, source) {
-            const candidates = source === 'rfr' ? rfa.rfeCandidates : rfa.candidates;
-            if (!candidates) return;
-            const target = candidates.find(c => c.id === candidateId);
-            if (!target) return;
-            // Toggle off — revert to no choice, go back to OnSearch
-            if (target.approvalChoice === 'approved') {
-                target.approvalChoice = null;
-                rfa.rfeStatus = 'OnSearch';
-                rfa.confirmedSeafarer = null;
-                return;
-            }
-            // Clear any previously approved candidate
-            candidates.forEach(c => {
-                if (c.approvalChoice === 'approved') c.approvalChoice = null;
-            });
-            // Approve this one
-            target.approvalChoice = 'approved';
-            rfa.rfeStatus = 'OnPreparation';
-            rfa.confirmedSeafarer = target.name;
-            // Initialise task list
-            if (source === 'rfr') {
-                if (!rfa.rfeTasks || rfa.rfeTasks.length === 0) rfa.rfeTasks = makeTasks('rfe');
-            } else {
-                if (!rfa.tasks || rfa.tasks.length === 0) rfa.tasks = makeTasks('rfe');
-            }
-        },
+        // Approve / reject of candidates On Approval is done by the principal in
+        // the Client UI (principalApprove / principalRejectAll below).
 
-        // Set one candidate's approvalChoice to 'rejected' — independent per candidate.
-        setRejected(rfa, candidateId, source) {
-            const candidates = source === 'rfr' ? rfa.rfeCandidates : rfa.candidates;
-            if (!candidates) return;
-            const target = candidates.find(c => c.id === candidateId);
-            if (!target) return;
-            // Toggle off if already rejected
-            target.approvalChoice = target.approvalChoice === 'rejected' ? null : 'rejected';
-            // If this candidate was previously approved, revert the RFE
-            if (rfa.confirmedSeafarer === target.name && target.approvalChoice !== 'approved') {
-                rfa.rfeStatus = 'OnSearch';
-                rfa.confirmedSeafarer = null;
-            }
-        },
-
-        // Build reactive candidate objects for an RFE from allSeafarers
-        buildCandidatesForRfe(rfe) {
+        // Build reactive candidate objects for an RFE from allSeafarers.
+        // proposed: seafarer ids already sent to the principal (seed data).
+        buildCandidatesForRfe(rfe, proposed) {
             const groupMap = {
                 'Client Ex-Crew': 'dedicated',
                 'Other Ex-Crew':  'excrew',
@@ -381,8 +326,9 @@ const RFAsView = {
                     services:       s.services,
                     groupId:        groupMap[s.category] || 'new',
                     checked:        false,
-                    acceptance:     null,   // null|'pending'|'accepted'|'refused'|'onApproval'
-                    approvalChoice: null,   // null|'approved'|'rejected' (set during onApproval phase)
+                    // null|'pending'|'accepted'|'refused'|'onApproval'
+                    acceptance:     (proposed || []).includes(s.id) ? 'onApproval' : null,
+                    approvalChoice: null,   // null|'approved'|'rejected' — set by the principal
                 }));
         },
 
@@ -418,22 +364,14 @@ const RFAsView = {
 
         buildReplacementRows() {
             const rows = [];
-            const groupMap = { 'Client Ex-Crew':'dedicated', 'Other Ex-Crew':'excrew', 'New Candidates':'new' };
             allVessels.forEach(v => {
                 v.ranks.forEach(r => {
                     if (!r.rfs || !r.rfr_rfe) return;
-                    const rfeStatus = (r.rfr_rfe.status === 'active') ? 'OnSearch' : 'OnPreparation';
+                    // 'approval' = still searching, with candidates sent to the principal
+                    const rfeStatus = ['active', 'approval'].includes(r.rfr_rfe.status) ? 'OnSearch' : 'OnPreparation';
                     // Build candidate list for the RFE side if OnSearch
                     const rfeCandidates = rfeStatus === 'OnSearch'
-                        ? allSeafarers
-                            .filter(s => s.rank === r.rank)
-                            .map(s => ({
-                                id: s.id, name: s.name, age: s.age,
-                                nationality: s.nationality, availDate: s.availDate,
-                                services: s.services,
-                                groupId: groupMap[s.category] || 'new',
-                                checked: false, acceptance: null, approvalChoice: null,
-                            }))
+                        ? this.buildCandidatesForRfe({ rank: r.rank }, r.rfr_rfe.proposed)
                         : [];
                     rows.push({
                         rfaNo:       'RFR-' + r.rfs.rfaNo.split('-')[1],  // use RFR prefix for display
@@ -455,6 +393,7 @@ const RFAsView = {
                         rfeTasks:      rfeStatus === 'OnPreparation' ? makeTasks('rfe') : [],
                         confirmedSeafarer: r.rfr_rfe.confirmedSeafarer || null,
                         rfeCandidates,
+                        approvalHistory: [],   // principal decisions (Client UI)
                     });
                 });
             });
@@ -511,7 +450,8 @@ const RFAsView = {
             const rows = [];
             seedRfeRows.forEach(rfe => {
                 const vessel = allVessels.find(v => v.id === rfe.vesselId) || {};
-                const rfeStatus = (rfe.status === 'active') ? 'OnSearch' : 'OnPreparation';
+                // 'approval' = still searching, with candidates sent to the principal
+                const rfeStatus = ['active', 'approval'].includes(rfe.status) ? 'OnSearch' : 'OnPreparation';
                 rows.push({
                     rfaNo:      rfe.rfaNo,
                     client:     vessel.client    || '—',
@@ -527,8 +467,11 @@ const RFAsView = {
                     contractMonths:    rfe.contractMonths,
                     contractVariation: rfe.contractVariation,
                     confirmedSeafarer: rfe.confirmedSeafarer || null,
-                    candidates: null,   // populated lazily by selectRfa() — on the row so Vue tracks it
+                    // populated lazily by selectRfa() — on the row so Vue tracks it — or
+                    // up front when candidates were already sent to the principal
+                    candidates: rfe.proposed ? this.buildCandidatesForRfe(rfe, rfe.proposed) : null,
                     tasks: rfeStatus === 'OnPreparation' ? makeTasks('rfe') : [],
+                    approvalHistory: [],   // principal decisions (Client UI)
                 });
             });
             return rows;
@@ -558,3 +501,62 @@ const RFAsView = {
         },
     },
 };
+
+// ── Shared RFA rows (RFAs view + Client UI) ───────────────────
+/* Builds erpStore.rfaRows from allVessels / seedRfeRows, reusing row objects
+   already in the store (by rfaNo) so task / candidate / approval state
+   survives navigation and is shared with the Client UI. */
+function ensureRfaRows() {
+    const m = RFAsView.methods;
+    const fresh = {
+        signoff:     m.buildSignoffRows(),
+        extension:   m.buildExtensionRows(),
+        promotion:   m.buildPromotionRows(),
+        embarkation: m.buildEmbarkationRows(),
+        replacement: m.buildReplacementRows(),
+    };
+    const cached = erpStore.rfaRows || {};
+    Object.keys(fresh).forEach(tab => {
+        const byNo = {};
+        (cached[tab] || []).forEach(r => { byNo[r.rfaNo] = r; });
+        fresh[tab] = fresh[tab].map(r => byNo[r.rfaNo] || r);
+    });
+    erpStore.rfaRows = fresh;
+    return erpStore.rfaRows;
+}
+
+// ── Principal decisions (made in the Client UI) ───────────────
+// Candidates of an embarkation row (candidates) or a replacement row (rfeCandidates)
+function rfaCandidates(row) {
+    return row.rfeCandidates || row.candidates || [];
+}
+
+// Candidates sent to the principal and not decided yet
+function pendingCandidates(row) {
+    if (row.rfeStatus !== 'OnSearch') return [];
+    return rfaCandidates(row).filter(c => c.acceptance === 'onApproval' && !c.approvalChoice);
+}
+
+// Approve one candidate: the others on approval stay undecided, the RFE moves
+// to OnPreparation with the candidate as confirmed seafarer.
+function principalApprove(row, candidateId) {
+    const target = rfaCandidates(row).find(c => c.id === candidateId);
+    if (!target) return;
+    target.approvalChoice = 'approved';
+    row.rfeStatus = 'OnPreparation';
+    row.confirmedSeafarer = target.name;
+    if (row.rfeCandidates) {
+        if (!row.rfeTasks || !row.rfeTasks.length) row.rfeTasks = makeTasks('rfe');
+    } else if (!row.tasks || !row.tasks.length) {
+        row.tasks = makeTasks('rfe');
+    }
+    row.approvalHistory.push({ date: isoDate(new Date()), action: 'approved', candidates: [target.name] });
+}
+
+// Reject every candidate on approval (reason required); the RFE stays OnSearch
+// so the agency continues the candidate search.
+function principalRejectAll(row, reason) {
+    const pending = pendingCandidates(row);
+    pending.forEach(c => { c.approvalChoice = 'rejected'; });
+    row.approvalHistory.push({ date: isoDate(new Date()), action: 'rejected', reason, candidates: pending.map(c => c.name) });
+}

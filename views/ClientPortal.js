@@ -14,16 +14,26 @@ const ClientPortal = {
         return { store: erpStore, drawer: false };
     },
 
+    created() {
+        // Approvals and relief stages read the live RFA rows
+        ensureRfaRows();
+    },
+
     computed: {
         portalClients() { return allClientsData.filter(c => c.isActive); },
         client() { return allClientsData.find(c => c.id === this.store.clientUi.clientId) || null; },
+        pendingCount() { return clientApprovalItems(this.client).filter(i => i.status === 'pending').length; },
         menu() {
             return [
                 { to: '/client/dashboard',  title: 'Dashboard',         icon: 'mdi-view-dashboard-outline' },
                 { to: '/client/crew-lists', title: 'Crew Lists',        icon: 'mdi-account-group' },
                 { to: '/client/rotation',   title: 'Rotation Plan',     icon: 'mdi-chart-gantt' },
-                { to: '/client/approvals',  title: 'Pending Approvals', icon: 'mdi-account-check-outline' },
+                { to: '/client/approvals',  title: 'Pending Approvals', icon: 'mdi-account-check-outline', badge: this.pendingCount },
             ];
+        },
+        toastOpen: {
+            get() { return !!this.store.clientUi.toast; },
+            set(v) { if (!v) this.store.clientUi.toast = ''; },
         },
         pageTitle() { return this.$route.meta.title || 'Client Portal'; },
         pageIcon()  { return this.$route.meta.icon || 'mdi-domain'; },

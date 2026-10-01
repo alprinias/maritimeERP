@@ -12,7 +12,8 @@
    rfa     : null | { rfaNo, type('Extend'|'Replace'|'Promote'), status,
                       rfaStart, rfaEnd, newRank?, proposed:[], confirmedSeafarer }
    rfs     : null | { rfaNo, dateCreated, signoffDate, port, status }
-   rfr_rfe : null | { rfaNo, dateCreated, embarkDate, port, status, confirmedSeafarer? }
+   rfr_rfe : null | { rfaNo, dateCreated, embarkDate, port, status, confirmedSeafarer?, proposed? }
+             status 'approval' + proposed: [seafarer ids] = candidates sent to the principal
 */
 
 var allVessels = [
@@ -30,14 +31,11 @@ var allVessels = [
             {
                 rank:'Master',
                 onboard:{ seafarerId:1001, name:'RAMON ESTRADA',   shortName:'R. Estrada',   embark:'2025-12-15', signoff:'2026-06-15', contract:'6 months' },
-                rfa:{ rfaNo:'RFR-1042', status:'approval',
-                      rfaStart:'2026-04-15', rfaEnd:'2026-12-15',
-                      proposed:[
-                          { name:'NIKOS PAPADOPOULOS', nationality:'Greek',   service:228 },
-                          { name:'VLADIM. PETROV',     nationality:'Russian', service:192 },
-                      ], confirmedSeafarer:null },
+                rfa: null,
                 rfs:    { rfaNo:'RFS-4001', dateCreated:'2026-04-15', signoffDate:'2026-06-15', port:'Port of Manila', status:'active' },
-                rfr_rfe:{ rfaNo:'RFE-4001', dateCreated:'2026-04-15', embarkDate:'2026-06-15',  port:'Port of Manila', status:'active' },
+                // Three candidates sent to the principal for approval
+                rfr_rfe:{ rfaNo:'RFE-4001', dateCreated:'2026-04-15', embarkDate:'2026-06-15',  port:'Port of Manila', status:'approval',
+                          proposed:[301, 302, 303] },
             },
             {
                 rank:'Chief Officer',
@@ -185,12 +183,10 @@ var allVessels = [
             {
                 rank:'Chief Officer',
                 onboard:{ seafarerId:1012, name:'ROBERTO LINO',    shortName:'R. Lino',      embark:'2026-01-10', signoff:'2026-07-10', contract:'6 months' },
-                rfa:{ rfaNo:'RFR-1051', type:'Replace', status:'approval',
-                      rfaStart:'2026-05-10', rfaEnd:'2027-01-10',
-                      proposed:[
-                          { name:'PETROS PAPPAS', nationality:'Greek',  service:39 },
-                          { name:'HANS MÜLLER',   nationality:'German', service:94 },
-                      ], confirmedSeafarer:'PETROS PAPPAS' }
+                rfa: null,
+                rfs:    { rfaNo:'RFS-3051', dateCreated:'2026-05-10', signoffDate:'2026-07-10', port:'Singapore', status:'active' },
+                rfr_rfe:{ rfaNo:'RFE-3051', dateCreated:'2026-05-10', embarkDate:'2026-07-10',  port:'Singapore', status:'approval',
+                          proposed:[103, 102] },
             },
             {
                 rank:'Bosun', isRating: true,
@@ -279,11 +275,10 @@ var allVessels = [
             {
                 rank:'Chief Engineer',
                 onboard:{ seafarerId:1021, name:'SPIROS ALEXIOU',  shortName:'S. Alexiou',   embark:'2026-01-05', signoff:'2026-07-05', contract:'6 months' },
-                rfa:{ rfaNo:'RFR-1044', status:'approval',
-                      rfaStart:'2026-05-05', rfaEnd:'2027-01-05',
-                      proposed:[
-                          { name:'MARCO ESPOSITO', nationality:'Italian', service:63 },
-                      ], confirmedSeafarer:null }
+                rfa: null,
+                rfs:    { rfaNo:'RFS-3044', dateCreated:'2026-05-05', signoffDate:'2026-07-05', port:'Piraeus', status:'active' },
+                rfr_rfe:{ rfaNo:'RFE-3044', dateCreated:'2026-05-05', embarkDate:'2026-07-05',  port:'Piraeus', status:'approval',
+                          proposed:[501] },
             },
         ]
     },

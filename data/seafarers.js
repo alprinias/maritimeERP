@@ -47,7 +47,7 @@ var seedRfeRows = [
         vesselId: 'v1', rfaNo: 'RFE-2011', rank: 'Chief Officer',
         dateCreated: '2026-05-01', embarkDate: '2026-07-01',
         port: 'Port of Manila', contractMonths: 6, contractVariation: 1,
-        serviceEnd: '2027-01-01', status: 'active',
+        serviceEnd: '2027-01-01', status: 'approval', proposed: [102, 103],
     },
     // MV Atlantic Pride (v2) — Captain vacancy
     {

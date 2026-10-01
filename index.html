@@ -1450,35 +1450,14 @@
                                                   class="text-[10px] font-black px-2.5 py-1 rounded-full bg-red-100 text-red-600 border border-red-200">
                                                 ✕ Refused
                                             </span>
-                                            <!-- On Approval state: pill + Approved/Rejected radios -->
-                                            <template v-else-if="c.acceptance === 'onApproval'">
-                                                <span :class="['text-[10px] font-black px-2.5 py-1 rounded-full whitespace-nowrap border',
-                                                               c.approvalChoice === 'approved' ? 'bg-emerald-100 text-emerald-700 border-emerald-300' :
-                                                               c.approvalChoice === 'rejected' ? 'bg-red-50 text-red-500 border-red-200' :
-                                                               'bg-violet-100 text-violet-700 border-violet-300']">
-                                                    {{ c.approvalChoice === 'approved' ? '✓ Approved' : c.approvalChoice === 'rejected' ? '✕ Rejected' : '⏳ On Approval' }}
-                                                </span>
-                                                <div class="flex flex-col gap-1.5 mt-1.5">
-                                                    <label class="flex items-center gap-1.5 cursor-pointer">
-                                                        <input type="radio"
-                                                               :name="'approval-' + selectedRfa.rfaNo"
-                                                               value="approved"
-                                                               :checked="c.approvalChoice === 'approved'"
-                                                               @change="setApproved(selectedRfa, c.id)"
-                                                               class="accent-emerald-600 w-3.5 h-3.5">
-                                                        <span :class="['text-[11px] font-bold', c.approvalChoice === 'approved' ? 'text-emerald-700' : 'text-gray-500']">Approved</span>
-                                                    </label>
-                                                    <label class="flex items-center gap-1.5 cursor-pointer">
-                                                        <input type="radio"
-                                                               :name="'rejected-' + c.id"
-                                                               value="rejected"
-                                                               :checked="c.approvalChoice === 'rejected'"
-                                                               @change="setRejected(selectedRfa, c.id)"
-                                                               class="accent-red-500 w-3.5 h-3.5">
-                                                        <span :class="['text-[11px] font-bold', c.approvalChoice === 'rejected' ? 'text-red-600' : 'text-gray-500']">Rejected</span>
-                                                    </label>
-                                                </div>
-                                            </template>
+                                            <!-- On Approval: read-only — the principal decides in the Client UI -->
+                                            <span v-else-if="c.acceptance === 'onApproval'"
+                                                  :class="['text-[10px] font-black px-2.5 py-1 rounded-full whitespace-nowrap border',
+                                                           c.approvalChoice === 'approved' ? 'bg-emerald-100 text-emerald-700 border-emerald-300' :
+                                                           c.approvalChoice === 'rejected' ? 'bg-red-50 text-red-500 border-red-200' :
+                                                           'bg-violet-100 text-violet-700 border-violet-300']">
+                                                {{ c.approvalChoice === 'approved' ? '✓ Approved by principal' : c.approvalChoice === 'rejected' ? '✕ Rejected by principal' : '⏳ Awaiting principal' }}
+                                            </span>
                                         </div>
 
                                     </div>
@@ -1809,35 +1788,14 @@
                                                     </div>
                                                     <span v-else-if="c.acceptance === 'accepted'" class="text-[10px] font-black px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-300">✓ Accepted</span>
                                                     <span v-else-if="c.acceptance === 'refused'" class="text-[10px] font-black px-2.5 py-1 rounded-full bg-red-100 text-red-600 border border-red-200">✕ Refused</span>
-                                                    <!-- On Approval + Approved checkbox -->
-                                                    <template v-else-if="c.acceptance === 'onApproval'">
-                                                        <span :class="['text-[10px] font-black px-2.5 py-1 rounded-full whitespace-nowrap border',
-                                                                       c.approvalChoice === 'approved' ? 'bg-emerald-100 text-emerald-700 border-emerald-300' :
-                                                                       c.approvalChoice === 'rejected' ? 'bg-red-50 text-red-500 border-red-200' :
-                                                                       'bg-violet-100 text-violet-700 border-violet-300']">
-                                                            {{ c.approvalChoice === 'approved' ? '✓ Approved' : c.approvalChoice === 'rejected' ? '✕ Rejected' : '⏳ On Approval' }}
-                                                        </span>
-                                                        <div class="flex flex-col gap-1.5 mt-1.5">
-                                                            <label class="flex items-center gap-1.5 cursor-pointer">
-                                                                <input type="radio"
-                                                                       :name="'rfr-approval-' + selectedRfa.rfaNo"
-                                                                       value="approved"
-                                                                       :checked="c.approvalChoice === 'approved'"
-                                                                       @change="setApproved(selectedRfa, c.id, 'rfr')"
-                                                                       class="accent-emerald-600 w-3.5 h-3.5">
-                                                                <span :class="['text-[11px] font-bold', c.approvalChoice === 'approved' ? 'text-emerald-700' : 'text-gray-500']">Approved</span>
-                                                            </label>
-                                                            <label class="flex items-center gap-1.5 cursor-pointer">
-                                                                <input type="radio"
-                                                                       :name="'rfr-rejected-' + c.id"
-                                                                       value="rejected"
-                                                                       :checked="c.approvalChoice === 'rejected'"
-                                                                       @change="setRejected(selectedRfa, c.id, 'rfr')"
-                                                                       class="accent-red-500 w-3.5 h-3.5">
-                                                                <span :class="['text-[11px] font-bold', c.approvalChoice === 'rejected' ? 'text-red-600' : 'text-gray-500']">Rejected</span>
-                                                            </label>
-                                                        </div>
-                                                    </template>
+                                                    <!-- On Approval: read-only — the principal decides in the Client UI -->
+                                                    <span v-else-if="c.acceptance === 'onApproval'"
+                                                          :class="['text-[10px] font-black px-2.5 py-1 rounded-full whitespace-nowrap border',
+                                                                   c.approvalChoice === 'approved' ? 'bg-emerald-100 text-emerald-700 border-emerald-300' :
+                                                                   c.approvalChoice === 'rejected' ? 'bg-red-50 text-red-500 border-red-200' :
+                                                                   'bg-violet-100 text-violet-700 border-violet-300']">
+                                                        {{ c.approvalChoice === 'approved' ? '✓ Approved by principal' : c.approvalChoice === 'rejected' ? '✕ Rejected by principal' : '⏳ Awaiting principal' }}
+                                                    </span>
                                                 </div>
                                             </div>
                                         </div>
@@ -1928,7 +1886,11 @@
         </div>
         <v-list nav density="comfortable" class="atl-drawer__list">
             <v-list-item v-for="m in menu" :key="m.to" :to="m.to" :prepend-icon="m.icon" :title="m.title"
-                         color="primary" class="atl-drawer__item"></v-list-item>
+                         color="primary" class="atl-drawer__item">
+                <template #append>
+                    <v-badge v-if="m.badge" :content="m.badge" color="deep-purple" inline></v-badge>
+                </template>
+            </v-list-item>
         </v-list>
         <template #append>
             <div class="atl-brand">
@@ -1942,7 +1904,9 @@
         <router-view></router-view>
     </v-main>
 
+    <approval-dialog></approval-dialog>
     <seafarer-profile-dialog></seafarer-profile-dialog>
+    <v-snackbar v-model="toastOpen" color="grey-darken-4" timeout="4000" location="bottom right">{{ store.clientUi.toast }}</v-snackbar>
 </v-app>
 </script>
 
@@ -2227,9 +2191,175 @@
 </div>
 </script>
 
+<!-- ── Client UI: Pending Approvals x-template ───────────────── -->
+<script type="text/x-template" id="tpl-client-approvals">
+<div class="atl-page">
+    <div class="atl-filterbar">
+        <v-tabs v-model="view" color="primary" density="comfortable">
+            <v-tab value="list" prepend-icon="mdi-format-list-bulleted">List</v-tab>
+            <v-tab value="gantt" prepend-icon="mdi-chart-gantt">Rotation Plan</v-tab>
+        </v-tabs>
+        <div v-if="view === 'list'" class="atl-filterbar__fields">
+            <div class="atl-seg">
+                <button :class="{ 'is-on': mode === 'pending' }" @click="mode = 'pending'">
+                    Waiting for approval
+                    <v-badge :content="pendingCount" :color="pendingCount ? 'deep-purple' : 'grey'" inline></v-badge>
+                </button>
+                <button :class="{ 'is-on': mode === 'all' }" @click="mode = 'all'">All requests</button>
+            </div>
+            <v-select v-model="filterVessel" :items="vesselItems" item-title="name" item-value="id"
+                      label="Vessel" placeholder="All vessels" persistent-placeholder clearable style="max-width:300px; min-width:240px"></v-select>
+            <template v-if="mode === 'all'">
+                <v-text-field v-model="from" type="date" label="Joining from" style="max-width:190px"></v-text-field>
+                <v-text-field v-model="to"   type="date" label="Joining to"   style="max-width:190px"></v-text-field>
+            </template>
+            <span class="atl-hint"><v-icon icon="mdi-information-outline" size="16"></v-icon>
+                {{ mode === 'pending' ? 'Embarkation requests with candidates waiting for your decision.' : 'All embarkation requests on your vessels joining in the period.' }}
+            </span>
+        </div>
+        <div v-else class="atl-filterbar__fields">
+            <span class="atl-hint"><v-icon icon="mdi-information-outline" size="16"></v-icon>
+                Rotation plan filtered to requests awaiting your approval — click a bar to review its candidates.</span>
+        </div>
+    </div>
+
+    <div v-if="view === 'list'" class="atl-content">
+        <atl-table :columns="columns" :items="rows" v-model:visible="visible"
+                   pdf-title="Pending Approvals" :pdf-subtitle="pdfSubtitle"
+                   :empty-text="mode === 'pending' ? 'Nothing is waiting for your approval.' : 'No requests in this period.'"
+                   @open="openItem"></atl-table>
+    </div>
+    <client-rotation v-else pending-only embedded></client-rotation>
+</div>
+</script>
+
+<!-- ── Approval dialog x-template (Atlantis "Principal Approval") ─ -->
+<script type="text/x-template" id="tpl-approval-dialog">
+<v-dialog v-model="open" max-width="1180" scrollable>
+    <v-card v-if="item" class="atl-approval">
+        <div class="atl-approval__top">
+            <v-btn icon="mdi-close" variant="text" @click="open = false"></v-btn>
+        </div>
+        <v-card-text class="atl-approval__body">
+
+            <!-- Request header -->
+            <div class="atl-approval__head">
+                <div class="atl-approval__cell">
+                    <div class="atl-approval__ref">{{ refLabel }}</div>
+                    <div class="d-flex ga-2 mt-2">
+                        <v-chip size="small" color="success" variant="tonal">Pool Search</v-chip>
+                        <v-chip size="small" :color="statusMeta.color" variant="tonal">{{ item.status === 'pending' ? 'Principal Approval' : statusMeta.label }}</v-chip>
+                    </div>
+                </div>
+                <div class="atl-approval__cell atl-approval__rank">{{ item.rank.toUpperCase() }}</div>
+                <div class="atl-approval__cell atl-approval__dates">
+                    <div><span class="atl-approval__label">Due:</span> {{ atlDate(item.due) }}
+                        <span :class="daysLeftCls(item.due)">– {{ daysLeftText(item.due) }}</span></div>
+                    <div><span class="atl-approval__label">Join Date:</span> {{ atlDate(item.joinDate) }} – {{ daysLeftText(item.joinDate) }}</div>
+                </div>
+                <div class="atl-approval__cell atl-approval__client">{{ item.vessel.client.toUpperCase() }}</div>
+                <div class="atl-approval__cell">{{ vesselLine }}</div>
+            </div>
+
+            <!-- Candidates waiting for the principal -->
+            <div v-if="item.status === 'pending'" class="atl-approval__section">
+                <div class="atl-approval__sechead">
+                    <v-chip color="deep-purple" variant="tonal">Principal Approval</v-chip>
+                    <v-badge :content="item.pending.length" color="deep-purple" inline></v-badge>
+                    <v-spacer></v-spacer>
+                    <v-btn color="error" variant="tonal" class="atl-tool-btn" @click="rejectOpen = true">Reject all</v-btn>
+                    <v-menu location="bottom end">
+                        <template #activator="{ props }">
+                            <v-btn v-bind="props" icon="mdi-history" variant="text" color="grey" title="Decision history"></v-btn>
+                        </template>
+                        <v-card width="380" class="pa-4">
+                            <div class="atl-colmenu__title mb-2">Decision history</div>
+                            <div v-if="!history.length" class="text-medium-emphasis">No previous decisions on this request.</div>
+                            <div v-for="(h, i) in history" :key="i" class="atl-history">
+                                <strong>{{ atlDate(h.date) }} — {{ h.action === 'approved' ? 'Approved' : 'Rejected all' }}</strong>
+                                <div>{{ h.candidates.join(', ') }}</div>
+                                <div v-if="h.reason" class="text-medium-emphasis">Reason: {{ h.reason }}</div>
+                            </div>
+                        </v-card>
+                    </v-menu>
+                </div>
+
+                <div v-for="c in item.pending" :key="c.id" :class="['atl-cand', { 'is-chosen': choice === c.id }]">
+                    <div class="atl-cand__top">
+                        <a href="#" class="atl-cand__name" :title="fullNameLF(person(c))" @click.prevent="openProfile(c)">{{ fullNameLF(person(c)) }}</a>
+                        <v-chip v-if="dedication(c)" size="small" color="success" variant="tonal" class="atl-cand__ded">Dedicated to {{ dedication(c) }}</v-chip>
+                        <span class="atl-cand__kv"><span>Age</span><strong>{{ age(c) }}</strong></span>
+                        <span class="atl-cand__kv"><span>Available</span><strong class="text-success">{{ atlDate(avail(c)) }}</strong></span>
+                        <v-radio-group v-model="choice" hide-details inline class="atl-cand__radio">
+                            <v-radio :value="c.id" label="Approve" color="primary"></v-radio>
+                        </v-radio-group>
+                        <v-btn icon="mdi-file-document-outline" variant="text" title="Curriculum Vitae" @click="openCv(c)"></v-btn>
+                    </div>
+                    <div class="atl-cand__services">
+                        <span class="atl-cand__svc-title">Services (Trips/Months)</span>
+                        <span class="atl-cand__svc"><span>Total</span><strong>{{ stats(c).total }}</strong></span>
+                        <span class="atl-cand__svc"><span>At Rank</span><strong>{{ stats(c).atRank }}</strong></span>
+                        <span class="atl-cand__svc"><span>As Officer</span><strong>{{ stats(c).asOfficer }}</strong></span>
+                    </div>
+                </div>
+
+                <!-- Confirmation -->
+                <div v-if="chosen" class="atl-approval__confirm">
+                    <v-icon icon="mdi-account-check" color="primary"></v-icon>
+                    <span>Approve <strong>{{ fullNameLF(chosen) }}</strong> as {{ item.rank.toUpperCase() }} on {{ item.vessel.name.toUpperCase() }}, joining {{ atlDate(item.joinDate) }}?</span>
+                    <v-spacer></v-spacer>
+                    <v-btn variant="text" @click="choice = null">Cancel</v-btn>
+                    <v-btn color="primary" variant="flat" class="atl-tool-btn" @click="confirmApprove">Confirm approval</v-btn>
+                </div>
+            </div>
+
+            <!-- Decided / nothing waiting -->
+            <div v-else :class="['atl-approval__section', 'atl-approval__section--' + item.status]">
+                <div class="atl-approval__outcome">
+                    <v-icon :icon="item.status === 'approved' ? 'mdi-check-circle' : item.status === 'rejected' ? 'mdi-close-circle' : 'mdi-account-search'"
+                            :color="statusMeta.color" size="28"></v-icon>
+                    <div>
+                        <div class="atl-approval__outcome-title">{{ statusMeta.label }}</div>
+                        <div v-if="item.status === 'approved'">You approved <strong>{{ approvedName }}</strong>. The agency is preparing the joining.</div>
+                        <div v-else-if="item.status === 'rejected'">You rejected all candidates. The agency continues the candidate search and will send new candidates for your approval.</div>
+                        <div v-else>No candidates are waiting for your approval yet — the agency is searching.</div>
+                    </div>
+                </div>
+                <div v-if="history.length" class="mt-4">
+                    <div class="atl-approval__label mb-1">Decision history</div>
+                    <div v-for="(h, i) in history" :key="i" class="atl-history">
+                        <strong>{{ atlDate(h.date) }} — {{ h.action === 'approved' ? 'Approved' : 'Rejected all' }}</strong>
+                        <div>{{ h.candidates.join(', ') }}</div>
+                        <div v-if="h.reason" class="text-medium-emphasis">Reason: {{ h.reason }}</div>
+                    </div>
+                </div>
+            </div>
+        </v-card-text>
+
+        <!-- Reject all: reason required -->
+        <v-dialog v-model="rejectOpen" max-width="560">
+            <v-card class="pa-2">
+                <v-card-title>Reject all candidates</v-card-title>
+                <v-card-text>
+                    <p class="mb-4">All {{ item.pending.length }} candidates for {{ item.ref }} will be rejected and the agency will continue the candidate search.</p>
+                    <v-textarea v-model="reason" label="Reason (required)" variant="outlined" rows="3" auto-grow autofocus hide-details></v-textarea>
+                </v-card-text>
+                <v-card-actions>
+                    <v-spacer></v-spacer>
+                    <v-btn variant="text" @click="rejectOpen = false">Cancel</v-btn>
+                    <v-btn color="error" variant="flat" :disabled="!reason.trim()" @click="confirmReject">Reject all</v-btn>
+                </v-card-actions>
+            </v-card>
+        </v-dialog>
+
+        <document-viewer :doc="cvDoc" :seafarer="cvSeafarer" @close="cvDoc = null"></document-viewer>
+    </v-card>
+</v-dialog>
+</script>
+
 <!-- ── Client UI: Rotation Plan x-template (Atlantis Gantt) ──── -->
 <script type="text/x-template" id="tpl-client-rotation">
-<div class="atl-page">
+<div :class="embedded ? 'atl-page atl-page--embedded' : 'atl-page'">
 
     <!-- Filters (Atlantis layout, internal controls such as Client / RFC ISSUED / + EMBARK hidden) -->
     <div class="atl-filterbar atl-gantt-filters">
@@ -2297,8 +2427,8 @@
                         </div>
                         <div class="atl-gantt__lane">
                             <template v-for="(b, bi) in r.bars" :key="bi">
-                                <div v-if="inWindow(b)" :class="['atl-bar', 'atl-bar--' + b.kind]" :style="barStyle(b)"
-                                     @mouseenter="showTip($event, b)" @mousemove="moveTip" @mouseleave="hideTip">
+                                <div v-if="inWindow(b)" :class="['atl-bar', 'atl-bar--' + b.kind, { 'is-clickable': canOpen(b) }]" :style="barStyle(b)"
+                                     @mouseenter="showTip($event, b)" @mousemove="moveTip" @mouseleave="hideTip" @click="openBar(b)">
                                     <span>{{ b.label }}</span>
                                 </div>
                             </template>
@@ -2335,6 +2465,10 @@
         </div>
         <div v-for="l in tip.bar.tip.lines" :key="l[0]" class="atl-gantt-tip__line">
             <span>{{ l[0] }}</span><strong>{{ l[1] }}</strong>
+        </div>
+        <div v-if="canOpen(tip.bar)" class="atl-gantt-tip__hint">
+            <v-icon icon="mdi-cursor-default-click-outline" size="16"></v-icon>
+            {{ tip.bar.kind === 'approval' ? 'Click to review the candidates' : 'Click for details' }}
         </div>
     </div>
 </div>
@@ -3395,6 +3529,7 @@ window.crewPastAssignments = crewPastAssignments;
 <script src="views/ClientPortal.js"></script>
 <script src="views/ClientCrewLists.js"></script>
 <script src="views/ClientRotation.js"></script>
+<script src="views/ClientApprovals.js"></script>
 
 <!-- ── Stub views (replace each with a real view file when ready) ── -->
 <script>
@@ -3439,8 +3574,8 @@ const router = createRouter({
           meta: { title: 'Crew Lists',        icon: 'mdi-account-group' } },
         { path: '/client/rotation',        component: ClientRotationView,
           meta: { title: 'Rotation Plan',     icon: 'mdi-chart-gantt' } },
-        { path: '/client/approvals',       component: ClientPlaceholderView,
-          meta: { title: 'Pending Approvals', icon: 'mdi-account-check-outline', phase: 'Phase 6' } },
+        { path: '/client/approvals',       component: ClientApprovalsView,
+          meta: { title: 'Pending Approvals', icon: 'mdi-account-check-outline' } },
     ],
 });
 
@@ -3480,6 +3615,8 @@ app.component('client-portal',          ClientPortal);
 app.component('atl-table',              AtlTable);
 app.component('seafarer-profile-dialog', SeafarerProfileDialog);
 app.component('document-viewer',        DocumentViewerDialog);
+app.component('approval-dialog',        ApprovalDialog);
+app.component('client-rotation',        ClientRotationView);
 app.use(router);
 app.use(vuetify);
 app.mount('#app');
