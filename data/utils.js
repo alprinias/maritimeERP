@@ -16,3 +16,21 @@ function shortName(full) {
     const parts = full.trim().split(' ');
     return parts.length === 1 ? parts[0] : parts[0][0] + '. ' + parts.slice(1).join(' ');
 }
+
+/* Seed data (vessels.js, seafarers.js) is written as of DATA_AUTHORED_ON.
+   shiftSeedDates() moves every YYYY-MM-DD string in it forward by whole
+   months so the mockup always sits around today. Called from store.js. */
+var DATA_AUTHORED_ON = '2026-05-20';
+
+function seedMonthShift() {
+    return Math.round(daysB(d(DATA_AUTHORED_ON), TODAY) / 30.44);
+}
+
+function shiftSeedDates(obj, months) {
+    if (!months || !obj || typeof obj !== 'object') return;
+    Object.keys(obj).forEach(k => {
+        const v = obj[k];
+        if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)) obj[k] = isoDate(addM(d(v), months));
+        else if (v && typeof v === 'object') shiftSeedDates(v, months);
+    });
+}

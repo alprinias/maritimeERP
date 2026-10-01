@@ -1,6 +1,6 @@
 /* ── data/store.js ────────────────────────────────────────────
    Shared in-memory state for Maritime ERP.
-   Depends on: Vue (CDN), seafarers.js (seedRfeRows).
+   Depends on: Vue (CDN), utils.js, vessels.js, seafarers.js.
    Exposes global: window.erpStore
 
    Views read and mutate this object instead of keeping private
@@ -8,6 +8,9 @@
    visible across modules (e.g. an RFE approved in Client UI shows
    up in Operations → RFAs). Nothing is persisted across reloads.
 ──────────────────────────────────────────────────────────────── */
+
+// Re-anchor seed dates to today (see utils.js) before anything derives from them
+shiftSeedDates([allVessels, allSeafarers, seedRfeRows], seedMonthShift());
 
 var erpStore = Vue.reactive({
 
