@@ -29,7 +29,19 @@
                 MARITIME<span class="text-blue-400">ERP</span>
             </h1>
         </div>
-        <div class="flex items-center gap-3 text-xs">
+        <!-- Client UI: act as a client user -->
+        <div v-if="isClientUi" class="flex items-center gap-3 text-xs">
+            <span class="text-[10px] font-black uppercase tracking-widest bg-amber-400 text-slate-900 px-2 py-0.5 rounded">Client Portal</span>
+            <span class="text-slate-400">Viewing as</span>
+            <select v-model="store.clientUi.clientId"
+                    class="bg-slate-800 border border-slate-600 text-slate-100 text-xs rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-amber-400">
+                <option v-for="c in portalClients" :key="c.id" :value="c.id">{{ c.name }}</option>
+            </select>
+            <div class="h-7 min-w-[28px] px-1.5 bg-amber-500 rounded-full flex items-center justify-center text-[10px] font-bold text-slate-900 shrink-0">
+                {{ (portalClients.find(c => c.id === store.clientUi.clientId) || {}).alias }}
+            </div>
+        </div>
+        <div v-else class="flex items-center gap-3 text-xs">
             <span class="text-slate-400">Welcome, <strong class="text-slate-200">Ops_User_01</strong></span>
             <div class="w-7 h-7 bg-blue-500 rounded-full flex items-center justify-center text-xs font-bold shrink-0">JD</div>
         </div>
@@ -117,6 +129,35 @@
                             class="flex items-center gap-2 px-4 py-2 text-xs text-slate-400 hover:text-white hover:bg-slate-700 transition rounded-sm whitespace-nowrap"
                             active-class="!text-white !bg-blue-600 font-semibold">
                             RFAs
+                        </router-link>
+                    </div>
+                </div>
+
+                <!-- Client UI (mockup of the separate client portal) -->
+                <div class="mt-2 pt-2 border-t border-slate-700">
+                    <button @click="toggleSection('client')"
+                            class="w-full flex items-center justify-between px-4 py-2.5 text-left hover:bg-slate-700 transition group">
+                        <div class="flex items-center gap-2.5">
+                            <span class="text-slate-400 text-sm">🏢</span>
+                            <span class="text-xs font-bold uppercase tracking-widest text-amber-300 group-hover:text-amber-200 transition whitespace-nowrap">Client UI</span>
+                        </div>
+                        <span :class="['text-slate-500 text-[10px] transition-transform', openSections.client ? 'rotate-90' : '']">▶</span>
+                    </button>
+                    <div v-show="openSections.client" class="pl-4">
+                        <router-link to="/client/dashboard"
+                            class="flex items-center gap-2 px-4 py-2 text-xs text-slate-400 hover:text-white hover:bg-slate-700 transition rounded-sm whitespace-nowrap"
+                            active-class="!text-slate-900 !bg-amber-400 font-semibold">
+                            Dashboard
+                        </router-link>
+                        <router-link to="/client/crew"
+                            class="flex items-center gap-2 px-4 py-2 text-xs text-slate-400 hover:text-white hover:bg-slate-700 transition rounded-sm whitespace-nowrap"
+                            active-class="!text-slate-900 !bg-amber-400 font-semibold">
+                            Fleet &amp; Crew
+                        </router-link>
+                        <router-link to="/client/approvals"
+                            class="flex items-center gap-2 px-4 py-2 text-xs text-slate-400 hover:text-white hover:bg-slate-700 transition rounded-sm whitespace-nowrap"
+                            active-class="!text-slate-900 !bg-amber-400 font-semibold">
+                            Approvals
                         </router-link>
                     </div>
                 </div>
@@ -1858,6 +1899,337 @@
 </div>
 </script>
 
+<!-- ── Client UI: Fleet & Crew x-template ───────────────────── -->
+<script type="text/x-template" id="tpl-client-crew">
+<div class="flex-1 flex flex-col overflow-hidden">
+
+    <!-- Sub-nav -->
+    <nav class="bg-white border-b flex px-8 shadow-sm shrink-0">
+        <button class="active-tab py-3 px-1 text-sm">FLEET &amp; CREW</button>
+    </nav>
+
+    <!-- Empty state -->
+    <div v-if="!client" class="flex-1 flex flex-col items-center justify-center gap-3 text-gray-300">
+        <div class="text-5xl">🏢</div>
+        <div class="text-base font-semibold text-gray-400">Select a client in the top bar</div>
+    </div>
+
+    <div v-else class="flex-1 flex flex-col overflow-hidden">
+
+        <!-- Vessel cards (click to filter) -->
+        <div class="bg-white border-b px-6 py-3 flex gap-3 shrink-0 overflow-x-auto">
+            <button @click="filterVessel = ''"
+                    :class="['text-left rounded-xl border px-4 py-2.5 min-w-[170px] transition shrink-0',
+                             filterVessel === '' ? 'border-blue-500 ring-2 ring-blue-100 bg-blue-50/40' : 'border-gray-200 hover:border-gray-300 bg-white']">
+                <div class="text-[9px] font-black uppercase tracking-widest text-gray-400">{{ client.name }}</div>
+                <div class="text-sm font-bold text-slate-800">All vessels</div>
+                <div class="mt-1.5 text-[10px] font-bold text-gray-500">
+                    {{ clientVessels.length }} vessels ·
+                    {{ vesselCards.reduce((n, c) => n + c.onboard, 0) }} on board
+                </div>
+            </button>
+            <button v-for="c in vesselCards" :key="c.vessel.id" @click="filterVessel = c.vessel.id"
+                    :class="['text-left rounded-xl border px-4 py-2.5 min-w-[220px] transition shrink-0',
+                             filterVessel === c.vessel.id ? 'border-blue-500 ring-2 ring-blue-100 bg-blue-50/40' : 'border-gray-200 hover:border-gray-300 bg-white']">
+                <div class="text-[9px] font-black uppercase tracking-widest text-gray-400">{{ c.vessel.type }} · {{ c.vessel.flag }}</div>
+                <div class="text-sm font-bold text-slate-800">🚢 {{ c.vessel.name }}</div>
+                <div class="mt-1.5 flex flex-wrap gap-1 text-[10px] font-bold">
+                    <span class="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700">{{ c.onboard }} on board</span>
+                    <span v-if="c.changes" class="px-1.5 py-0.5 rounded bg-sky-50 text-sky-700">{{ c.changes }} changes ≤ 30d</span>
+                    <span v-if="c.overdue" class="px-1.5 py-0.5 rounded bg-red-50 text-red-600">{{ c.overdue }} overdue</span>
+                    <span v-if="c.expired" class="px-1.5 py-0.5 rounded bg-red-50 text-red-600">✕ {{ c.expired }} docs expired</span>
+                    <span v-if="c.expiring" class="px-1.5 py-0.5 rounded bg-amber-50 text-amber-700">⚠ {{ c.expiring }} expiring</span>
+                </div>
+            </button>
+        </div>
+
+        <!-- Tab bar -->
+        <div class="bg-white border-b px-6 flex shrink-0">
+            <button v-for="tab in tabs" :key="tab.id" @click="activeTab = tab.id"
+                    :class="['px-5 py-2.5 text-sm font-semibold border-b-2 transition -mb-px',
+                             activeTab === tab.id ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-400 hover:text-gray-600']">
+                {{ tab.label }}
+                <span :class="['ml-1.5 text-[10px] font-black px-1.5 py-0.5 rounded-full',
+                               activeTab === tab.id ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500']">{{ tab.count }}</span>
+            </button>
+        </div>
+
+        <!-- ── CREW LIST TAB ─────────────────────────────────── -->
+        <template v-if="activeTab === 'crew'">
+            <div class="bg-white border-b px-6 py-3 flex items-center gap-4 shrink-0 flex-wrap">
+                <div class="flex items-center gap-2">
+                    <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest">On board at</label>
+                    <button @click="shiftMonths(-1)"
+                            class="text-[10px] px-2 py-1.5 rounded border bg-white text-gray-500 hover:bg-gray-50 transition">◀ 1 mo</button>
+                    <input type="date" v-model="onDate"
+                           class="text-sm border rounded px-3 py-1.5 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400">
+                    <button @click="shiftMonths(1)"
+                            class="text-[10px] px-2 py-1.5 rounded border bg-white text-gray-500 hover:bg-gray-50 transition">1 mo ▶</button>
+                    <button @click="goToday" :disabled="dateMode === 'today'"
+                            class="text-[10px] px-2.5 py-1.5 rounded border bg-white text-gray-500 hover:bg-gray-50 transition disabled:opacity-40">Today</button>
+                </div>
+                <span :class="['text-[10px] font-black uppercase px-2.5 py-1 rounded-full border',
+                               dateMode === 'past'   ? 'bg-gray-100 text-gray-600 border-gray-300' :
+                               dateMode === 'future' ? 'bg-sky-50 text-sky-700 border-sky-300' :
+                                                       'bg-emerald-50 text-emerald-700 border-emerald-300']">
+                    {{ dateMode === 'past' ? 'Historical' : dateMode === 'future' ? 'Planned' : 'Today' }}
+                </span>
+                <span class="text-[11px] text-gray-400">
+                    {{ dateMode === 'past'   ? 'Crew as it was on board on this date.' :
+                       dateMode === 'future' ? 'Expected crew based on planned sign-offs and reliefs — subject to change.' :
+                                               'Crew currently on board.' }}
+                </span>
+                <div class="ml-auto flex items-center gap-3 text-[10px] text-gray-500">
+                    <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm bg-emerald-400"></span>On board</span>
+                    <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm bg-gray-300"></span>Former tour</span>
+                    <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm border border-dashed border-sky-500 bg-sky-50"></span>Planned</span>
+                </div>
+            </div>
+
+            <div class="flex-1 overflow-auto px-6 py-5 space-y-5">
+                <div v-for="g in crewByVessel" :key="g.vessel.id"
+                     class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                    <div class="px-5 py-3 flex items-center justify-between border-b">
+                        <div>
+                            <div class="text-sm font-bold text-slate-800">🚢 {{ g.vessel.name }}</div>
+                            <div class="text-[11px] text-gray-400">{{ g.vessel.type }} · {{ g.vessel.flag }} flag · IMO {{ g.vessel.imo }}</div>
+                        </div>
+                        <div class="text-[10px] font-black uppercase tracking-widest text-gray-400">
+                            {{ g.rows.filter(r => r.kind !== 'unknown').length }} / {{ g.rows.length }} positions
+                        </div>
+                    </div>
+                    <table class="w-full text-xs">
+                        <thead class="bg-slate-800 text-white text-[10px] font-black uppercase tracking-widest">
+                            <tr>
+                                <th class="text-left px-4 py-2 w-40">Rank</th>
+                                <th class="text-left px-4 py-2">Seafarer</th>
+                                <th class="text-left px-4 py-2">Nationality</th>
+                                <th class="text-left px-4 py-2">Embarked</th>
+                                <th class="text-left px-4 py-2">Sign-off</th>
+                                <th class="text-left px-4 py-2">Time on board</th>
+                                <th class="text-left px-4 py-2">Documents</th>
+                                <th class="text-left px-4 py-2">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="r in g.rows" :key="r.rank"
+                                :class="['border-b last:border-b-0 align-top',
+                                         r.kind === 'planned' ? 'bg-sky-50/50' : r.kind === 'past' ? 'bg-gray-50/70' : '']">
+                                <td class="px-4 py-2.5 whitespace-nowrap">
+                                    <div class="flex items-center gap-2">
+                                        <span :class="['w-1.5 h-6 rounded-full shrink-0',
+                                                       r.kind === 'current' ? 'bg-emerald-400' :
+                                                       r.kind === 'past'    ? 'bg-gray-300' :
+                                                       r.kind === 'planned' ? 'border border-dashed border-sky-500 bg-sky-50' : 'bg-gray-100']"></span>
+                                        <span class="font-semibold text-slate-700">{{ r.rank }}</span>
+                                    </div>
+                                </td>
+                                <!-- Seafarer -->
+                                <td class="px-4 py-2.5">
+                                    <router-link v-if="r.seafarerId" :to="'/client/seafarer/' + r.seafarerId"
+                                                 :class="['font-bold hover:underline', r.kind === 'planned' ? 'text-sky-700 italic' : 'text-blue-700']">
+                                        {{ person(r.seafarerId).name }}
+                                    </router-link>
+                                    <span v-else-if="r.name" class="font-bold text-sky-700 italic">{{ r.name }}</span>
+                                    <span v-else-if="r.kind === 'planned'" class="italic text-gray-400">
+                                        {{ r.relief ? 'To be nominated' : 'No relief planned' }}
+                                    </span>
+                                    <span v-else class="text-gray-300">No record</span>
+                                </td>
+                                <td class="px-4 py-2.5 text-gray-600">{{ r.seafarerId ? person(r.seafarerId).nationality : '—' }}</td>
+                                <td class="px-4 py-2.5 text-gray-600 whitespace-nowrap">{{ fmtDate(r.embark) }}</td>
+                                <td class="px-4 py-2.5 whitespace-nowrap">
+                                    <span v-if="r.kind === 'current'"
+                                          :class="r.overdue ? 'text-red-600 font-bold' : 'text-gray-600'">{{ fmtDate(r.signoff) }}</span>
+                                    <span v-else-if="r.kind === 'past'" class="text-gray-600">{{ fmtDate(r.signoff) }}</span>
+                                    <span v-else class="text-gray-300">—</span>
+                                </td>
+                                <td class="px-4 py-2.5 text-gray-600 whitespace-nowrap">
+                                    <span v-if="r.kind === 'current'">Day {{ daysBetween(r.embark, onDate) + 1 }}</span>
+                                    <span v-else-if="r.kind === 'past'">{{ fmtDuration(r.embark, r.signoff) }}</span>
+                                    <span v-else-if="r.kind === 'planned' && r.embark > todayStr" class="text-sky-700">joins in {{ daysBetween(todayStr, r.embark) }}d</span>
+                                    <span v-else-if="r.kind === 'planned'" class="text-red-600 font-semibold">{{ daysBetween(r.embark, todayStr) }}d overdue</span>
+                                    <span v-else class="text-gray-300">—</span>
+                                </td>
+                                <!-- Documents summary -->
+                                <td class="px-4 py-2.5 whitespace-nowrap">
+                                    <template v-for="s in [docs(r.seafarerId)]" :key="'docs'">
+                                        <div v-if="s" class="flex gap-1 text-[10px] font-bold">
+                                            <span class="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700" title="Valid">✓ {{ s.valid }}</span>
+                                            <span v-show="s.expiring" class="px-1.5 py-0.5 rounded bg-amber-50 text-amber-700" title="Expiring within 90 days">⚠ {{ s.expiring }}</span>
+                                            <span v-show="s.expired" class="px-1.5 py-0.5 rounded bg-red-50 text-red-600" title="Expired">✕ {{ s.expired }}</span>
+                                        </div>
+                                        <span v-else class="text-gray-300">—</span>
+                                    </template>
+                                </td>
+                                <!-- Status -->
+                                <td class="px-4 py-2.5">
+                                    <template v-if="r.kind === 'current'">
+                                        <div class="flex flex-wrap gap-1">
+                                            <span class="text-[10px] font-black uppercase px-2 py-0.5 rounded-full border bg-emerald-50 text-emerald-700 border-emerald-200">On board</span>
+                                            <span v-show="r.overdue && dateMode !== 'past'"
+                                                  class="text-[10px] font-black uppercase px-2 py-0.5 rounded-full border bg-red-50 text-red-600 border-red-200">Sign-off overdue</span>
+                                        </div>
+                                        <div v-show="r.relief && dateMode !== 'past'" class="mt-1 text-[10px] text-gray-500">
+                                            Relief: <strong class="text-slate-700">{{ r.relief && r.relief.name ? r.relief.name : 'to be nominated' }}</strong>
+                                            · {{ r.relief ? stageMeta(r.relief.stage).label : '' }}
+                                        </div>
+                                    </template>
+                                    <span v-else-if="r.kind === 'past'"
+                                          class="text-[10px] font-black uppercase px-2 py-0.5 rounded-full border bg-gray-100 text-gray-500 border-gray-200">Former tour</span>
+                                    <template v-else-if="r.kind === 'planned'">
+                                        <span :class="['text-[10px] font-black uppercase px-2 py-0.5 rounded-full border',
+                                                       r.relief ? stageMeta(r.relief.stage).cls : 'bg-gray-50 text-gray-500 border-gray-200']">
+                                            {{ r.relief ? stageMeta(r.relief.stage).label : 'Relief not yet requested' }}
+                                        </span>
+                                        <div v-show="r.ref" class="mt-1 text-[10px] text-gray-400 font-mono">{{ r.ref }}</div>
+                                    </template>
+                                    <span v-else class="text-gray-300">—</span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </template>
+
+        <!-- ── CREW CHANGES TAB ──────────────────────────────── -->
+        <template v-else-if="activeTab === 'changes'">
+            <div class="bg-white border-b px-6 py-3 flex items-center gap-4 shrink-0 flex-wrap">
+                <div class="flex items-center gap-2">
+                    <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Horizon</label>
+                    <div class="flex rounded border overflow-hidden text-xs">
+                        <button v-for="h in [{v:30,l:'30 days'},{v:60,l:'60 days'},{v:90,l:'90 days'},{v:0,l:'All'}]"
+                                :key="h.v" @click="changesHorizon = h.v"
+                                :class="['px-3 py-1.5 font-semibold border-r last:border-r-0 transition',
+                                         changesHorizon === h.v ? 'bg-slate-800 text-white' : 'bg-white text-gray-500 hover:bg-gray-50']">
+                            {{ h.l }}
+                        </button>
+                    </div>
+                </div>
+                <span class="text-[11px] text-gray-400">Pending sign-offs, embarkations, extensions and promotions on your vessels.</span>
+            </div>
+
+            <div class="flex-1 overflow-auto px-6 py-5">
+                <div v-if="!changes.length" class="text-center text-sm text-gray-400 py-16">No crew changes in this period.</div>
+                <div v-else class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                    <table class="w-full text-xs">
+                        <thead class="bg-slate-800 text-white text-[10px] font-black uppercase tracking-widest">
+                            <tr>
+                                <th class="text-left px-4 py-2">Date</th>
+                                <th class="text-left px-4 py-2">Vessel</th>
+                                <th class="text-left px-4 py-2">Rank</th>
+                                <th class="text-left px-4 py-2">Change</th>
+                                <th class="text-left px-4 py-2">Seafarer</th>
+                                <th class="text-left px-4 py-2">Port</th>
+                                <th class="text-left px-4 py-2">Status</th>
+                                <th class="text-left px-4 py-2">Ref</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template v-for="section in [{ id:'overdue', label:'Overdue', rows: overdueChanges }, { id:'upcoming', label:'Upcoming', rows: upcomingChanges }]" :key="section.id">
+                                <tr v-show="section.rows.length">
+                                    <td colspan="8"
+                                        :class="['px-4 py-1.5 text-[9px] font-black uppercase tracking-widest',
+                                                 section.id === 'overdue' ? 'bg-red-50 text-red-600' : 'bg-gray-50 text-gray-400']">
+                                        {{ section.label }} · {{ section.rows.length }}
+                                    </td>
+                                </tr>
+                                <tr v-for="(e, i) in section.rows" :key="section.id + i" class="border-b last:border-b-0">
+                                    <td class="px-4 py-2.5 whitespace-nowrap">
+                                        <div :class="e.overdue ? 'text-red-600 font-bold' : 'text-slate-700 font-semibold'">{{ fmtDate(e.date) }}</div>
+                                        <div class="text-[10px] text-gray-400">
+                                            {{ e.overdue ? daysBetween(e.date, todayStr) + 'd overdue' : e.date === todayStr ? 'today' : 'in ' + daysBetween(todayStr, e.date) + 'd' }}
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-2.5 text-gray-700 whitespace-nowrap">{{ e.vesselName }}</td>
+                                    <td class="px-4 py-2.5 text-gray-700 whitespace-nowrap">{{ e.rank }}</td>
+                                    <td class="px-4 py-2.5 whitespace-nowrap">
+                                        <span :class="['text-[10px] font-black px-2 py-0.5 rounded', eventMeta(e.type).cls]">
+                                            {{ eventMeta(e.type).icon }} {{ eventMeta(e.type).label }}
+                                        </span>
+                                        <span v-show="e.type === 'promotion' && e.newRank" class="ml-1 text-[10px] text-gray-500">→ {{ e.newRank }}</span>
+                                    </td>
+                                    <td class="px-4 py-2.5">
+                                        <router-link v-if="e.seafarerId" :to="'/client/seafarer/' + e.seafarerId"
+                                                     class="font-bold text-blue-700 hover:underline">{{ person(e.seafarerId).name }}</router-link>
+                                        <span v-else-if="e.name" class="font-bold text-slate-700">{{ e.name }}</span>
+                                        <span v-else class="italic text-gray-400">To be nominated</span>
+                                    </td>
+                                    <td class="px-4 py-2.5 text-gray-600">{{ e.port || '—' }}</td>
+                                    <td class="px-4 py-2.5">
+                                        <span :class="['text-[10px] font-black uppercase px-2 py-0.5 rounded-full border whitespace-nowrap', stageMeta(e.stage).cls]">
+                                            {{ stageMeta(e.stage).label }}
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-2.5 text-[10px] text-gray-400 font-mono">{{ e.ref || '—' }}</td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </template>
+
+        <!-- ── FORMER CREW TAB ───────────────────────────────── -->
+        <template v-else>
+            <div class="bg-white border-b px-6 py-3 flex items-center gap-4 shrink-0 flex-wrap">
+                <div class="flex items-center gap-2">
+                    <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Search</label>
+                    <input type="text" v-model="formerSearch" placeholder="Name, rank or nationality"
+                           class="text-sm border rounded px-3 py-1.5 bg-white min-w-[260px] focus:outline-none focus:ring-2 focus:ring-blue-400">
+                    <button v-if="formerSearch" @click="formerSearch = ''"
+                            class="text-[10px] px-2 py-1.5 rounded border bg-white text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition">✕</button>
+                </div>
+                <span class="text-[11px] text-gray-400">Completed tours on your vessels, most recent first.</span>
+            </div>
+
+            <div class="flex-1 overflow-auto px-6 py-5">
+                <div v-if="!formerCrew.length" class="text-center text-sm text-gray-400 py-16">No former crew found.</div>
+                <div v-else class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                    <table class="w-full text-xs">
+                        <thead class="bg-slate-800 text-white text-[10px] font-black uppercase tracking-widest">
+                            <tr>
+                                <th class="text-left px-4 py-2">Seafarer</th>
+                                <th class="text-left px-4 py-2">Nationality</th>
+                                <th class="text-left px-4 py-2">Rank</th>
+                                <th class="text-left px-4 py-2">Vessel</th>
+                                <th class="text-left px-4 py-2">Embarked</th>
+                                <th class="text-left px-4 py-2">Signed off</th>
+                                <th class="text-left px-4 py-2">Duration</th>
+                                <th class="text-left px-4 py-2">Now</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="(a, i) in formerCrew" :key="i" class="border-b last:border-b-0">
+                                <td class="px-4 py-2.5">
+                                    <router-link :to="'/client/seafarer/' + a.seafarerId"
+                                                 class="font-bold text-blue-700 hover:underline">{{ a.name }}</router-link>
+                                </td>
+                                <td class="px-4 py-2.5 text-gray-600">{{ a.nationality || '—' }}</td>
+                                <td class="px-4 py-2.5 text-gray-700">{{ a.rank }}</td>
+                                <td class="px-4 py-2.5 text-gray-700 whitespace-nowrap">{{ a.vesselName }}</td>
+                                <td class="px-4 py-2.5 text-gray-600 whitespace-nowrap">{{ fmtDate(a.embark) }}</td>
+                                <td class="px-4 py-2.5 text-gray-600 whitespace-nowrap">{{ fmtDate(a.signoff) }}</td>
+                                <td class="px-4 py-2.5 text-gray-600 whitespace-nowrap">{{ fmtDuration(a.embark, a.signoff) }}</td>
+                                <td class="px-4 py-2.5">
+                                    <span v-if="a.nowOnboard"
+                                          class="text-[10px] font-black uppercase px-2 py-0.5 rounded-full border bg-emerald-50 text-emerald-700 border-emerald-200 whitespace-nowrap">
+                                        On board · {{ a.nowOnboard }}
+                                    </span>
+                                    <span v-else class="text-gray-300">—</span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </template>
+
+    </div>
+</div>
+</script>
+
 <!-- ── RotationAll x-template (parsed as HTML, referenced by RotationAllView) ── -->
 <script type="text/x-template" id="tpl-rotation-all">
 <div class="flex-1 flex flex-col overflow-hidden">
@@ -2888,21 +3260,28 @@
 <script src="data/utils.js"></script>
 <script src="data/vessels.js"></script>
 <script src="data/seafarers.js"></script>
+<script src="data/store.js"></script>
+<script src="data/crew.js"></script>
+<script src="data/documents.js"></script>
 
 <!-- ── Expose data as true window globals so all view scripts can see them ── -->
 <script src="data/clients.js"></script>
 <script>
-window.allVessels     = allVessels;
-window.allClientsData = allClientsData;
-window.allSeafarers   = allSeafarers;
-window.seedRfeRows    = seedRfeRows;
-window.TODAY          = TODAY;
+window.allVessels          = allVessels;
+window.allClientsData      = allClientsData;
+window.allSeafarers        = allSeafarers;
+window.seedRfeRows         = seedRfeRows;
+window.TODAY               = TODAY;
+window.erpStore            = erpStore;
+window.crewSeafarers       = crewSeafarers;
+window.crewPastAssignments = crewPastAssignments;
 </script>
 
 <!-- ── Views ─────────────────────────────────────────────────── -->
 <script src="views/ClientsSetup.js"></script>
 <script src="views/RFAs.js"></script>
 <script src="views/RotationAll.js"></script>
+<script src="views/ClientCrew.js"></script>
 
 <!-- ── Stub views (replace each with a real view file when ready) ── -->
 <script>
@@ -2920,11 +3299,14 @@ const AdminSettingsView    = makeStub('Admin — Settings');
 const RecruitmentCandidatesView = makeStub('Recruitment — Candidates');
 const RecruitmentPipelineView   = makeStub('Recruitment — Pipeline');
 const HomeView = makeStub('Select a module from the sidebar');
+const ClientDashboardView = makeStub('Client UI — Dashboard');
+const ClientApprovalsView = makeStub('Client UI — Approvals');
+const ClientSeafarerView  = makeStub('Client UI — Seafarer Profile & Documents');
 </script>
 
 <!-- ── Router + App bootstrap ────────────────────────────────── -->
 <script>
-const { createApp, ref, reactive } = Vue;
+const { createApp, ref, reactive, computed } = Vue;
 const { createRouter, createWebHashHistory } = VueRouter;
 
 const router = createRouter({
@@ -2938,15 +3320,24 @@ const router = createRouter({
         { path: '/recruitment/pipeline',   component: RecruitmentPipelineView },
         { path: '/operations/rotation',    component: RotationAllView },
         { path: '/operations/rfas',        component: RFAsView },
+        { path: '/client',                 redirect: '/client/crew' },
+        { path: '/client/dashboard',       component: ClientDashboardView },
+        { path: '/client/crew',            component: ClientCrewView },
+        { path: '/client/approvals',       component: ClientApprovalsView },
+        { path: '/client/seafarer/:id',    component: ClientSeafarerView },
     ],
 });
 
 const app = createApp({
     setup() {
+        const route = VueRouter.useRoute();
         const sidebarOpen = ref(true);
-        const openSections = reactive({ admin: true, recruitment: false, operations: true });
+        const openSections = reactive({ admin: true, recruitment: false, operations: true, client: true });
         function toggleSection(key) { openSections[key] = !openSections[key]; }
-        return { sidebarOpen, openSections, toggleSection };
+        // Client UI routes show the portal top bar with a "Viewing as" selector
+        const isClientUi = computed(() => route.path.startsWith('/client'));
+        const portalClients = allClientsData.filter(c => c.isActive);
+        return { sidebarOpen, openSections, toggleSection, isClientUi, portalClients, store: erpStore };
     }
 });
 app.use(router);

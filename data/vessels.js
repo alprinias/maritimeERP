@@ -5,7 +5,8 @@
 ──────────────────────────────────────────────────────────────── */
 
 /* Each rank row shape:
-   onboard : { name, shortName, embark, signoff, contract }
+   onboard : { seafarerId, name, shortName, embark, signoff, contract }
+             seafarerId → allSeafarers (seafarers.js) or crewSeafarers (crew.js)
    rfa     : null | { rfaNo, type('Extend'|'Replace'|'Promote'), status,
                       rfaStart, rfaEnd, newRank?, proposed:[], confirmedSeafarer }
    rfs     : null | { rfaNo, dateCreated, signoffDate, port, status }
@@ -26,7 +27,7 @@ var allVessels = [
         ranks:[
             {
                 rank:'Captain',
-                onboard:{ name:'RAMON ESTRADA',   shortName:'R. Estrada',   embark:'2025-12-15', signoff:'2026-06-15', contract:'6 months' },
+                onboard:{ seafarerId:1001, name:'RAMON ESTRADA',   shortName:'R. Estrada',   embark:'2025-12-15', signoff:'2026-06-15', contract:'6 months' },
                 rfa:{ rfaNo:'RFR-1042', status:'approval',
                       rfaStart:'2026-04-15', rfaEnd:'2026-12-15',
                       proposed:[
@@ -38,7 +39,7 @@ var allVessels = [
             },
             {
                 rank:'Chief Officer',
-                onboard:{ name:'JUAN DELA CRUZ',  shortName:'J. Dela Cruz', embark:'2026-01-01', signoff:'2026-07-01', contract:'6 months' },
+                onboard:{ seafarerId:101, name:'JUAN DELA CRUZ',  shortName:'J. Dela Cruz', embark:'2026-01-01', signoff:'2026-07-01', contract:'6 months' },
                 rfa:{ rfaNo:'RFR-1058', status:'active',
                       rfaStart:'2026-05-01', rfaEnd:'2027-01-01',
                       proposed:[
@@ -48,14 +49,14 @@ var allVessels = [
             },
             {
                 rank:'Chief Engineer',
-                onboard:{ name:'IVAN PETROV',     shortName:'I. Petrov',    embark:'2026-05-01', signoff:'2026-11-01', contract:'6 months' },
+                onboard:{ seafarerId:1002, name:'IVAN PETROV',     shortName:'I. Petrov',    embark:'2026-05-01', signoff:'2026-11-01', contract:'6 months' },
                 rfa:{ rfaNo:'RFR-1077', status:'active',
                       rfaStart:'2026-09-01', rfaEnd:'2027-05-01',
                       proposed:[], confirmedSeafarer:null }
             },
             {
                 rank:'Second Engineer',
-                onboard:{ name:'MARIO SANTOS',    shortName:'M. Santos',    embark:'2026-02-01', signoff:'2026-08-01', contract:'6 months' },
+                onboard:{ seafarerId:1003, name:'MARIO SANTOS',    shortName:'M. Santos',    embark:'2026-02-01', signoff:'2026-08-01', contract:'6 months' },
                 rfa:{ rfaNo:'RFR-1061', status:'deployment',
                       rfaStart:'2026-06-01', rfaEnd:'2027-02-01',
                       proposed:[
@@ -65,21 +66,21 @@ var allVessels = [
             },
             {
                 rank:'Bosun',
-                onboard:{ name:'FELIX MERCADO',   shortName:'F. Mercado',   embark:'2026-03-15', signoff:'2026-09-15', contract:'6 months' },
+                onboard:{ seafarerId:1004, name:'FELIX MERCADO',   shortName:'F. Mercado',   embark:'2026-03-15', signoff:'2026-09-15', contract:'6 months' },
                 rfa:{ rfaNo:'RFR-1071', status:'active',
                       rfaStart:'2026-07-15', rfaEnd:'2027-03-15',
                       proposed:[], confirmedSeafarer:null }
             },
             {
                 rank:'AB Deck', isRating: true,
-                onboard:{ name:'PEDRO RAMOS',     shortName:'P. Ramos',     embark:'2026-04-01', signoff:'2026-10-01', contract:'6 months' },
+                onboard:{ seafarerId:1005, name:'PEDRO RAMOS',     shortName:'P. Ramos',     embark:'2026-04-01', signoff:'2026-10-01', contract:'6 months' },
                 rfa:{ rfaNo:'RFR-1082', status:'active',
                       rfaStart:'2026-08-01', rfaEnd:'2027-04-01',
                       proposed:[], confirmedSeafarer:null }
             },
             {
                 rank:'Oiler', isRating: true,
-                onboard:{ name:'MARK VILLANUEVA', shortName:'M. Villanueva', embark:'2026-02-10', signoff:'2026-08-10', contract:'6 months' },
+                onboard:{ seafarerId:1006, name:'MARK VILLANUEVA', shortName:'M. Villanueva', embark:'2026-02-10', signoff:'2026-08-10', contract:'6 months' },
                 rfa:{ rfaNo:'RFR-1083', status:'deployment',
                       rfaStart:'2026-06-10', rfaEnd:'2027-02-10',
                       proposed:[
@@ -112,21 +113,21 @@ var allVessels = [
         ranks:[
             {
                 rank:'Captain',
-                onboard:{ name:'DMITRI VOLKOV',   shortName:'D. Volkov',    embark:'2026-02-01', signoff:'2026-08-01', contract:'6 months' },
+                onboard:{ seafarerId:1007, name:'DMITRI VOLKOV',   shortName:'D. Volkov',    embark:'2026-02-01', signoff:'2026-08-01', contract:'6 months' },
                 rfa:{ rfaNo:'RFR-1055', status:'active',
                       rfaStart:'2026-06-01', rfaEnd:'2027-02-01',
                       proposed:[], confirmedSeafarer:null }
             },
             {
                 rank:'Chief Officer',
-                onboard:{ name:'CARLOS MENDOZA',  shortName:'C. Mendoza',   embark:'2026-03-01', signoff:'2026-09-01', contract:'6 months' },
+                onboard:{ seafarerId:1008, name:'CARLOS MENDOZA',  shortName:'C. Mendoza',   embark:'2026-03-01', signoff:'2026-09-01', contract:'6 months' },
                 rfa:{ rfaNo:'RFR-1066', status:'active',
                       rfaStart:'2026-07-01', rfaEnd:'2027-03-01',
                       proposed:[], confirmedSeafarer:null }
             },
             {
                 rank:'Chief Engineer',
-                onboard:{ name:'SERGEI KOZLOV',   shortName:'S. Kozlov',    embark:'2026-01-15', signoff:'2026-07-15', contract:'6 months' },
+                onboard:{ seafarerId:1009, name:'SERGEI KOZLOV',   shortName:'S. Kozlov',    embark:'2026-01-15', signoff:'2026-07-15', contract:'6 months' },
                 rfa:{ rfaNo:'RFR-1048', status:'approval',
                       rfaStart:'2026-05-15', rfaEnd:'2027-01-15',
                       proposed:[
@@ -137,13 +138,13 @@ var allVessels = [
             },
             {
                 rank:'Second Officer',
-                onboard:{ name:'FELIX GARCIA',    shortName:'F. Garcia',    embark:'2026-04-01', signoff:'2026-10-01', contract:'6 months' },
+                onboard:{ seafarerId:401, name:'FELIX GARCIA',    shortName:'F. Garcia',    embark:'2026-04-01', signoff:'2026-10-01', contract:'6 months' },
                 rfa: null,
                 rfs:{ rfaNo:'RFS-3001', dateCreated:'2026-05-10', signoffDate:'2026-10-01', port:'Rotterdam', status:'active' },
             },
             {
                 rank:'Bosun', isRating: true,
-                onboard:{ name:'ANTONIO REYES',   shortName:'A. Reyes',     embark:'2026-03-20', signoff:'2026-09-20', contract:'6 months' },
+                onboard:{ seafarerId:1010, name:'ANTONIO REYES',   shortName:'A. Reyes',     embark:'2026-03-20', signoff:'2026-09-20', contract:'6 months' },
                 rfa:{ rfaNo:'RFR-1072', status:'active',
                       rfaStart:'2026-07-20', rfaEnd:'2027-03-20',
                       proposed:[], confirmedSeafarer:null }
@@ -163,14 +164,14 @@ var allVessels = [
         ranks:[
             {
                 rank:'Captain',
-                onboard:{ name:'ALEXANDER KIM',   shortName:'A. Kim',       embark:'2026-01-20', signoff:'2026-07-20', contract:'6 months' },
+                onboard:{ seafarerId:1011, name:'ALEXANDER KIM',   shortName:'A. Kim',       embark:'2026-01-20', signoff:'2026-07-20', contract:'6 months' },
                 rfa:{ rfaNo:'RFX-1074', type:'Extend', status:'active',
                       rfaStart:'2026-05-20', rfaEnd:'2026-10-20',
                       proposed:[], confirmedSeafarer:null }
             },
             {
                 rank:'Chief Officer',
-                onboard:{ name:'ROBERTO LINO',    shortName:'R. Lino',      embark:'2026-01-10', signoff:'2026-07-10', contract:'6 months' },
+                onboard:{ seafarerId:1012, name:'ROBERTO LINO',    shortName:'R. Lino',      embark:'2026-01-10', signoff:'2026-07-10', contract:'6 months' },
                 rfa:{ rfaNo:'RFR-1051', type:'Replace', status:'approval',
                       rfaStart:'2026-05-10', rfaEnd:'2027-01-10',
                       proposed:[
@@ -180,14 +181,14 @@ var allVessels = [
             },
             {
                 rank:'Bosun', isRating: true,
-                onboard:{ name:'RAMIR ESPINOSA',  shortName:'R. Espinosa',  embark:'2026-03-01', signoff:'2026-09-01', contract:'6 months' },
+                onboard:{ seafarerId:1013, name:'RAMIR ESPINOSA',  shortName:'R. Espinosa',  embark:'2026-03-01', signoff:'2026-09-01', contract:'6 months' },
                 rfa:{ rfaNo:'RFP-1090', type:'Promote', status:'active',
                       rfaStart:'2026-07-01', rfaEnd:'2027-03-01',
                       proposed:[], confirmedSeafarer:null }
             },
             {
                 rank:'Ordinary Seaman', isRating: true,
-                onboard:{ name:'NOEL BACALTOS',   shortName:'N. Bacaltos',  embark:'2026-04-01', signoff:'2026-10-01', contract:'6 months' },
+                onboard:{ seafarerId:1014, name:'NOEL BACALTOS',   shortName:'N. Bacaltos',  embark:'2026-04-01', signoff:'2026-10-01', contract:'6 months' },
                 rfa: null,
                 rfs:{ rfaNo:'RFS-3002', dateCreated:'2026-05-12', signoffDate:'2026-10-01', port:'Singapore', status:'preparation' },
             },
@@ -206,28 +207,28 @@ var allVessels = [
         ranks:[
             {
                 rank:'Captain',
-                onboard:{ name:'GEORGIOS STAVROS', shortName:'G. Stavros',  embark:'2026-02-15', signoff:'2026-08-15', contract:'6 months' },
+                onboard:{ seafarerId:1015, name:'GEORGIOS STAVROS', shortName:'G. Stavros',  embark:'2026-02-15', signoff:'2026-08-15', contract:'6 months' },
                 rfa:{ rfaNo:'RFR-1063', status:'active',
                       rfaStart:'2026-06-15', rfaEnd:'2027-02-15',
                       proposed:[], confirmedSeafarer:null }
             },
             {
                 rank:'Chief Engineer',
-                onboard:{ name:'LUIGI FERRARI',   shortName:'L. Ferrari',   embark:'2026-03-10', signoff:'2026-09-10', contract:'6 months' },
+                onboard:{ seafarerId:1016, name:'LUIGI FERRARI',   shortName:'L. Ferrari',   embark:'2026-03-10', signoff:'2026-09-10', contract:'6 months' },
                 rfa:{ rfaNo:'RFR-1074', status:'active',
                       rfaStart:'2026-07-10', rfaEnd:'2027-03-10',
                       proposed:[], confirmedSeafarer:null }
             },
             {
                 rank:'Second Engineer',
-                onboard:{ name:'PAULO SILVA',     shortName:'P. Silva',     embark:'2026-01-25', signoff:'2026-07-25', contract:'6 months' },
+                onboard:{ seafarerId:1017, name:'PAULO SILVA',     shortName:'P. Silva',     embark:'2026-01-25', signoff:'2026-07-25', contract:'6 months' },
                 rfa:{ rfaNo:'RFR-1049', status:'active',
                       rfaStart:'2026-05-25', rfaEnd:'2027-01-25',
                       proposed:[], confirmedSeafarer:null }
             },
             {
                 rank:'Second Officer',
-                onboard:{ name:'ARIS NIKOLAOU',   shortName:'A. Nikolaou',  embark:'2026-04-10', signoff:'2026-10-10', contract:'6 months' },
+                onboard:{ seafarerId:1018, name:'ARIS NIKOLAOU',   shortName:'A. Nikolaou',  embark:'2026-04-10', signoff:'2026-10-10', contract:'6 months' },
                 rfa: null,
                 rfs:{ rfaNo:'RFS-3003', dateCreated:'2026-05-15', signoffDate:'2026-10-10', port:'Piraeus', status:'active' },
             },
@@ -244,21 +245,21 @@ var allVessels = [
         ranks:[
             {
                 rank:'Captain',
-                onboard:{ name:'KONSTANTINOS PAPADAKIS', shortName:'K. Papadakis', embark:'2026-03-01', signoff:'2026-09-01', contract:'6 months' },
+                onboard:{ seafarerId:1019, name:'KONSTANTINOS PAPADAKIS', shortName:'K. Papadakis', embark:'2026-03-01', signoff:'2026-09-01', contract:'6 months' },
                 rfa:{ rfaNo:'RFR-1068', status:'active',
                       rfaStart:'2026-07-01', rfaEnd:'2027-03-01',
                       proposed:[], confirmedSeafarer:null }
             },
             {
                 rank:'Chief Officer',
-                onboard:{ name:'YIANNIS MANOLIS', shortName:'Y. Manolis',   embark:'2026-02-20', signoff:'2026-08-20', contract:'6 months' },
+                onboard:{ seafarerId:1020, name:'YIANNIS MANOLIS', shortName:'Y. Manolis',   embark:'2026-02-20', signoff:'2026-08-20', contract:'6 months' },
                 rfa:{ rfaNo:'RFR-1060', status:'active',
                       rfaStart:'2026-06-20', rfaEnd:'2027-02-20',
                       proposed:[], confirmedSeafarer:null }
             },
             {
                 rank:'Chief Engineer',
-                onboard:{ name:'SPIROS ALEXIOU',  shortName:'S. Alexiou',   embark:'2026-01-05', signoff:'2026-07-05', contract:'6 months' },
+                onboard:{ seafarerId:1021, name:'SPIROS ALEXIOU',  shortName:'S. Alexiou',   embark:'2026-01-05', signoff:'2026-07-05', contract:'6 months' },
                 rfa:{ rfaNo:'RFR-1044', status:'approval',
                       rfaStart:'2026-05-05', rfaEnd:'2027-01-05',
                       proposed:[
@@ -280,26 +281,26 @@ var allVessels = [
         ranks:[
             {
                 rank:'Captain',
-                onboard:{ name:'TANAKA HIROSHI',  shortName:'T. Hiroshi',   embark:'2026-04-01', signoff:'2026-10-01', contract:'6 months' },
+                onboard:{ seafarerId:1022, name:'TANAKA HIROSHI',  shortName:'T. Hiroshi',   embark:'2026-04-01', signoff:'2026-10-01', contract:'6 months' },
                 rfa: null
             },
             {
                 rank:'Chief Officer',
-                onboard:{ name:'PARK JOON-HO',    shortName:'P. Joon-Ho',   embark:'2026-03-15', signoff:'2026-09-15', contract:'6 months' },
+                onboard:{ seafarerId:1023, name:'PARK JOON-HO',    shortName:'P. Joon-Ho',   embark:'2026-03-15', signoff:'2026-09-15', contract:'6 months' },
                 rfa:{ rfaNo:'RFR-1069', status:'active',
                       rfaStart:'2026-07-15', rfaEnd:'2027-03-15',
                       proposed:[], confirmedSeafarer:null }
             },
             {
                 rank:'Chief Engineer',
-                onboard:{ name:'LEE SUNG-MIN',    shortName:'L. Sung-Min',  embark:'2026-02-28', signoff:'2026-08-28', contract:'6 months' },
+                onboard:{ seafarerId:1024, name:'LEE SUNG-MIN',    shortName:'L. Sung-Min',  embark:'2026-02-28', signoff:'2026-08-28', contract:'6 months' },
                 rfa:{ rfaNo:'RFR-1057', status:'active',
                       rfaStart:'2026-06-28', rfaEnd:'2027-02-28',
                       proposed:[], confirmedSeafarer:null }
             },
             {
                 rank:'Second Officer',
-                onboard:{ name:'NGUYEN VAN AN',   shortName:'N. Van An',    embark:'2026-04-15', signoff:'2026-10-15', contract:'6 months' },
+                onboard:{ seafarerId:1025, name:'NGUYEN VAN AN',   shortName:'N. Van An',    embark:'2026-04-15', signoff:'2026-10-15', contract:'6 months' },
                 rfa: null
             },
         ]

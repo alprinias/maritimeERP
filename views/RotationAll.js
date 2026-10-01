@@ -7,6 +7,7 @@
      utils.js     → TODAY, d, addM, daysB, isoDate, fmtShort, shortName
      vessels.js   → allVessels
      seafarers.js → allSeafarers, seedRfeRows
+     store.js     → erpStore (rfeRows)
    Exposes global: RotationAllView
 ──────────────────────────────────────────────────────────────── */
 const RotationAllView = {
@@ -37,8 +38,8 @@ const RotationAllView = {
                 availFilter: '', showCompare: false, showProposal: false,
             },
             todayStr: isoDate(TODAY),
-            // Deep-copy seedRfeRows so mutations don't affect the source array
-            rfeRows: seedRfeRows.map(r => Object.assign({}, r)),
+            // Shared copy of seedRfeRows — survives navigation (data/store.js)
+            rfeRows: erpStore.rfeRows,
             allSeafarers,
         };
     },

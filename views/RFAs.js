@@ -14,7 +14,8 @@
    - RFAsView          — parent view. Registers rfa-card locally. Owns filter
                          state, data aggregation, task state, and selection state.
 
-   Depends on globals: allVessels (vessels.js), isoDate, addM, TODAY (utils.js)
+   Depends on globals: allVessels (vessels.js), isoDate, addM, TODAY (utils.js),
+                       erpStore (store.js)
    Exposes global: RFAsView
 ──────────────────────────────────────────────────────────────── */
 
@@ -130,13 +131,24 @@ const RFAsView = {
     },
 
     created() {
-        this.allRows = {
+        // Rebuild from allVessels (picks up RFAs created in Rotation Plan),
+        // but reuse row objects already in erpStore so task / candidate /
+        // approval state survives navigating away and back.
+        const fresh = {
             signoff:     this.buildSignoffRows(),
             extension:   this.buildExtensionRows(),
             promotion:   this.buildPromotionRows(),
             embarkation: this.buildEmbarkationRows(),
             replacement: this.buildReplacementRows(),
         };
+        const cached = erpStore.rfaRows || {};
+        Object.keys(fresh).forEach(tab => {
+            const byNo = {};
+            (cached[tab] || []).forEach(r => { byNo[r.rfaNo] = r; });
+            fresh[tab] = fresh[tab].map(r => byNo[r.rfaNo] || r);
+        });
+        erpStore.rfaRows = fresh;
+        this.allRows = erpStore.rfaRows;
     },
 
     computed: {

@@ -27,11 +27,15 @@ maritimeERP/
 │   ├── utils.js            ← Date helpers (var TODAY, d, addM, daysB, isoDate, fmtShort, shortName)
 │   ├── vessels.js          ← var allVessels (6 vessels, 4 clients, full rank/RFA data)
 │   ├── seafarers.js        ← var allSeafarers, var seedRfeRows
+│   ├── store.js            ← var erpStore (Vue.reactive shared state)
+│   ├── crew.js             ← crewSeafarers, crewPastAssignments, crew-list helpers
+│   ├── documents.js        ← generated seafarer documents + status helpers
 │   └── clients.js          ← var allClientsData (4 clients, salaryRanges, docTypes, vesselIds)
 ├── views/
 │   ├── RotationAll.js      ← Fleet Rotation Gantt view
 │   ├── ClientsSetup.js     ← Admin → Clients Setup view
-│   └── RFAs.js             ← Operations → RFAs view (+ RfaCardComponent)
+│   ├── RFAs.js             ← Operations → RFAs view (+ RfaCardComponent)
+│   └── ClientCrew.js       ← Client UI → Fleet & Crew view
 └── CONTEXT.md
 ```
 
@@ -71,9 +75,9 @@ window.TODAY          = TODAY;
 CDN: Vue → VueRouter → Tailwind
 assets/erp-base.css + gantt.css
 x-template blocks (tpl-clients-setup, tpl-rfa-card, tpl-rfas, tpl-rotation-all)
-data/utils.js → data/vessels.js → data/seafarers.js
+data/utils.js → data/vessels.js → data/seafarers.js → data/store.js → data/crew.js → data/documents.js
 [inline: window.* bridge + data/clients.js]
-views/ClientsSetup.js → views/RFAs.js → views/RotationAll.js
+views/ClientsSetup.js → views/RFAs.js → views/RotationAll.js → views/ClientCrew.js
 [inline: makeStub() + stub views + router + createApp().mount()]
 ```
 
@@ -366,6 +370,43 @@ allRows: { signoff, extension, promotion, embarkation, replacement }  // built i
 
 ---
 
+## Shared state (`data/store.js`)
+`erpStore = Vue.reactive({ clientUi:{clientId}, rfeRows, rfaRows })`
+- `rfeRows` — Rotation Plan's RFE rows (was a per-visit copy of seedRfeRows).
+- `rfaRows` — RFAs view rows per tab. Built on first visit; on later visits rows are rebuilt from allVessels and existing row objects are reused by `rfaNo`, so task / candidate / approval state survives navigation.
+- `clientUi.clientId` — client the Client UI is "viewing as" (top-bar dropdown).
+
+---
+
+## Client UI (mockup of the separate client portal)
+Sidebar section **Client UI** (amber). Routes under `/client/*` switch the top bar to "CLIENT PORTAL · Viewing as [client ▼]" (active clients only). Client users are read-only except RFE approval (planned).
+
+| Route | View | State |
+|---|---|---|
+| `/client/dashboard` | ClientDashboardView | stub |
+| `/client/crew` | ClientCrewView (`tpl-client-crew`) | BUILT |
+| `/client/approvals` | ClientApprovalsView | stub |
+| `/client/seafarer/:id` | ClientSeafarerView | stub (profile placeholder + documents planned) |
+
+**Fleet & Crew** — vessel cards (on board, changes ≤30d, overdue, expired/expiring docs; click to filter) + tabs:
+- *Crew List* — "On board at" date (±1 month, Today). Past date → former tours; future → planned reliefs (dashed/sky). Columns: rank, seafarer (link to profile), nationality, embarked, sign-off, time on board, document summary, status + relief.
+- *Crew Changes* — pending sign-offs / embarkations / extensions / promotions, Overdue + Upcoming, horizon 30/60/90/All.
+- *Former Crew* — completed tours, searchable.
+
+**Hidden from clients:** wages/contract, task costs, candidate category (Dedicated/Ex-Crew/New), CES scores, BMI.
+
+### Crew data (`data/crew.js`)
+- `onboard.seafarerId` in vessels.js links each current crew member to `allSeafarers` (candidate pool) or `crewSeafarers` (ids 1001+ on board, 1101+ former). crewSeafarers are NOT RFE candidates.
+- `crewReliefSeed` → `crewPastAssignments`: two-person rotation per position (relief tour ending on current embark, current holder's previous tour before it).
+- `crewSignoffDate(row)` = rfr_rfe.embarkDate › rfs.signoffDate › onboard.signoff.
+- `crewRelief(vessel,row)` — from rfr_rfe (live state read from `erpStore.rfaRows.replacement`) or legacy `rfa` Replace (`confirmedSeafarer`). stage: search | approval | preparation.
+- `crewOnDate(vessel, iso)` → rows kind past | current | planned | unknown. `crewEvents(vessel)` → change events.
+
+### Documents (`data/documents.js`)
+`seafarerDocuments(id)` generates a deterministic, cached list per seafarer by rank (Identity, Competency, STCW Training, Medical, Visas) with expiry relative to TODAY. `docStatus(doc)` → valid | expiring (≤90d) | expired | permanent. `docSummary(id)`.
+
+---
+
 ## CSS architecture
 
 ### gantt.css classes
@@ -402,6 +443,8 @@ allRows: { signoff, extension, promotion, embarkation, replacement }  // built i
 - `/recruitment/candidates` — seafarer database / profiles (data partially in `allSeafarers`)
 - `/recruitment/pipeline` — RFC → shortlist → proposal → confirmation workflow
 - `/` (home) — dashboard
+
+**Client UI next phases:** 3 — Seafarer profile (placeholder header + documents table, single download + multi-select ZIP) · 4 — Approvals (RFE only: candidate cards with profile/CV/documents, Approve / Reject with mandatory reason; internal RFAs becomes read-only "Awaiting principal"; list defaults to waiting RFEs, toggle to all with date filter) · 5 — Client dashboard.
 
 **Next logical views:**
 - **Recruitment → Candidates** — full seafarer profiles, documents, certificates, availability
