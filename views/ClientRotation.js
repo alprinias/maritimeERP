@@ -135,7 +135,7 @@ const ClientRotationView = {
         return {
             store:        erpStore,
             todayStr:     isoDate(TODAY),
-            filterVessel: null,
+            filterVessel: (!this.embedded && this.$route.query.vessel) || null,   // dashboard deep link
             filterRank:   null,
             rfType:       this.pendingOnly ? 'approval' : '',
             windowMonths: 12,

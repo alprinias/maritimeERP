@@ -8,7 +8,7 @@
      rfeLiveStage(), rfeSeedStage(),
      fullNameLF(), barLabel(), seafarerAge(),
      CREW_PORTS, crewPort(), seafarerTours(), lastTourOf(), dedicatedClientOf(),
-     availabilityOf()
+     ashoreDedicated(), availabilityOf()
 
    allSeafarers (seafarers.js) is the candidate pool used by RFEs.
    crewSeafarers holds everyone else who serves / served on client
@@ -369,6 +369,15 @@ function dedicatedClientOf(seafarerId) {
     if (!t) return null;
     var c = allClientsData.find(c => c.vesselIds.includes(t.vesselId));
     return c ? c.id : null;
+}
+
+// Seafarers dedicated to a client and ashore today → [{ seafarerId, tour }] (tour = last, completed)
+function ashoreDedicated(clientId) {
+    return [...allSeafarers, ...crewSeafarers]
+        .map(s => s.id)
+        .filter(id => dedicatedClientOf(id) === clientId)
+        .map(id => ({ seafarerId: id, tour: lastTourOf(id) }))
+        .filter(x => x.tour && !x.tour.current);
 }
 
 // Availability date: pool record, else 2 months after the last sign-off

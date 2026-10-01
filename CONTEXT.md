@@ -1,5 +1,5 @@
 # CONTEXT.md — Maritime ERP Mockup
-**For AI model continuation. Updated after Client UI phase 6 (Pending Approvals and the Atlantis approval dialog).**
+**For AI model continuation. Updated after Client UI phase 7 (client Dashboard) — all Client UI phases built.**
 
 ---
 
@@ -41,7 +41,8 @@ maritimeERP/
 │   ├── ClientsSetup.js     ← Admin → Clients Setup view
 │   ├── RFAs.js             ← Operations → RFAs view (+ RfaCardComponent)
 │   ├── ClientCommon.js     ← Client UI: AtlTable, SeafarerProfileDialog, DocumentViewerDialog, atlDate, documentPdf
-│   ├── ClientPortal.js     ← Client UI shell (ClientPortal) + ClientPlaceholderView
+│   ├── ClientPortal.js     ← Client UI shell (ClientPortal)
+│   ├── ClientDashboard.js  ← Client UI → Dashboard (landing page)
 │   ├── ClientCrewLists.js  ← Client UI → Crew Lists view
 │   ├── ClientRotation.js   ← Client UI → Rotation Plan (Atlantis Gantt) — also <client-rotation>
 │   └── ClientApprovals.js  ← Client UI → Pending Approvals + <approval-dialog>, cvPdf()
@@ -67,7 +68,7 @@ const MyView = { template: '#tpl-my-view', data() {...}, ... }
 | `tpl-rfa-card` | `RfaCardComponent` (local to RFAsView) |
 | `tpl-rfas` | `RFAsView` |
 | `tpl-client-portal` | `ClientPortal` (global component) |
-| `tpl-client-placeholder` | `ClientPlaceholderView` |
+| `tpl-client-dashboard` | `ClientDashboardView` |
 | `tpl-atl-table` | `AtlTable` (global `atl-table`) |
 | `tpl-seafarer-profile` | `SeafarerProfileDialog` (global) |
 | `tpl-document-viewer` | `DocumentViewerDialog` (global `document-viewer`) |
@@ -418,10 +419,15 @@ Seed data in vessels.js / seafarers.js is authored as of `DATA_AUTHORED_ON = '20
 
 | Route | View | State |
 |---|---|---|
-| `/client/dashboard` | ClientPlaceholderView | Phase 7 |
+| `/client` | → `/client/dashboard` (landing page) | |
+| `/client/dashboard` | ClientDashboardView | BUILT |
 | `/client/crew-lists` | ClientCrewListsView | BUILT |
 | `/client/rotation` | ClientRotationView | BUILT |
 | `/client/approvals` | ClientApprovalsView | BUILT |
+
+Deep links: Crew Lists reads `?list=onboard|ashore|approved|changes` and `?vessel=`; Rotation Plan reads `?vessel=`.
+
+**Dashboard** (landing page) — greeting (client, date, vessel count); 6 KPI tiles, each linking to its detail: crew on board (/positions), ashore (dedicated pool, `ashoreDedicated()`), pending approvals (with next due), crew changes in the next 30 days, overdue sign-offs, expired / expiring (≤ 90 d) documents of the crew on board (scrolls to the list); Fleet table per vessel (crew on board / positions, next crew change, changes ≤ 30 d, pending approvals, document chips, crew-list and rotation shortcuts); "Awaiting your approval" list with Review (opens the approval dialog); "Crew changes · next 30 days"; "Documents needing attention" (first 8, Show all). Status always icon + label (dataviz rule: never colour alone); values in text colour.
 
 **AtlTable (`atl-table`)** — Atlantis table: toolbar (refresh, `#toolbar-left` slot e.g. FILTERS, COLUMNS visibility menu with SHOW ALL / HIDE ALL and fixed columns, Export PDF, PRESETS look-only), sortable headers, optional checkbox selection (`v-model:selected`), section header rows (`sections` + row `_section`), `#row-actions` slot, footer "Rows · 1 to N of M · Page x - y". Columns: `{ key, title, fixed?, type?: 'link'|'chip', format?, cls?, chip? }`; rows need `_key`, may carry `<key>_sort` and `<key>_link === false`. Export PDF = all rows, visible columns, jsPDF + autotable.
 
@@ -496,8 +502,7 @@ FILTERS menu: Rank, Nationality.
 - `/recruitment/pipeline` — RFC → shortlist → proposal → confirmation workflow
 - `/` (home) — dashboard
 
-**Client UI next phases:**
-- Phase 7 — Client dashboard: crew on board per vessel, ashore, pending approvals, changes next 30 days, overdue sign-offs, expiring / expired documents.
+**Client UI:** all planned phases built (portal, Crew Lists, profile + documents, Rotation Plan, Pending Approvals, Dashboard). Open items: profile tabs other than Documents are placeholders; PRESETS is look-only; dashboard figures to be customised with stakeholders.
 
 **Next logical views:**
 - **Recruitment → Candidates** — full seafarer profiles, documents, certificates, availability

@@ -5,7 +5,7 @@
    Templates live in index.html: tpl-client-portal, tpl-client-placeholder
 
    Depends on globals: erpStore, allClientsData
-   Exposes globals: ClientPortal, ClientPlaceholderView
+   Exposes global: ClientPortal
 ──────────────────────────────────────────────────────────────── */
 const ClientPortal = {
     template: '#tpl-client-portal',
@@ -46,9 +46,4 @@ const ClientPortal = {
     methods: {
         exit() { this.$router.push('/operations/rotation'); },
     },
-};
-
-// Placeholder for Client UI pages not built yet (title / icon / phase from route meta)
-const ClientPlaceholderView = {
-    template: '#tpl-client-placeholder',
 };

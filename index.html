@@ -1910,15 +1910,6 @@
 </v-app>
 </script>
 
-<!-- ── Client placeholder page x-template ────────────────────── -->
-<script type="text/x-template" id="tpl-client-placeholder">
-<div class="atl-page atl-placeholder-page">
-    <v-icon :icon="$route.meta.icon" size="56" color="grey-lighten-1"></v-icon>
-    <div class="text-h6 mt-3">{{ $route.meta.title }}</div>
-    <div class="text-medium-emphasis">Coming in {{ $route.meta.phase }}.</div>
-</div>
-</script>
-
 <!-- ── Atlantis data table x-template (AtlTable) ─────────────── -->
 <script type="text/x-template" id="tpl-atl-table">
 <div class="atl-table">
@@ -2187,6 +2178,171 @@
                 </v-menu>
             </template>
         </atl-table>
+    </div>
+</div>
+</script>
+
+<!-- ── Client UI: Dashboard x-template ───────────────────────── -->
+<script type="text/x-template" id="tpl-client-dashboard">
+<div class="atl-page atl-dash">
+    <div class="atl-dash__scroll">
+
+        <!-- Greeting -->
+        <div class="atl-dash__hello">
+            <div>
+                <div class="atl-dash__title">{{ client ? client.name : '' }}</div>
+                <div class="atl-dash__subtitle">{{ todayLong }} · {{ vessels.length }} vessels under Crossworld management</div>
+            </div>
+        </div>
+
+        <!-- KPI tiles -->
+        <div class="atl-dash__tiles">
+            <v-card v-for="t in tiles" :key="t.id" variant="outlined" class="atl-tile" @click="open(t)">
+                <div class="atl-tile__head">
+                    <span class="atl-tile__label">{{ t.label }}</span>
+                    <span class="atl-tile__icon"><v-icon :icon="t.icon" size="20"></v-icon></span>
+                </div>
+                <div class="atl-tile__value">{{ t.value }}</div>
+                <div class="atl-tile__sub">{{ t.sub }}</div>
+                <v-chip v-if="t.status" :color="t.status.color" :prepend-icon="t.status.icon" size="small" variant="tonal" class="mt-2">{{ t.status.text }}</v-chip>
+            </v-card>
+        </div>
+
+        <!-- Fleet -->
+        <div class="atl-dash__panel">
+            <div class="atl-dash__panelhead">
+                <span class="atl-section-title atl-dash__h">Fleet</span>
+            </div>
+            <v-table class="atl-table__grid atl-dash__fleet" hover>
+                <thead>
+                    <tr>
+                        <th class="atl-th">Vessel</th>
+                        <th class="atl-th">Type · Flag</th>
+                        <th class="atl-th">Crew on board</th>
+                        <th class="atl-th">Next crew change</th>
+                        <th class="atl-th">Changes ≤ 30 days</th>
+                        <th class="atl-th">Pending approvals</th>
+                        <th class="atl-th">Documents</th>
+                        <th class="atl-th"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="f in fleet" :key="f.vessel.id">
+                        <td><strong>{{ f.vessel.name.toUpperCase() }}</strong></td>
+                        <td>{{ f.vessel.type }} · {{ f.vessel.flag }}</td>
+                        <td>{{ f.onboard }} / {{ f.positions }}</td>
+                        <td>
+                            <template v-if="f.next">
+                                {{ atlDate(f.next.date) }} · {{ changeMeta(f.next).text }} {{ f.next.rank.toUpperCase() }}
+                            </template>
+                            <span v-else class="atl-muted">None planned</span>
+                        </td>
+                        <td>{{ f.upcoming.length }}</td>
+                        <td>
+                            <v-chip v-if="f.pending" color="deep-purple" prepend-icon="mdi-alert-circle-outline" size="small" variant="tonal"
+                                    @click="$router.push('/client/approvals')">{{ f.pending }} waiting</v-chip>
+                            <span v-else class="atl-muted">—</span>
+                        </td>
+                        <td>
+                            <div class="d-flex ga-1">
+                                <v-chip v-if="f.expired" color="error" prepend-icon="mdi-alert-circle" size="small" variant="tonal">{{ f.expired }} expired</v-chip>
+                                <v-chip v-if="f.expiring" color="warning" prepend-icon="mdi-clock-alert-outline" size="small" variant="tonal">{{ f.expiring }} expiring</v-chip>
+                                <v-chip v-if="!f.expired && !f.expiring" color="success" prepend-icon="mdi-check-circle-outline" size="small" variant="tonal">All valid</v-chip>
+                            </div>
+                        </td>
+                        <td class="text-right" style="white-space:nowrap">
+                            <v-btn icon="mdi-account-group" variant="text" size="small" title="Crew list"
+                                   @click="$router.push('/client/crew-lists?list=onboard&vessel=' + f.vessel.id)"></v-btn>
+                            <v-btn icon="mdi-chart-gantt" variant="text" size="small" title="Rotation plan"
+                                   @click="$router.push('/client/rotation?vessel=' + f.vessel.id)"></v-btn>
+                        </td>
+                    </tr>
+                </tbody>
+            </v-table>
+        </div>
+
+        <div class="atl-dash__cols">
+            <!-- Awaiting approval -->
+            <div class="atl-dash__panel">
+                <div class="atl-dash__panelhead">
+                    <span class="atl-section-title atl-dash__h">Awaiting your approval</span>
+                    <v-btn variant="text" color="primary" size="small" class="atl-tool-btn" to="/client/approvals">View all</v-btn>
+                </div>
+                <div v-if="!pendingItems.length" class="atl-dash__empty">
+                    <v-icon icon="mdi-check-circle-outline" color="success"></v-icon> Nothing is waiting for your decision.
+                </div>
+                <div v-for="i in pendingItems" :key="i.ref" class="atl-dash__item">
+                    <div class="atl-dash__itemmain">
+                        <div><strong>{{ i.ref }}</strong> · {{ i.rank.toUpperCase() }} · {{ i.vessel.name.toUpperCase() }}</div>
+                        <div class="atl-dash__meta">
+                            {{ i.pending.length }} candidate{{ i.pending.length > 1 ? 's' : '' }} · joining {{ atlDate(i.joinDate) }} ·
+                            <span :class="daysLeft(i.due) <= 14 ? 'atl-text-error' : ''">due {{ atlDate(i.due) }}
+                                ({{ daysLeft(i.due) <= 0 ? 'today' : daysLeft(i.due) + ' days left' }})</span>
+                        </div>
+                    </div>
+                    <v-btn color="primary" variant="flat" size="small" class="atl-tool-btn" @click="openApproval(i)">Review</v-btn>
+                </div>
+            </div>
+
+            <!-- Next 30 days -->
+            <div class="atl-dash__panel">
+                <div class="atl-dash__panelhead">
+                    <span class="atl-section-title atl-dash__h">Crew changes · next 30 days</span>
+                    <v-btn variant="text" color="primary" size="small" class="atl-tool-btn" to="/client/crew-lists?list=changes">View all</v-btn>
+                </div>
+                <div v-if="!upcomingList.length" class="atl-dash__empty">No crew changes in the next 30 days.</div>
+                <div v-for="(e, n) in upcomingList" :key="n" class="atl-dash__item">
+                    <div class="atl-dash__date">{{ atlDate(e.date) }}</div>
+                    <v-chip :color="changeMeta(e).color" :prepend-icon="changeMeta(e).icon" size="small" variant="tonal" label class="atl-dash__chip">{{ changeMeta(e).text }}</v-chip>
+                    <div class="atl-dash__itemmain">
+                        <a v-if="changeName(e) && e.seafarerId" href="#" class="atl-link" @click.prevent="openProfile(e.seafarerId)">{{ changeName(e) }}</a>
+                        <span v-else class="atl-muted">To be nominated</span>
+                        <div class="atl-dash__meta">{{ e.rank.toUpperCase() }} · {{ e.vesselName.toUpperCase() }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Documents -->
+        <div id="atl-dash-docs" class="atl-dash__panel">
+            <div class="atl-dash__panelhead">
+                <span class="atl-section-title atl-dash__h">Documents needing attention · crew on board</span>
+            </div>
+            <div v-if="!docList.length" class="atl-dash__empty">
+                <v-icon icon="mdi-check-circle-outline" color="success"></v-icon> All documents of the crew on board are valid.
+            </div>
+            <v-table v-else class="atl-table__grid" hover>
+                <thead>
+                    <tr>
+                        <th class="atl-th">Seafarer</th>
+                        <th class="atl-th">Rank</th>
+                        <th class="atl-th">Vessel</th>
+                        <th class="atl-th">Document</th>
+                        <th class="atl-th">Expiration Date</th>
+                        <th class="atl-th">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="(x, n) in (allDocs ? docList : docList.slice(0, 8))" :key="n">
+                        <td><a href="#" class="atl-link" @click.prevent="openProfile(x.seafarerId)">{{ fullNameLF(person(x.seafarerId)) }}</a></td>
+                        <td>{{ x.rank.toUpperCase() }}</td>
+                        <td>{{ x.vesselName.toUpperCase() }}</td>
+                        <td>{{ x.doc.name }}</td>
+                        <td :class="x.status === 'expired' ? 'atl-text-error' : 'atl-text-warning'">{{ atlDate(x.doc.expiryDate) }}</td>
+                        <td>
+                            <v-chip :color="x.status === 'expired' ? 'error' : 'warning'"
+                                    :prepend-icon="x.status === 'expired' ? 'mdi-alert-circle' : 'mdi-clock-alert-outline'"
+                                    size="small" variant="tonal">{{ x.status === 'expired' ? 'Expired' : 'Expires in ' + daysLeft(x.doc.expiryDate) + ' days' }}</v-chip>
+                        </td>
+                    </tr>
+                </tbody>
+            </v-table>
+            <div v-if="docList.length > 8" class="atl-dash__more">
+                <v-btn variant="text" color="primary" class="atl-tool-btn" @click="allDocs = !allDocs">
+                    {{ allDocs ? 'Show fewer' : 'Show all (' + docList.length + ')' }}
+                </v-btn>
+            </div>
+        </div>
     </div>
 </div>
 </script>
@@ -3530,6 +3686,7 @@ window.crewPastAssignments = crewPastAssignments;
 <script src="views/ClientCrewLists.js"></script>
 <script src="views/ClientRotation.js"></script>
 <script src="views/ClientApprovals.js"></script>
+<script src="views/ClientDashboard.js"></script>
 
 <!-- ── Stub views (replace each with a real view file when ready) ── -->
 <script>
@@ -3566,10 +3723,10 @@ const router = createRouter({
         { path: '/operations/rotation',    component: RotationAllView },
         { path: '/operations/rfas',        component: RFAsView },
         // Client UI — rendered inside the full-screen client portal shell
-        { path: '/client',                 redirect: '/client/crew-lists' },
+        { path: '/client',                 redirect: '/client/dashboard' },
         { path: '/client/crew',            redirect: '/client/crew-lists' },
-        { path: '/client/dashboard',       component: ClientPlaceholderView,
-          meta: { title: 'Dashboard',         icon: 'mdi-view-dashboard-outline', phase: 'Phase 7' } },
+        { path: '/client/dashboard',       component: ClientDashboardView,
+          meta: { title: 'Dashboard',         icon: 'mdi-view-dashboard-outline' } },
         { path: '/client/crew-lists',      component: ClientCrewListsView,
           meta: { title: 'Crew Lists',        icon: 'mdi-account-group' } },
         { path: '/client/rotation',        component: ClientRotationView,

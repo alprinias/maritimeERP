@@ -154,8 +154,9 @@ const ClientCrewListsView = {
         return {
             store:        erpStore,
             todayStr:     today,
-            list:         'onboard',
-            filterVessel: null,
+            // ?list= and ?vessel= let the dashboard deep-link into a list
+            list:         ['onboard', 'ashore', 'approved', 'changes'].includes(this.$route.query.list) ? this.$route.query.list : 'onboard',
+            filterVessel: this.$route.query.vessel || null,
             onDate:       today,
             approvedFrom: today,
             approvedTo:   isoDate(addM(TODAY, 6)),
@@ -260,12 +261,8 @@ const ClientCrewListsView = {
 
         // 2. Dedicated to the client and ashore today
         buildAshore() {
-            const ids = [...allSeafarers, ...crewSeafarers].map(s => s.id);
             const rows = [];
-            ids.forEach(id => {
-                if (dedicatedClientOf(id) !== this.client.id) return;
-                const t = lastTourOf(id);
-                if (!t || t.current) return;
+            ashoreDedicated(this.client.id).forEach(({ seafarerId: id, tour: t }) => {
                 if (this.filterVessel && t.vesselId !== this.filterVessel) return;
                 const v = allVessels.find(x => x.id === t.vesselId);
                 rows.push(Object.assign(
