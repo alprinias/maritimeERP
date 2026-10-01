@@ -90,6 +90,7 @@ const CREW_STAGE_LABEL = {
     search:      'Candidate search',
     approval:    'Awaiting your approval',
     preparation: 'Approved — joining preparation',
+    ready:       'Approved — ready to join',
     requested:   'Sign-off requested',
     relief:      'Relief planned',
     contract:    'Contract end',
@@ -241,7 +242,7 @@ const ClientCrewListsView = {
             this.vessels.forEach(v => crewOnDate(v, date).forEach(r => {
                 if (r.kind !== 'current' && r.kind !== 'past') return;
                 rows.push(Object.assign(
-                    { _key: v.id + '|' + r.rank },
+                    { _key: v.id + '|' + r.rank + '|' + r.pos },
                     _crewPersonFields(r.seafarerId),
                     _rankFields(r.rank),
                     {
@@ -285,7 +286,7 @@ const ClientCrewListsView = {
         buildApproved() {
             const rows = [];
             this.vessels.forEach(v => crewEvents(v).forEach(e => {
-                if (e.type !== 'embark' || e.stage !== 'preparation' || !e.name) return;
+                if (e.type !== 'embark' || !isApprovedStage(e.stage) || !e.name) return;
                 if (e.date < this.approvedFrom || e.date > this.approvedTo) return;
                 const row = v.ranks.find(r => (r.rfr_rfe && r.rfr_rfe.rfaNo === e.ref) || (r.rfa && r.rfa.rfaNo === e.ref));
                 const relieved = row && row.onboard ? seafarerById(row.onboard.seafarerId) : null;
@@ -311,7 +312,7 @@ const ClientCrewListsView = {
             const rows = [];
             const push = (section, type, date, v, rank, seafarerId, name, port, status, ref) => {
                 rows.push(Object.assign(
-                    { _key: section + type + v.id + rank + date + (seafarerId || name || ''), _section: section },
+                    { _key: [section, type, v.id, rank, date, seafarerId || name || '', ref || ''].join('|'), _section: section },
                     _crewPersonFields(seafarerId, name),
                     _rankFields(rank),
                     { date, change: CREW_CHANGE_CHIP[type].text, changeChip: CREW_CHANGE_CHIP[type],
@@ -338,9 +339,9 @@ const ClientCrewListsView = {
                     if (!inPeriod(e.date)) return;
                     const type = e.type === 'embark' ? 'signon' : e.type;
                     const status = (CREW_STAGE_LABEL[e.stage] || e.stage).toUpperCase() + (e.overdue ? ' (OVERDUE)' : '');
-                    const name = e.type === 'embark' ? (e.stage === 'preparation' ? e.name : null) : e.name;
+                    const named = e.type !== 'embark' || isApprovedStage(e.stage);
                     push('planned', type, e.date, v, e.rank,
-                         e.type === 'embark' && e.stage !== 'preparation' ? null : e.seafarerId, name,
+                         named ? e.seafarerId : null, named ? e.name : null,
                          e.port || crewPort(v.id, (e.ref || '') + e.date), status, e.ref);
                 });
             });

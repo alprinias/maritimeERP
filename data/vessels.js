@@ -4,7 +4,9 @@
    Exposes global: window.allVessels
 ──────────────────────────────────────────────────────────────── */
 
-/* Each rank row shape:
+/* Each rank row is one position (a rank can have several positions).
+   safeManning: false marks positions outside the vessel's safe manning.
+   Each rank row shape:
    onboard : { seafarerId, name, shortName, embark, signoff, contract }
              seafarerId → allSeafarers (seafarers.js) or crewSeafarers (crew.js)
    rfa     : null | { rfaNo, type('Extend'|'Replace'|'Promote'), status,
@@ -79,6 +81,11 @@ var allVessels = [
                       proposed:[], confirmedSeafarer:null }
             },
             {
+                rank:'Able Seaman', isRating: true,
+                onboard:{ seafarerId:1027, name:'ARVIN DELOS SANTOS', shortName:'A. Delos Santos', embark:'2026-01-20', signoff:'2026-07-20', contract:'6 months' },
+                rfa: null
+            },
+            {
                 rank:'Oiler', isRating: true,
                 onboard:{ seafarerId:1006, name:'MARK VILLANUEVA', shortName:'M. Villanueva', embark:'2026-02-10', signoff:'2026-08-10', contract:'6 months' },
                 rfa:{ rfaNo:'RFR-1083', status:'deployment',
@@ -86,6 +93,12 @@ var allVessels = [
                       proposed:[
                           { name:'JOSE GARCIA', nationality:'Filipino', service:18 },
                       ], confirmedSeafarer:'JOSE GARCIA' }
+            },
+            {
+                // Supernumerary — not part of the vessel's safe manning
+                rank:'Deck Cadet', isRating: true, safeManning: false,
+                onboard:{ seafarerId:1028, name:'KEN MALLARI', shortName:'K. Mallari', embark:'2026-03-01', signoff:'2026-11-01', contract:'8 months' },
+                rfa: null
             },
         ]
     },
@@ -182,15 +195,21 @@ var allVessels = [
             {
                 rank:'Bosun', isRating: true,
                 onboard:{ seafarerId:1013, name:'RAMIR ESPINOSA',  shortName:'R. Espinosa',  embark:'2026-03-01', signoff:'2026-09-01', contract:'6 months' },
-                rfa:{ rfaNo:'RFP-1090', type:'Promote', status:'active',
-                      rfaStart:'2026-07-01', rfaEnd:'2027-03-01',
-                      proposed:[], confirmedSeafarer:null }
+                rfa: null
             },
             {
+                rank:'Able Seaman', isRating: true,
+                onboard:{ seafarerId:1026, name:'ELMER DIZON',     shortName:'E. Dizon',     embark:'2026-02-15', signoff:'2026-08-15', contract:'6 months' },
+                rfa: null,
+                rfs:{ rfaNo:'RFS-3002', dateCreated:'2026-05-12', signoffDate:'2026-08-15', port:'Singapore', status:'preparation' },
+            },
+            {
+                // Promoted to Able Seaman when the AB above signs off (RFS-3002)
                 rank:'Ordinary Seaman', isRating: true,
                 onboard:{ seafarerId:1014, name:'NOEL BACALTOS',   shortName:'N. Bacaltos',  embark:'2026-04-01', signoff:'2026-10-01', contract:'6 months' },
-                rfa: null,
-                rfs:{ rfaNo:'RFS-3002', dateCreated:'2026-05-12', signoffDate:'2026-10-01', port:'Singapore', status:'preparation' },
+                rfa:{ rfaNo:'RFP-1090', type:'Promote', status:'active',
+                      rfaStart:'2026-07-01', rfaEnd:'2026-08-15', newRank:'Able Seaman',
+                      proposed:[], confirmedSeafarer:null },
             },
         ]
     },

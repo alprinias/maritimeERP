@@ -2227,6 +2227,119 @@
 </div>
 </script>
 
+<!-- ── Client UI: Rotation Plan x-template (Atlantis Gantt) ──── -->
+<script type="text/x-template" id="tpl-client-rotation">
+<div class="atl-page">
+
+    <!-- Filters (Atlantis layout, internal controls such as Client / RFC ISSUED / + EMBARK hidden) -->
+    <div class="atl-filterbar atl-gantt-filters">
+        <div class="atl-filterbar__fields mt-3">
+            <v-select v-model="filterVessel" :items="vesselItems" item-title="name" item-value="id"
+                      label="Vessel" placeholder="All vessels" persistent-placeholder clearable style="max-width:300px; min-width:240px"></v-select>
+            <v-select v-model="filterRank" :items="rankItems" label="Rank" placeholder="All ranks" persistent-placeholder
+                      clearable style="max-width:280px; min-width:220px"></v-select>
+            <span class="atl-seg-label">Window</span>
+            <div class="atl-seg">
+                <button v-for="m in [6, 12, 18]" :key="m" :class="{ 'is-on': windowMonths === m }" @click="windowMonths = m">{{ m }} mo</button>
+            </div>
+            <v-text-field v-model="fromStr" type="date" label="From" style="max-width:190px"></v-text-field>
+            <v-btn icon="mdi-restore" variant="text" size="small" title="Reset to 3 months before today" @click="resetFrom"></v-btn>
+            <v-btn variant="text" class="atl-tool-btn" @click="resetAll">Reset</v-btn>
+        </div>
+        <div class="d-flex align-center flex-wrap ga-4 mt-3">
+            <div class="atl-seg atl-seg--types">
+                <span class="atl-seg-label atl-seg-label--inside">RF Type</span>
+                <template v-for="t in rfTypes" :key="t.id">
+                    <span v-if="t.group" class="atl-seg-label atl-seg-label--inside">{{ t.group }}</span>
+                    <button :class="{ 'is-on': rfType === t.id }" @click="rfType = t.id">
+                        <span v-if="t.swatch" :class="['atl-swatch', 'atl-bar--' + t.swatch]"></span>{{ t.label }}
+                    </button>
+                </template>
+            </div>
+            <div class="atl-gantt-legend">
+                <span><i class="atl-legend-line atl-legend-line--today"></i>Today</span>
+                <span><i class="atl-legend-line atl-legend-line--horizon"></i>+2mo horizon</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gantt -->
+    <div class="atl-gantt">
+        <div class="atl-gantt__inner">
+
+            <!-- Month header -->
+            <div class="atl-gantt__months">
+                <div class="atl-gantt__rankcol"></div>
+                <div class="atl-gantt__lane">
+                    <div v-for="m in months" :key="m.key" class="atl-gantt__month" :style="{ left: m.left + '%', width: m.width + '%' }">{{ m.label }}</div>
+                </div>
+            </div>
+
+            <div v-if="!groups.length" class="atl-empty">No positions match the filters.</div>
+
+            <template v-for="g in groups" :key="g.vessel.id">
+                <!-- Vessel header -->
+                <div class="atl-gantt__vessel">
+                    <div class="atl-gantt__rankcol">
+                        <div class="atl-gantt__client">{{ g.vessel.client }}</div>
+                        <div class="atl-gantt__vname">{{ g.vessel.name }}</div>
+                    </div>
+                    <div class="atl-gantt__lane atl-gantt__vmeta">{{ g.vessel.type }} · {{ g.vessel.flag }} · IMO {{ g.vessel.imo }}</div>
+                </div>
+
+                <!-- Position rows -->
+                <div class="atl-gantt__block">
+                    <div v-for="r in g.rows" :key="r.key" :class="['atl-gantt__row', { 'is-extra': !r.safeManning }]">
+                        <div class="atl-gantt__rankcol atl-gantt__rank">
+                            <span>{{ r.rank }}</span>
+                            <span v-if="r.total > 1" class="atl-gantt__count">{{ r.pos }}/{{ r.total }}</span>
+                            <span v-if="r.extra" class="atl-gantt__count atl-gantt__count--new">New</span>
+                        </div>
+                        <div class="atl-gantt__lane">
+                            <template v-for="(b, bi) in r.bars" :key="bi">
+                                <div v-if="inWindow(b)" :class="['atl-bar', 'atl-bar--' + b.kind]" :style="barStyle(b)"
+                                     @mouseenter="showTip($event, b)" @mousemove="moveTip" @mouseleave="hideTip">
+                                    <span>{{ b.label }}</span>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                    <!-- Promotion: diamond on the promoted seafarer's row, dashed arrow to the new rank -->
+                    <template v-for="p in g.promos" :key="p.key">
+                        <div class="atl-promo" :style="{ left: lineLeft(p.p), top: p.top, height: p.height }">
+                            <v-icon :icon="p.up ? 'mdi-menu-up' : 'mdi-menu-down'" :class="['atl-promo__head', p.up ? 'is-up' : 'is-down']" size="22"></v-icon>
+                        </div>
+                        <div class="atl-promo__diamond" :style="{ left: lineLeft(p.p), top: p.diamondTop }"></div>
+                    </template>
+                </div>
+            </template>
+
+            <!-- Month grid, Today and +2 mo lines -->
+            <div v-for="m in months" :key="'g' + m.key" class="atl-gantt__grid" :style="{ left: lineLeft(m.left) }"></div>
+            <div v-if="todayPct > 0 && todayPct < 100" class="atl-gantt__line atl-gantt__line--today" :style="{ left: lineLeft(todayPct) }"></div>
+            <div v-if="horizonPct > 0 && horizonPct < 100" class="atl-gantt__line atl-gantt__line--horizon" :style="{ left: lineLeft(horizonPct) }"></div>
+        </div>
+    </div>
+
+    <!-- Footer labels -->
+    <div class="atl-gantt__foot">
+        <span v-if="todayPct > 0 && todayPct < 100" class="atl-gantt__foot-today" :style="{ left: lineLeft(todayPct) }">TODAY</span>
+        <span v-if="horizonPct > 0 && horizonPct < 100" class="atl-gantt__foot-horizon" :style="{ left: lineLeft(horizonPct) }">+2 mo</span>
+    </div>
+
+    <!-- Hover card -->
+    <div v-if="tip" class="atl-gantt-tip" :style="tipStyle()">
+        <div class="atl-gantt-tip__head">
+            <span class="atl-gantt-tip__title">{{ tip.bar.tip.title }}</span>
+            <span :class="['atl-gantt-tip__chip', 'atl-bar--' + tip.bar.kind]">{{ tip.bar.tip.chip }}</span>
+        </div>
+        <div v-for="l in tip.bar.tip.lines" :key="l[0]" class="atl-gantt-tip__line">
+            <span>{{ l[0] }}</span><strong>{{ l[1] }}</strong>
+        </div>
+    </div>
+</div>
+</script>
+
 <!-- ── RotationAll x-template (parsed as HTML, referenced by RotationAllView) ── -->
 <script type="text/x-template" id="tpl-rotation-all">
 <div class="flex-1 flex flex-col overflow-hidden">
@@ -2360,7 +2473,7 @@
                     </div>
 
                     <!-- Rank rows -->
-                    <div v-for="row in vessel.ranks" :key="vessel.vesselId + '-' + row.rank"
+                    <div v-for="(row, ri) in vessel.ranks" :key="vessel.vesselId + '-' + row.rank + '-' + ri"
                          class="rank-row flex">
 
                         <!-- Sticky label column -->
@@ -3281,6 +3394,7 @@ window.crewPastAssignments = crewPastAssignments;
 <script src="views/ClientCommon.js"></script>
 <script src="views/ClientPortal.js"></script>
 <script src="views/ClientCrewLists.js"></script>
+<script src="views/ClientRotation.js"></script>
 
 <!-- ── Stub views (replace each with a real view file when ready) ── -->
 <script>
@@ -3323,8 +3437,8 @@ const router = createRouter({
           meta: { title: 'Dashboard',         icon: 'mdi-view-dashboard-outline', phase: 'Phase 7' } },
         { path: '/client/crew-lists',      component: ClientCrewListsView,
           meta: { title: 'Crew Lists',        icon: 'mdi-account-group' } },
-        { path: '/client/rotation',        component: ClientPlaceholderView,
-          meta: { title: 'Rotation Plan',     icon: 'mdi-chart-gantt', phase: 'Phase 5' } },
+        { path: '/client/rotation',        component: ClientRotationView,
+          meta: { title: 'Rotation Plan',     icon: 'mdi-chart-gantt' } },
         { path: '/client/approvals',       component: ClientPlaceholderView,
           meta: { title: 'Pending Approvals', icon: 'mdi-account-check-outline', phase: 'Phase 6' } },
     ],

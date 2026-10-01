@@ -4,7 +4,8 @@
    Exposes globals:
      CREW_RANK_ORDER, crewSeafarers, crewReliefSeed, crewPastAssignments,
      seafarerById(), seafarerIdByName(), crewSignoffDate(), crewRelief(),
-     crewOnDate(), crewEvents(), fullNameLF(), barLabel(), seafarerAge(),
+     crewOnDate(), crewEvents(), standaloneRfes(), rankPos(), isApprovedStage(),
+     fullNameLF(), barLabel(), seafarerAge(),
      CREW_PORTS, crewPort(), seafarerTours(), lastTourOf(), dedicatedClientOf(),
      availabilityOf()
 
@@ -15,6 +16,7 @@
 
 var CREW_RANK_ORDER = ['Master','Chief Officer','Second Officer','Third Officer',
                        'Chief Engineer','Second Engineer','Third Engineer',
+                       'Deck Cadet','Engine Cadet','Electrician',
                        'Bosun','Able Seaman','Oiler','Ordinary Seaman'];
 
 var crewSeafarers = [
@@ -68,6 +70,14 @@ var crewSeafarers = [
     { id:1120, name:'TRAN VAN MINH',          lastName:'TRAN', firstName:'VAN MINH', rank:'Chief Engineer',  nationality:'Vietnamese', birthDate:'1975-05-26' },
     { id:1121, name:'HENDRA WIJAYA',          lastName:'WIJAYA', firstName:'HENDRA', rank:'Second Officer',  nationality:'Indonesian', birthDate:'1994-02-18' },
 
+    // ── Added positions (second AB and Deck Cadet on v1, AB on v3) ──
+    { id:1026, name:'ELMER DIZON',            lastName:'DIZON', firstName:'ELMER', rank:'Able Seaman',     nationality:'Filipino',   birthDate:'1987-04-14' },
+    { id:1027, name:'ARVIN DELOS SANTOS',     lastName:'DELOS SANTOS', firstName:'ARVIN', rank:'Able Seaman', nationality:'Filipino', birthDate:'1990-12-03' },
+    { id:1028, name:'KEN MALLARI',            lastName:'MALLARI', firstName:'KEN', rank:'Deck Cadet',      nationality:'Filipino',   birthDate:'2003-05-19' },
+    { id:1122, name:'JOMAR VILLANUEVA',       lastName:'VILLANUEVA', firstName:'JOMAR', rank:'Able Seaman', nationality:'Filipino',  birthDate:'1986-09-11' },
+    { id:1123, name:'PAOLO NAVARRO',          lastName:'NAVARRO', firstName:'PAOLO', rank:'Deck Cadet',    nationality:'Filipino',   birthDate:'2002-02-27' },
+    { id:1124, name:'RONALD SALAZAR',         lastName:'SALAZAR', firstName:'RONALD', rank:'Able Seaman',  nationality:'Filipino',   birthDate:'1984-07-08' },
+
     // ── Approved reliefs named in vessels.js (rfa.confirmedSeafarer) ──
     { id:1201, name:'CARLOS REYES',           lastName:'REYES', firstName:'CARLOS', rank:'Second Engineer', nationality:'Filipino',   birthDate:'1988-06-21' },
     { id:1202, name:'JOSE GARCIA',            lastName:'GARCIA', firstName:'JOSE', rank:'Oiler',           nationality:'Filipino',   birthDate:'1993-11-04' },
@@ -76,15 +86,18 @@ var crewSeafarers = [
 /* Two-person rotation per position: the relief served the tour before the
    current holder, and the current holder served the tour before that.
    Relief ids below 1000 are pool seafarers (seafarers.js) — former crew
-   who are now available as candidates. */
+   who are now available as candidates. pos = position among the vessel's
+   rows of that rank (default 1). */
 var crewReliefSeed = [
     { vesselId:'v1', rank:'Master',         reliefId:301  },
     { vesselId:'v1', rank:'Chief Officer',   reliefId:1101 },
     { vesselId:'v1', rank:'Chief Engineer',  reliefId:501  },
     { vesselId:'v1', rank:'Second Engineer', reliefId:201  },
     { vesselId:'v1', rank:'Bosun',           reliefId:601  },
-    { vesselId:'v1', rank:'Able Seaman',         reliefId:1102 },
+    { vesselId:'v1', rank:'Able Seaman',     reliefId:1102 },
+    { vesselId:'v1', rank:'Able Seaman',     reliefId:1122, pos:2 },
     { vesselId:'v1', rank:'Oiler',           reliefId:1103 },
+    { vesselId:'v1', rank:'Deck Cadet',      reliefId:1123 },
     { vesselId:'v2', rank:'Master',         reliefId:302  },
     { vesselId:'v2', rank:'Chief Officer',   reliefId:1104 },
     { vesselId:'v2', rank:'Chief Engineer',  reliefId:1105 },
@@ -93,6 +106,7 @@ var crewReliefSeed = [
     { vesselId:'v3', rank:'Master',         reliefId:1108 },
     { vesselId:'v3', rank:'Chief Officer',   reliefId:1109 },
     { vesselId:'v3', rank:'Bosun',           reliefId:1110 },
+    { vesselId:'v3', rank:'Able Seaman',     reliefId:1124 },
     { vesselId:'v3', rank:'Ordinary Seaman', reliefId:1111 },
     { vesselId:'v4', rank:'Master',         reliefId:1112 },
     { vesselId:'v4', rank:'Chief Engineer',  reliefId:1113 },
@@ -113,17 +127,28 @@ var crewReliefSeed = [
 var crewPastAssignments = (function () {
     var out = [];
     crewReliefSeed.forEach(function (s, i) {
+        var pos = s.pos || 1;
         var v   = allVessels.find(x => x.id === s.vesselId);
-        var row = v && v.ranks.find(r => r.rank === s.rank);
+        var row = v && v.ranks.filter(r => r.rank === s.rank)[pos - 1];
         if (!row || !row.onboard) return;
         var embark      = row.onboard.embark;
         var reliefStart = isoDate(addM(d(embark), -(5 + i % 3)));
         var prevStart   = isoDate(addM(d(reliefStart), -6));
-        out.push({ vesselId: v.id, rank: s.rank, seafarerId: s.reliefId,              embark: reliefStart, signoff: embark });
-        out.push({ vesselId: v.id, rank: s.rank, seafarerId: row.onboard.seafarerId, embark: prevStart,   signoff: reliefStart });
+        out.push({ vesselId: v.id, rank: s.rank, pos, seafarerId: s.reliefId,              embark: reliefStart, signoff: embark });
+        out.push({ vesselId: v.id, rank: s.rank, pos, seafarerId: row.onboard.seafarerId, embark: prevStart,   signoff: reliefStart });
     });
     return out;
 })();
+
+// Position of a rank row among the vessel's rows of the same rank (1-based)
+function rankPos(vessel, row) {
+    return vessel.ranks.filter(r => r.rank === row.rank).indexOf(row) + 1;
+}
+
+// Relief stages that mean the client has approved the candidate
+function isApprovedStage(stage) {
+    return stage === 'preparation' || stage === 'ready';
+}
 
 function seafarerById(id) {
     if (id == null) return null;
@@ -144,7 +169,8 @@ function crewSignoffDate(row) {
 }
 
 /* Planned relief for a rank row, or null.
-   stage: 'search' | 'approval' | 'preparation'
+   stage: 'search' | 'approval' | 'preparation' | 'ready'
+   (legacy rfa status 'deployment' = joining preparation done → 'ready')
    Replacement RFEs read live state from erpStore.rfaRows when the RFAs
    view has built it, so approvals made there are reflected here. */
 function crewRelief(vessel, row) {
@@ -159,9 +185,9 @@ function crewRelief(vessel, row) {
                  name, seafarerId: seafarerIdByName(name), stage };
     }
     if (row.rfa && (!row.rfa.type || row.rfa.type === 'Replace')) {
-        var stage2 = { approval:'approval', deployment:'preparation', preparation:'preparation' }[row.rfa.status] || 'search';
-        // The relief is only named once approved (stage 'preparation')
-        var name2  = stage2 === 'preparation' ? (row.rfa.confirmedSeafarer || null) : null;
+        var stage2 = { approval:'approval', deployment:'ready', preparation:'preparation' }[row.rfa.status] || 'search';
+        // The relief is only named once approved
+        var name2  = isApprovedStage(stage2) ? (row.rfa.confirmedSeafarer || null) : null;
         return { date: row.onboard.signoff, port: crewPort(vessel.id, row.rfa.rfaNo), ref: row.rfa.rfaNo,
                  name: name2, seafarerId: seafarerIdByName(name2), stage: stage2 };
     }
@@ -177,9 +203,10 @@ function crewRelief(vessel, row) {
 function crewOnDate(vessel, dateIso) {
     var today = isoDate(TODAY);
     var out = vessel.ranks.map(function (row) {
-        var base = { vesselId: vessel.id, rank: row.rank, isRating: !!row.isRating };
+        var pos  = rankPos(vessel, row);
+        var base = { vesselId: vessel.id, rank: row.rank, pos, isRating: !!row.isRating };
         var past = crewPastAssignments.find(a =>
-            a.vesselId === vessel.id && a.rank === row.rank && a.embark <= dateIso && dateIso < a.signoff);
+            a.vesselId === vessel.id && a.rank === row.rank && a.pos === pos && a.embark <= dateIso && dateIso < a.signoff);
         if (past) {
             return Object.assign(base, { kind: 'past', seafarerId: past.seafarerId,
                                          embark: past.embark, signoff: past.signoff });
@@ -200,7 +227,7 @@ function crewOnDate(vessel, dateIso) {
         }
         return Object.assign(base, { kind: 'unknown' });
     });
-    return out.sort((a, b) => CREW_RANK_ORDER.indexOf(a.rank) - CREW_RANK_ORDER.indexOf(b.rank));
+    return out.sort((a, b) => (CREW_RANK_ORDER.indexOf(a.rank) - CREW_RANK_ORDER.indexOf(b.rank)) || a.pos - b.pos);
 }
 
 /* Pending crew changes of a vessel, sorted by date.
@@ -210,12 +237,10 @@ function crewOnDate(vessel, dateIso) {
 function crewEvents(vessel) {
     var today = isoDate(TODAY);
     var ev = [];
-    var linkedRfe = {};
     vessel.ranks.forEach(function (row) {
         var ob = row.onboard;
         if (!ob) return;
         var relief = crewRelief(vessel, row);
-        if (row.rfr_rfe) linkedRfe[row.rfr_rfe.rfaNo] = true;
         ev.push({ type: 'signoff', date: crewSignoffDate(row), rank: row.rank,
                   seafarerId: ob.seafarerId, name: ob.name,
                   ref: row.rfs ? row.rfs.rfaNo : (relief ? relief.ref : null),
@@ -237,23 +262,35 @@ function crewEvents(vessel) {
                       ref: row.rfa.rfaNo, port: null, stage: row.rfa.status });
         }
     });
-    // Standalone RFEs (not the embark half of a replacement)
-    erpStore.rfeRows
-        .filter(r => r.vesselId === vessel.id && !linkedRfe[r.rfaNo])
-        .forEach(function (r) {
+    standaloneRfes(vessel).forEach(function (r) {
+        ev.push({ type: 'embark', date: r.date, rank: r.rank,
+                  seafarerId: r.seafarerId, name: r.name,
+                  ref: r.ref, port: r.port, stage: r.stage });
+    });
+    ev.forEach(e => { e.vesselId = vessel.id; e.overdue = e.date < today; });
+    return ev.sort((a, b) => a.date.localeCompare(b.date)
+        || CREW_RANK_ORDER.indexOf(a.rank) - CREW_RANK_ORDER.indexOf(b.rank));
+}
+
+/* Standalone RFEs of a vessel (not the embark half of a replacement), with
+   live stage / name from the RFAs view when it has been built.
+   → [{ ref, rank, date, end, port, name, seafarerId, stage }] */
+function standaloneRfes(vessel) {
+    var linked = {};
+    vessel.ranks.forEach(r => { if (r.rfr_rfe) linked[r.rfr_rfe.rfaNo] = true; });
+    return erpStore.rfeRows
+        .filter(r => r.vesselId === vessel.id && !linked[r.rfaNo])
+        .map(function (r) {
             var live = erpStore.rfaRows && erpStore.rfaRows.embarkation
                 && erpStore.rfaRows.embarkation.find(x => x.rfaNo === r.rfaNo);
             var name = live ? (live.confirmedSeafarer || null) : (r.confirmedSeafarer || null);
             var stage = live
                 ? (live.rfeStatus === 'OnPreparation' ? 'preparation' : 'search')
                 : (r.status === 'active' ? 'search' : 'preparation');
-            ev.push({ type: 'embark', date: r.embarkDate, rank: r.rank,
-                      seafarerId: seafarerIdByName(name), name,
-                      ref: r.rfaNo, port: r.port, stage });
+            return { ref: r.rfaNo, rank: r.rank, date: r.embarkDate,
+                     end: r.serviceEnd || isoDate(addM(d(r.embarkDate), r.contractMonths || 6)),
+                     port: r.port, name, seafarerId: seafarerIdByName(name), stage };
         });
-    ev.forEach(e => { e.vesselId = vessel.id; e.overdue = e.date < today; });
-    return ev.sort((a, b) => a.date.localeCompare(b.date)
-        || CREW_RANK_ORDER.indexOf(a.rank) - CREW_RANK_ORDER.indexOf(b.rank));
 }
 
 // ── Person helpers ────────────────────────────────────────────
