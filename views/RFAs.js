@@ -184,9 +184,9 @@ const RFAsView = {
             return allVessels.filter(v => !this.filterClient || v.client === this.filterClient);
         },
         rankOptions() {
-            return ['Captain','Chief Officer','Second Officer','Third Officer',
+            return ['Master','Chief Officer','Second Officer','Third Officer',
                     'Chief Engineer','Second Engineer','Third Engineer',
-                    'Bosun','AB Deck','Oiler','Ordinary Seaman'];
+                    'Bosun','Able Seaman','Oiler','Ordinary Seaman'];
         },
 
         // Checked candidates for the RFR's RFE side
@@ -453,6 +453,7 @@ const RFAsView = {
                         rfeStatus,
                         rfsTasks:      makeTasks('rfs'),
                         rfeTasks:      rfeStatus === 'OnPreparation' ? makeTasks('rfe') : [],
+                        confirmedSeafarer: r.rfr_rfe.confirmedSeafarer || null,
                         rfeCandidates,
                     });
                 });
@@ -525,7 +526,7 @@ const RFAsView = {
                     rfeStatus,
                     contractMonths:    rfe.contractMonths,
                     contractVariation: rfe.contractVariation,
-                    confirmedSeafarer: null,
+                    confirmedSeafarer: rfe.confirmedSeafarer || null,
                     candidates: null,   // populated lazily by selectRfa() — on the row so Vue tracks it
                     tasks: rfeStatus === 'OnPreparation' ? makeTasks('rfe') : [],
                 });

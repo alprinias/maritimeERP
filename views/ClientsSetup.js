@@ -57,9 +57,9 @@ const ClientsSetupView = {
         },
 
         rankOrder() {
-            return ['Captain','Chief Officer','Second Officer','Third Officer',
+            return ['Master','Chief Officer','Second Officer','Third Officer',
                     'Chief Engineer','Second Engineer','Third Engineer',
-                    'Bosun','AB Deck','Oiler','Ordinary Seaman'];
+                    'Bosun','Able Seaman','Oiler','Ordinary Seaman'];
         },
 
         vesselRankRows() {
@@ -106,10 +106,10 @@ const ClientsSetupView = {
         // Column rank order for the documents matrix
         // Abbreviated for horizontal compactness
         docRankOrder() {
-            return ['Captain','Chief Officer','Chief Engineer',
+            return ['Master','Chief Officer','Chief Engineer',
                     'Second Officer','Second Engineer',
                     'Third Officer','Third Engineer',
-                    'Bosun','AB Deck','Oiler','Ordinary Seaman'];
+                    'Bosun','Able Seaman','Oiler','Ordinary Seaman'];
         },
     },
 
@@ -210,7 +210,7 @@ const ClientsSetupView = {
 
         // Toggle a rank's requirement for a document type
         toggleDocRequirement(doc, rank) {
-            // required is a plain object { 'Captain': true, ... }
+            // required is a plain object { 'Master': true, ... }
             // Vue 3 tracks plain object property additions reactively
             if (doc.required[rank]) {
                 delete doc.required[rank];

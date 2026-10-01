@@ -1,6 +1,7 @@
 /* ── data/documents.js ────────────────────────────────────────
-   Mock seafarer documents (identity, CoC, STCW training, medical, visas).
-   Depends on: utils.js, crew.js (seafarerById)
+   Mock seafarer documents, using Atlantis document categories
+   (Travel Doc, STCW, Flag Req., Medical).
+   Depends on: utils.js, crew.js (seafarerById, lastTourOf), vessels.js
    Exposes globals:
      DOC_CATEGORIES, seafarerDocuments(), docStatus(), docSummary()
 
@@ -10,9 +11,15 @@
    mockup is opened. Generated lists are cached and can be mutated.
 ──────────────────────────────────────────────────────────────── */
 
-var DOC_CATEGORIES = ['Identity', 'Competency', 'STCW Training', 'Medical', 'Visas'];
+var DOC_CATEGORIES = ['Travel Doc', 'STCW', 'Flag Req.', 'Medical'];
 
 var DOC_EXPIRING_DAYS = 90;
+
+var NATIONALITY_COUNTRY = {
+    Filipino:'Philippines', Greek:'Greece', Russian:'Russia', Korean:'South Korea', Italian:'Italy',
+    Portuguese:'Portugal', Japanese:'Japan', Vietnamese:'Vietnam', Romanian:'Romania', Ukrainian:'Ukraine',
+    Indian:'India', Polish:'Poland', Cypriot:'Cyprus', Indonesian:'Indonesia', German:'Germany', Egyptian:'Egypt',
+};
 
 var _docCache = {};
 
@@ -26,66 +33,72 @@ function _docHash(n) {
     return n >>> 0;
 }
 
-// Document templates applicable to a rank: { category, name, years (null = no expiry), issuer }
-function _docTemplatesFor(rank) {
-    var deckOfficers   = ['Captain','Chief Officer','Second Officer','Third Officer'];
+/* Document templates for a seafarer:
+   { category, name, years (null = no expiry), issuer ('national' | 'maritime' | 'health' | text) } */
+function _docTemplatesFor(s, flag) {
+    var rank = s.rank;
+    var deckOfficers   = ['Master','Chief Officer','Second Officer','Third Officer'];
     var engineOfficers = ['Chief Engineer','Second Engineer','Third Engineer'];
     var isDeck   = deckOfficers.includes(rank);
     var isEngine = engineOfficers.includes(rank);
     var isOfficer = isDeck || isEngine;
     var coc = {
-        'Captain':         'CoC — Master (STCW II/2)',
-        'Chief Officer':   'CoC — Chief Mate (STCW II/2)',
-        'Second Officer':  'CoC — Officer in Charge of a Navigational Watch (STCW II/1)',
-        'Third Officer':   'CoC — Officer in Charge of a Navigational Watch (STCW II/1)',
-        'Chief Engineer':  'CoC — Chief Engineer Officer (STCW III/2)',
-        'Second Engineer': 'CoC — Second Engineer Officer (STCW III/2)',
-        'Third Engineer':  'CoC — Officer in Charge of an Engineering Watch (STCW III/1)',
+        'Master':          'Certificate of Competency — Master',
+        'Chief Officer':   'Certificate of Competency — Chief Mate',
+        'Second Officer':  'Certificate of Competency — OIC Navigational Watch',
+        'Third Officer':   'Certificate of Competency — OIC Navigational Watch',
+        'Chief Engineer':  'Certificate of Competency — Chief Engineer',
+        'Second Engineer': 'Certificate of Competency — Second Engineer',
+        'Third Engineer':  'Certificate of Competency — OIC Engineering Watch',
     }[rank];
     var rating = {
-        'Bosun':           'Able Seafarer Deck (STCW II/5)',
-        'AB Deck':         'Able Seafarer Deck (STCW II/5)',
-        'Oiler':           'Able Seafarer Engine (STCW III/5)',
-        'Ordinary Seaman': 'Rating Forming Part of a Navigational Watch (STCW II/4)',
+        'Bosun':           'Able Seafarer Deck COP',
+        'Able Seaman':     'Able Seafarer Deck COP',
+        'Oiler':           'Able Seafarer Engine COP',
+        'Ordinary Seaman': 'Rating Forming Part of a Navigational Watch COP',
     }[rank];
 
     var t = [
-        { category:'Identity',      name:'Passport',                           years:10,   issuer:'national' },
-        { category:'Identity',      name:"Seaman's Book",                      years:10,   issuer:'Maritime Administration' },
+        { category:'Travel Doc', name:'Passport',                    years:10,   issuer:'national' },
+        { category:'Travel Doc', name:"Seaman's Book",               years:10,   issuer:'maritime' },
+        { category:'Travel Doc', name:'USA Visa',                    years:5,    issuer:'US EMBASSY' },
+        { category:'Travel Doc', name:'Yellow Fever',                years:null, issuer:'health' },
     ];
-    if (coc) {
-        t.push({ category:'Competency', name: coc,                             years:5,    issuer:'Maritime Administration' });
-        t.push({ category:'Competency', name:'Flag State Endorsement',         years:5,    issuer:'Flag State Administration' });
-    }
-    if (rating) t.push({ category:'Competency', name: rating,                  years:null, issuer:'Maritime Administration' });
-    if (isDeck) t.push({ category:'Competency', name:'GMDSS / GOC',            years:5,    issuer:'Maritime Administration' });
-
-    t.push({ category:'STCW Training', name:'STCW Basic Safety (BST)',         years:5,    issuer:'Maritime Training Centre' });
-    t.push({ category:'STCW Training', name:'Proficiency in Survival Craft',   years:5,    issuer:'Maritime Training Centre' });
-    t.push({ category:'STCW Training', name:'Security Awareness',              years:null, issuer:'Maritime Training Centre' });
-    t.push({ category:'STCW Training', name:'Tanker Familiarisation',          years:5,    issuer:'Maritime Training Centre' });
+    if (coc)    t.push({ category:'STCW', name: coc,                 years:5,    issuer:'maritime' });
+    if (rating) t.push({ category:'STCW', name: rating,              years:null, issuer:'maritime' });
+    t.push({ category:'STCW', name:'Basic Training COP',               years:5,    issuer:'maritime' });
+    t.push({ category:'STCW', name:'Prof. in Surv. Craft & Rescue Boat COP', years:5, issuer:'maritime' });
+    t.push({ category:'STCW', name:'Seafarers with Designated Security Duties COP', years:null, issuer:'maritime' });
+    t.push({ category:'STCW', name:'Tanker Familiarisation COP',       years:5,    issuer:'maritime' });
     if (isOfficer) {
-        t.push({ category:'STCW Training', name:'Advanced Fire Fighting',      years:5,    issuer:'Maritime Training Centre' });
-        t.push({ category:'STCW Training',
-                 name: (rank === 'Captain' || rank === 'Chief Officer') ? 'Medical Care' : 'Medical First Aid',
-                 years:5, issuer:'Maritime Training Centre' });
+        t.push({ category:'STCW', name:'Advanced Fire Fighting COP',   years:5,    issuer:'maritime' });
+        t.push({ category:'STCW',
+                 name: (rank === 'Master' || rank === 'Chief Officer') ? 'Medical Care COP' : 'Medical Emergency - First Aid COP',
+                 years:5, issuer:'maritime' });
     }
     if (isDeck) {
-        t.push({ category:'STCW Training', name:'ECDIS Generic',               years:null, issuer:'Maritime Training Centre' });
-        t.push({ category:'STCW Training', name:'Bridge Resource Management',  years:null, issuer:'Maritime Training Centre' });
+        t.push({ category:'STCW', name:"General Operator's Certificate", years:5,  issuer:'maritime' });
+        t.push({ category:'STCW', name:'ECDIS Generic',                years:null, issuer:'maritime' });
+        t.push({ category:'STCW', name:'Bridge Resource Management',   years:null, issuer:'maritime' });
     }
     if (isEngine) {
-        t.push({ category:'STCW Training', name:'Engine Room Resource Management', years:null, issuer:'Maritime Training Centre' });
+        t.push({ category:'STCW', name:'Engine Room Resource Management', years:null, issuer:'maritime' });
         if (rank !== 'Third Engineer') {
-            t.push({ category:'STCW Training', name:'High Voltage Management', years:5,    issuer:'Maritime Training Centre' });
+            t.push({ category:'STCW', name:'High Voltage Management',  years:5,    issuer:'maritime' });
         }
     }
-
-    t.push({ category:'Medical', name:'Medical Certificate (ENG1)',            years:2,    issuer:'Approved Medical Examiner' });
-    t.push({ category:'Medical', name:'Drug & Alcohol Test',                   years:1,    issuer:'Approved Medical Examiner' });
-    t.push({ category:'Medical', name:'Yellow Fever Vaccination',              years:null, issuer:'Approved Vaccination Centre' });
-    t.push({ category:'Visas',   name:'US C1/D Visa',                          years:5,    issuer:'U.S. Embassy' });
+    if (isOfficer && flag) t.push({ category:'Flag Req.', name:'FSB ' + flag, years:5, issuer:'Flag State Administration' });
+    t.push({ category:'Medical', name:'Medical Certificate (PEME)',      years:2,    issuer:'health' });
+    t.push({ category:'Medical', name:'Drug & Alcohol Test',             years:1,    issuer:'health' });
     return t;
+}
+
+function _issuer(code, s, country) {
+    var ph = country === 'Philippines';
+    if (code === 'national') return ph ? 'DFA MANILA' : 'MINISTRY OF FOREIGN AFFAIRS';
+    if (code === 'maritime') return ph ? 'MARINA' : (country.toUpperCase() + ' MARITIME ADMINISTRATION');
+    if (code === 'health')   return ph ? 'BOQ' : 'PORT HEALTH AUTHORITY';
+    return code;
 }
 
 function _docSlug(s) {
@@ -97,9 +110,12 @@ function seafarerDocuments(seafarerId) {
     if (_docCache[seafarerId]) return _docCache[seafarerId];
     var s = seafarerById(seafarerId);
     if (!s) return [];
-    var surname = s.name.split(' ').slice(-1)[0];
-    var docs = _docTemplatesFor(s.rank).map(function (t, i) {
-        var h = _docHash(seafarerId * 97 + i * 13) % 100;
+    var country = NATIONALITY_COUNTRY[s.nationality] || s.nationality;
+    var tour = lastTourOf(seafarerId);
+    var vessel = tour && allVessels.find(v => v.id === tour.vesselId);
+    var surname = s.lastName || s.name.split(' ').slice(-1)[0];
+    var docs = _docTemplatesFor(s, vessel && vessel.flag).map(function (t, i) {
+        var h  = _docHash(seafarerId * 97 + i * 13) % 100;
         var h2 = _docHash(seafarerId * 31 + i * 7);
         var expiry = null, issue;
         if (t.years) {
@@ -112,13 +128,14 @@ function seafarerDocuments(seafarerId) {
         } else {
             issue = isoDate(addM(TODAY, -(12 + h % 60)));
         }
+        var prefix = { 'Passport':'P', "Seaman's Book":'SB', 'USA Visa':'V' }[t.name] || 'C';
         return {
-            id:         seafarerId + '-' + (i + 1),
+            id:         seafarerId * 100 + i + 1,
             category:   t.category,
             name:       t.name,
-            number:     (t.category === 'Identity' ? (t.name === 'Passport' ? 'P' : 'SB') : 'C')
-                        + String(1000000 + h2 % 9000000),
-            issuedBy:   t.issuer === 'national' ? (s.nationality + ' Government') : t.issuer,
+            number:     prefix + String(1000000 + h2 % 9000000),
+            country:    t.category === 'Flag Req.' ? (vessel && vessel.flag) : country,
+            issuedBy:   _issuer(t.issuer, s, country),
             issueDate:  issue,
             expiryDate: expiry,
             fileName:   _docSlug(surname) + '_' + _docSlug(t.name) + '.pdf',
@@ -146,4 +163,9 @@ function docSummary(seafarerId, refIso) {
         out[st === 'permanent' ? 'valid' : st]++;
     });
     return out;
+}
+
+// First document of a seafarer whose name starts with the given text
+function findDocument(seafarerId, startsWith) {
+    return seafarerDocuments(seafarerId).find(doc => doc.name.indexOf(startsWith) === 0) || null;
 }

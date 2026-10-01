@@ -1,5 +1,5 @@
 # CONTEXT.md — Maritime ERP Mockup
-**For AI model continuation. Updated after completing the RFAs view (Replacement, Embarkation, Sign-Off, Extension, Promotion tabs).**
+**For AI model continuation. Updated after Client UI phases 3–4 (Atlantis-style portal shell, Crew Lists, profile modal with documents).**
 
 ---
 
@@ -10,8 +10,12 @@ A **single-page web application** mockup for a maritime manning agency ERP syste
 **Tech stack:**
 - Vue 3 via CDN (`vue.global.js`) — Options API throughout
 - Vue Router 4 via CDN — hash-based routing (`#/path`)
-- Tailwind CSS via CDN
+- Tailwind CSS via CDN — internal ERP views
+- Vuetify 3 + Material Design Icons + Inter via CDN — Client UI only (Atlantis look)
+- jsPDF + jspdf-autotable + JSZip via cdnjs — Client UI PDF export / ZIP download
 - No npm, no bundler, no compilation
+
+**Atlantis:** the stakeholders' real ERP (Vue + Vuetify + Material). The Client UI copies its look; reference screenshots are in `atlantis-ref/` (not committed).
 
 ---
 
@@ -22,7 +26,8 @@ maritimeERP/
 ├── index.html              ← App shell + ALL x-templates + router bootstrap
 ├── assets/
 │   ├── erp-base.css        ← Shared: scrollbar, .active-tab
-│   └── gantt.css           ← Gantt bars, RFA colours, reference lines
+│   ├── gantt.css           ← Gantt bars, RFA colours, reference lines
+│   └── client-portal.css   ← Client UI (Atlantis) styles, all under .atl-*
 ├── data/
 │   ├── utils.js            ← Date helpers (var TODAY, d, addM, daysB, isoDate, fmtShort, shortName)
 │   ├── vessels.js          ← var allVessels (6 vessels, 4 clients, full rank/RFA data)
@@ -35,7 +40,9 @@ maritimeERP/
 │   ├── RotationAll.js      ← Fleet Rotation Gantt view
 │   ├── ClientsSetup.js     ← Admin → Clients Setup view
 │   ├── RFAs.js             ← Operations → RFAs view (+ RfaCardComponent)
-│   └── ClientCrew.js       ← Client UI → Fleet & Crew view
+│   ├── ClientCommon.js     ← Client UI: AtlTable, SeafarerProfileDialog, DocumentViewerDialog, atlDate, documentPdf
+│   ├── ClientPortal.js     ← Client UI shell (ClientPortal) + ClientPlaceholderView
+│   └── ClientCrewLists.js  ← Client UI → Crew Lists view
 └── CONTEXT.md
 ```
 
@@ -57,6 +64,12 @@ const MyView = { template: '#tpl-my-view', data() {...}, ... }
 | `tpl-clients-setup` | `ClientsSetupView` |
 | `tpl-rfa-card` | `RfaCardComponent` (local to RFAsView) |
 | `tpl-rfas` | `RFAsView` |
+| `tpl-client-portal` | `ClientPortal` (global component) |
+| `tpl-client-placeholder` | `ClientPlaceholderView` |
+| `tpl-atl-table` | `AtlTable` (global `atl-table`) |
+| `tpl-seafarer-profile` | `SeafarerProfileDialog` (global) |
+| `tpl-document-viewer` | `DocumentViewerDialog` (global `document-viewer`) |
+| `tpl-client-crew-lists` | `ClientCrewListsView` |
 | `tpl-rotation-all` | `RotationAllView` |
 
 ### Global variable scoping — CRITICAL
@@ -72,12 +85,13 @@ window.TODAY          = TODAY;
 
 ### Script load order in index.html
 ```
-CDN: Vue → VueRouter → Tailwind
-assets/erp-base.css + gantt.css
-x-template blocks (tpl-clients-setup, tpl-rfa-card, tpl-rfas, tpl-rotation-all)
+CDN: Vue → VueRouter → Vuetify (css #vuetify-css, mdi, Inter, js) → jsPDF/autotable/JSZip → Tailwind
+assets/erp-base.css + gantt.css + client-portal.css
+x-template blocks (see table above)
 data/utils.js → data/vessels.js → data/seafarers.js → data/store.js → data/crew.js → data/documents.js
 [inline: window.* bridge + data/clients.js]
-views/ClientsSetup.js → views/RFAs.js → views/RotationAll.js → views/ClientCrew.js
+views/ClientsSetup.js → views/RFAs.js → views/RotationAll.js → views/ClientCommon.js → views/ClientPortal.js → views/ClientCrewLists.js
+[inline: makeStub() + router + createVuetify() + createApp() + app.component(client-portal, atl-table, …) + mount]
 [inline: makeStub() + stub views + router + createApp().mount()]
 ```
 
@@ -371,39 +385,56 @@ allRows: { signoff, extension, promotion, embarkation, replacement }  // built i
 ---
 
 ## Shared state (`data/store.js`)
-`erpStore = Vue.reactive({ clientUi:{clientId}, rfeRows, rfaRows })`
+`erpStore = Vue.reactive({ clientUi:{clientId, profileId}, rfeRows, rfaRows })`
 - `rfeRows` — Rotation Plan's RFE rows (was a per-visit copy of seedRfeRows).
 - `rfaRows` — RFAs view rows per tab. Built on first visit; on later visits rows are rebuilt from allVessels and existing row objects are reused by `rfaNo`, so task / candidate / approval state survives navigation.
-- `clientUi.clientId` — client the Client UI is "viewing as" (top-bar dropdown).
+- `clientUi.clientId` — client the Client UI is "viewing as" (portal top-bar dropdown, active clients only).
+- `clientUi.profileId` — seafarer whose profile modal is open in the portal (null = closed).
+
+### Seed dates are re-anchored to today
+Seed data in vessels.js / seafarers.js is authored as of `DATA_AUTHORED_ON = '2026-05-20'` (utils.js). store.js calls `shiftSeedDates([allVessels, allSeafarers, seedRfeRows], seedMonthShift())`, moving every YYYY-MM-DD string forward by whole months on load. Write new seed dates relative to 2026-05-20.
+
+### Naming conventions (Atlantis)
+- Ranks: `Master` (not Captain), `Able Seaman` (not AB Deck). Displayed UPPERCASE in the Client UI.
+- Seafarer records carry `name` (FIRST LAST, used by internal views) plus `lastName` / `firstName`. Client UI shows `fullNameLF()` = "SURNAME, FIRST"; Gantt labels `barLabel()` = "SURNAME F.".
 
 ---
 
-## Client UI (mockup of the separate client portal)
-Sidebar section **Client UI** (amber). Routes under `/client/*` switch the top bar to "CLIENT PORTAL · Viewing as [client ▼]" (active clients only). Client users are read-only except RFE approval (planned).
+## Client UI (mockup of the separate client portal — Atlantis look)
+`/client/*` routes render `<client-portal>` full screen instead of the ERP shell (`isClientUi` in the root app). The Vuetify stylesheet `<link id="vuetify-css">` is enabled only while the portal is shown — its reset and utility classes (`bg-white`, `rounded-xl`, …) clash with Tailwind. Internal sidebar section "Client UI" just links into the portal; the portal's logout icon returns to the ERP.
+
+**Portal shell:** white app bar (hamburger, Atlantis page tab, "Viewing as (mockup)" client select, user block, exit), temporary navigation drawer (client name group, menu, crossworld wordmark). Read-only except RFE approval (Phase 6). Internal controls (+ EMBARK, RFC ISSUED…) are hidden from clients.
 
 | Route | View | State |
 |---|---|---|
-| `/client/dashboard` | ClientDashboardView | stub |
-| `/client/crew` | ClientCrewView (`tpl-client-crew`) | BUILT |
-| `/client/approvals` | ClientApprovalsView | stub |
-| `/client/seafarer/:id` | ClientSeafarerView | stub (profile placeholder + documents planned) |
+| `/client/dashboard` | ClientPlaceholderView | Phase 7 |
+| `/client/crew-lists` | ClientCrewListsView | BUILT |
+| `/client/rotation` | ClientPlaceholderView | Phase 5 |
+| `/client/approvals` | ClientPlaceholderView | Phase 6 |
 
-**Fleet & Crew** — vessel cards (on board, changes ≤30d, overdue, expired/expiring docs; click to filter) + tabs:
-- *Crew List* — "On board at" date (±1 month, Today). Past date → former tours; future → planned reliefs (dashed/sky). Columns: rank, seafarer (link to profile), nationality, embarked, sign-off, time on board, document summary, status + relief.
-- *Crew Changes* — pending sign-offs / embarkations / extensions / promotions, Overdue + Upcoming, horizon 30/60/90/All.
-- *Former Crew* — completed tours, searchable.
+**AtlTable (`atl-table`)** — Atlantis table: toolbar (refresh, `#toolbar-left` slot e.g. FILTERS, COLUMNS visibility menu with SHOW ALL / HIDE ALL and fixed columns, Export PDF, PRESETS look-only), sortable headers, optional checkbox selection (`v-model:selected`), section header rows (`sections` + row `_section`), `#row-actions` slot, footer "Rows · 1 to N of M · Page x - y". Columns: `{ key, title, fixed?, type?: 'link'|'chip', format?, cls?, chip? }`; rows need `_key`, may carry `<key>_sort` and `<key>_link === false`. Export PDF = all rows, visible columns, jsPDF + autotable.
 
-**Hidden from clients:** wages/contract, task costs, candidate category (Dedicated/Ex-Crew/New), CES scores, BMI.
+**Crew Lists** — tabs + filter box, then atl-table. Fixed columns Full Name (opens profile modal), Rank, Age; optional columns per list in `CREW_LIST_COLUMNS` (`def: true` = visible by default).
+1. *On Board* — vessel + date (≤ today) via `crewOnDate`.
+2. *Ashore* — seafarers with `dedicatedClientOf(id) === client` whose last tour is completed; last vessel / sign-off / availability.
+3. *Approved for Embarkation* — `crewEvents` embark events with stage `preparation` and a name, in period; est. date, port, relieving.
+4. *Crew Changes* — period; section "Completed" (past tour sign-ons/offs ≤ today) and "Planned" (`crewEvents`).
+FILTERS menu: Rank, Nationality.
+
+**Profile modal (`seafarer-profile-dialog`)** — opened by setting `erpStore.clientUi.profileId`. Atlantis header (name, rank, age, services, vessel-type chip, "Dedicated to X - On Board / On Vacation"), side menu; only **Documents** has content (atl-table with selection → ZIP via JSZip, per-row view / download); other tabs are placeholders. **Document viewer (`document-viewer`)** — blue-bar "View Document" dialog, read-only fields + PDF preview (`documentPdf()` mock scan) with download.
+
+**Hidden from clients:** wages/contract, task costs, candidate category (Dedicated/Ex-Crew/New), CES scores, BMI. Replacement candidates are named only after approval (stage preparation).
 
 ### Crew data (`data/crew.js`)
-- `onboard.seafarerId` in vessels.js links each current crew member to `allSeafarers` (candidate pool) or `crewSeafarers` (ids 1001+ on board, 1101+ former). crewSeafarers are NOT RFE candidates.
+- `onboard.seafarerId` in vessels.js links each current crew member to `allSeafarers` (candidate pool) or `crewSeafarers` (ids 1001+ on board, 1101+ former, 1201+ approved reliefs). crewSeafarers are NOT RFE candidates.
 - `crewReliefSeed` → `crewPastAssignments`: two-person rotation per position (relief tour ending on current embark, current holder's previous tour before it).
 - `crewSignoffDate(row)` = rfr_rfe.embarkDate › rfs.signoffDate › onboard.signoff.
-- `crewRelief(vessel,row)` — from rfr_rfe (live state read from `erpStore.rfaRows.replacement`) or legacy `rfa` Replace (`confirmedSeafarer`). stage: search | approval | preparation.
-- `crewOnDate(vessel, iso)` → rows kind past | current | planned | unknown. `crewEvents(vessel)` → change events.
+- `crewRelief(vessel,row)` — from rfr_rfe (live state from `erpStore.rfaRows.replacement`, else `rfr_rfe.confirmedSeafarer`) or legacy `rfa` Replace (`confirmedSeafarer`, named only when stage preparation). stage: search | approval | preparation.
+- `crewOnDate(vessel, iso)` → rows kind past | current | planned | unknown. `crewEvents(vessel)` → change events (standalone RFEs use `seedRfeRows[].confirmedSeafarer`).
+- Person helpers: `fullNameLF`, `barLabel`, `seafarerAge`, `crewPort(vesselId, key)` (deterministic port), `seafarerTours`, `lastTourOf`, `dedicatedClientOf` (client of last tour's vessel), `availabilityOf`.
 
 ### Documents (`data/documents.js`)
-`seafarerDocuments(id)` generates a deterministic, cached list per seafarer by rank (Identity, Competency, STCW Training, Medical, Visas) with expiry relative to TODAY. `docStatus(doc)` → valid | expiring (≤90d) | expired | permanent. `docSummary(id)`.
+`seafarerDocuments(id)` generates a deterministic, cached list per seafarer using Atlantis categories (Travel Doc, STCW, Flag Req., Medical) with Country / Issued By (e.g. DFA MANILA, MARINA, BOQ for Filipinos) and expiry relative to TODAY. `docStatus(doc)` → valid | expiring (≤90d) | expired | permanent. `docSummary(id)`, `findDocument(id, nameStart)`.
 
 ---
 
@@ -444,7 +475,10 @@ Sidebar section **Client UI** (amber). Routes under `/client/*` switch the top b
 - `/recruitment/pipeline` — RFC → shortlist → proposal → confirmation workflow
 - `/` (home) — dashboard
 
-**Client UI next phases:** 3 — Seafarer profile (placeholder header + documents table, single download + multi-select ZIP) · 4 — Approvals (RFE only: candidate cards with profile/CV/documents, Approve / Reject with mandatory reason; internal RFAs becomes read-only "Awaiting principal"; list defaults to waiting RFEs, toggle to all with date filter) · 5 — Client dashboard.
+**Client UI next phases:**
+- Phase 5 — Client Rotation Plan in Atlantis Gantt style (see `atlantis-ref/RotationPlan*.png`): read-only; past = grey hatched, running = blue, preparation = light green, ready = dark green, RFE search = light-blue hatched, approval = hatched + purple underline, RFS maroon / RFP orange / RFX gold; dashed arrow = promotion to another rank; grey-shaded rank rows = ranks not in the vessel's safe manning; position counters "1/4"; Today (green) and +2 mo (orange) lines; hover cards. Nothing opens on click for running / past services. Request bars and stages shown; candidate names only after approval.
+- Phase 6 — Pending Approvals: list of waiting RFEs (default) / all with date filter, plus rotation plan filtered to pending bars; both open the Atlantis approval dialog (`atlantis-ref/ClientApproval.png`): approve ONE candidate or REJECT ALL with a reason → back to candidate search. Candidate name opens the profile modal. Internal RFAs becomes read-only "Awaiting principal".
+- Phase 7 — Client dashboard: crew on board per vessel, ashore, pending approvals, changes next 30 days, overdue sign-offs, expiring / expired documents.
 
 **Next logical views:**
 - **Recruitment → Candidates** — full seafarer profiles, documents, certificates, availability

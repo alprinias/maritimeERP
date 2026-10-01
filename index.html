@@ -6,14 +6,31 @@
     <title>Maritime ERP</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://unpkg.com/vue-router@4/dist/vue-router.global.js"></script>
+    <!-- Client UI: Vuetify 3 + Material Design Icons + Inter (Atlantis look) -->
+    <!-- Enabled only while the client portal is shown (see isClientUi watcher) — its
+         reset and utility classes (bg-white, rounded-xl, …) clash with Tailwind -->
+    <link rel="stylesheet" id="vuetify-css" href="https://cdn.jsdelivr.net/npm/vuetify@3/dist/vuetify.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7/css/materialdesignicons.min.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+    <script src="https://cdn.jsdelivr.net/npm/vuetify@3/dist/vuetify.min.js"></script>
+    <!-- Client UI: PDF export + ZIP download -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="assets/erp-base.css">
     <link rel="stylesheet" href="assets/gantt.css">
+    <link rel="stylesheet" href="assets/client-portal.css">
 </head>
 <body class="bg-gray-50 font-sans text-gray-800">
 
 <!-- ── App shell ─────────────────────────────────────────────── -->
-<div id="app" class="h-screen flex flex-col overflow-hidden">
+<div id="app">
+
+<!-- Client UI: full-screen portal (Atlantis look), see views/ClientPortal.js -->
+<client-portal v-if="isClientUi"></client-portal>
+
+<div v-else class="h-screen flex flex-col overflow-hidden">
 
     <!-- Top bar -->
     <header class="bg-slate-900 text-white flex items-center justify-between px-5 shrink-0" style="height:48px">
@@ -29,19 +46,7 @@
                 MARITIME<span class="text-blue-400">ERP</span>
             </h1>
         </div>
-        <!-- Client UI: act as a client user -->
-        <div v-if="isClientUi" class="flex items-center gap-3 text-xs">
-            <span class="text-[10px] font-black uppercase tracking-widest bg-amber-400 text-slate-900 px-2 py-0.5 rounded">Client Portal</span>
-            <span class="text-slate-400">Viewing as</span>
-            <select v-model="store.clientUi.clientId"
-                    class="bg-slate-800 border border-slate-600 text-slate-100 text-xs rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-amber-400">
-                <option v-for="c in portalClients" :key="c.id" :value="c.id">{{ c.name }}</option>
-            </select>
-            <div class="h-7 min-w-[28px] px-1.5 bg-amber-500 rounded-full flex items-center justify-center text-[10px] font-bold text-slate-900 shrink-0">
-                {{ (portalClients.find(c => c.id === store.clientUi.clientId) || {}).alias }}
-            </div>
-        </div>
-        <div v-else class="flex items-center gap-3 text-xs">
+        <div class="flex items-center gap-3 text-xs">
             <span class="text-slate-400">Welcome, <strong class="text-slate-200">Ops_User_01</strong></span>
             <div class="w-7 h-7 bg-blue-500 rounded-full flex items-center justify-center text-xs font-bold shrink-0">JD</div>
         </div>
@@ -143,21 +148,13 @@
                         </div>
                         <span :class="['text-slate-500 text-[10px] transition-transform', openSections.client ? 'rotate-90' : '']">▶</span>
                     </button>
+                    <!-- Opens the full-screen client portal -->
                     <div v-show="openSections.client" class="pl-4">
-                        <router-link to="/client/dashboard"
-                            class="flex items-center gap-2 px-4 py-2 text-xs text-slate-400 hover:text-white hover:bg-slate-700 transition rounded-sm whitespace-nowrap"
-                            active-class="!text-slate-900 !bg-amber-400 font-semibold">
-                            Dashboard
-                        </router-link>
-                        <router-link to="/client/crew"
-                            class="flex items-center gap-2 px-4 py-2 text-xs text-slate-400 hover:text-white hover:bg-slate-700 transition rounded-sm whitespace-nowrap"
-                            active-class="!text-slate-900 !bg-amber-400 font-semibold">
-                            Fleet &amp; Crew
-                        </router-link>
-                        <router-link to="/client/approvals"
-                            class="flex items-center gap-2 px-4 py-2 text-xs text-slate-400 hover:text-white hover:bg-slate-700 transition rounded-sm whitespace-nowrap"
-                            active-class="!text-slate-900 !bg-amber-400 font-semibold">
-                            Approvals
+                        <router-link v-for="l in [{ to:'/client/dashboard', label:'Dashboard' }, { to:'/client/crew-lists', label:'Crew Lists' },
+                                                  { to:'/client/rotation', label:'Rotation Plan' }, { to:'/client/approvals', label:'Pending Approvals' }]"
+                            :key="l.to" :to="l.to"
+                            class="flex items-center gap-2 px-4 py-2 text-xs text-slate-400 hover:text-white hover:bg-slate-700 transition rounded-sm whitespace-nowrap">
+                            {{ l.label }} <span class="ml-auto text-[10px] text-slate-500">↗</span>
                         </router-link>
                     </div>
                 </div>
@@ -176,6 +173,7 @@
         </main>
 
     </div>
+</div>
 </div>
 
 <!-- ── ClientsSetup x-template ──────────────────────────────── -->
@@ -1899,333 +1897,332 @@
 </div>
 </script>
 
-<!-- ── Client UI: Fleet & Crew x-template ───────────────────── -->
-<script type="text/x-template" id="tpl-client-crew">
-<div class="flex-1 flex flex-col overflow-hidden">
+<!-- ══ Client UI (Atlantis look, Vuetify) ═══════════════════════ -->
 
-    <!-- Sub-nav -->
-    <nav class="bg-white border-b flex px-8 shadow-sm shrink-0">
-        <button class="active-tab py-3 px-1 text-sm">FLEET &amp; CREW</button>
-    </nav>
+<!-- ── Client portal shell x-template ────────────────────────── -->
+<script type="text/x-template" id="tpl-client-portal">
+<v-app class="atl-portal">
 
-    <!-- Empty state -->
-    <div v-if="!client" class="flex-1 flex flex-col items-center justify-center gap-3 text-gray-300">
-        <div class="text-5xl">🏢</div>
-        <div class="text-base font-semibold text-gray-400">Select a client in the top bar</div>
+    <v-app-bar flat height="64" class="atl-appbar">
+        <v-app-bar-nav-icon @click="drawer = !drawer"></v-app-bar-nav-icon>
+        <div class="atl-pagetab">
+            <v-icon :icon="pageIcon" size="20"></v-icon>
+            <span>{{ pageTitle }}</span>
+        </div>
+        <v-spacer></v-spacer>
+        <div class="atl-viewas">
+            <v-select v-model="store.clientUi.clientId" :items="portalClients" item-title="name" item-value="id"
+                      label="Viewing as (mockup)" prepend-inner-icon="mdi-domain"></v-select>
+        </div>
+        <div class="atl-user" v-if="client">
+            <div class="atl-user__name">{{ client.alias }} Crewing Department</div>
+            <div class="atl-user__mail">{{ client.contactEmail }}</div>
+        </div>
+        <v-btn icon="mdi-logout" variant="text" class="mr-2" title="Exit client portal (back to the ERP mockup)" @click="exit"></v-btn>
+    </v-app-bar>
+
+    <v-navigation-drawer v-model="drawer" temporary width="320" class="atl-drawer">
+        <div class="atl-drawer__group">
+            <v-icon icon="mdi-domain" color="primary"></v-icon>
+            <span>{{ client ? client.name : 'Client Portal' }}</span>
+        </div>
+        <v-list nav density="comfortable" class="atl-drawer__list">
+            <v-list-item v-for="m in menu" :key="m.to" :to="m.to" :prepend-icon="m.icon" :title="m.title"
+                         color="primary" class="atl-drawer__item"></v-list-item>
+        </v-list>
+        <template #append>
+            <div class="atl-brand">
+                <span class="atl-brand__word">crossworld</span>
+                <span class="atl-brand__sub">Client Portal · mockup</span>
+            </div>
+        </template>
+    </v-navigation-drawer>
+
+    <v-main class="atl-main">
+        <router-view></router-view>
+    </v-main>
+
+    <seafarer-profile-dialog></seafarer-profile-dialog>
+</v-app>
+</script>
+
+<!-- ── Client placeholder page x-template ────────────────────── -->
+<script type="text/x-template" id="tpl-client-placeholder">
+<div class="atl-page atl-placeholder-page">
+    <v-icon :icon="$route.meta.icon" size="56" color="grey-lighten-1"></v-icon>
+    <div class="text-h6 mt-3">{{ $route.meta.title }}</div>
+    <div class="text-medium-emphasis">Coming in {{ $route.meta.phase }}.</div>
+</div>
+</script>
+
+<!-- ── Atlantis data table x-template (AtlTable) ─────────────── -->
+<script type="text/x-template" id="tpl-atl-table">
+<div class="atl-table">
+
+    <!-- Toolbar -->
+    <div class="atl-table__toolbar">
+        <v-btn icon="mdi-refresh" color="primary" size="small" title="Refresh" @click="refresh"></v-btn>
+        <slot name="toolbar-left"></slot>
+        <v-spacer></v-spacer>
+
+        <!-- COLUMNS: column visibility -->
+        <v-menu v-model="colMenu" :close-on-content-click="false" location="bottom end">
+            <template #activator="{ props }">
+                <v-btn v-bind="props" variant="text" class="atl-tool-btn" prepend-icon="mdi-view-column" append-icon="mdi-menu-down">
+                    Columns
+                    <v-badge :content="shownColumns.length" color="primary" inline></v-badge>
+                </v-btn>
+            </template>
+            <v-card width="320" class="atl-colmenu">
+                <div class="atl-colmenu__head">
+                    <div class="d-flex align-center ga-3">
+                        <v-icon icon="mdi-view-column"></v-icon>
+                        <span class="atl-colmenu__title">Column Visibility</span>
+                    </div>
+                    <div class="d-flex ga-1 mt-1">
+                        <v-btn variant="text" size="small" @click="showAll">Show all</v-btn>
+                        <v-btn variant="text" size="small" @click="hideAll">Hide all</v-btn>
+                    </div>
+                </div>
+                <v-divider></v-divider>
+                <div class="atl-colmenu__list">
+                    <div v-for="c in columns" :key="c.key"
+                         :class="['atl-colmenu__item', (c.fixed || visible.includes(c.key)) ? 'is-on' : '', c.fixed ? 'is-fixed' : '']"
+                         @click="!c.fixed && toggleCol(c.key)">
+                        <v-checkbox-btn :model-value="c.fixed || visible.includes(c.key)" :disabled="c.fixed"
+                                        color="primary" density="compact" style="pointer-events:none; flex:0 0 auto"></v-checkbox-btn>
+                        <span>{{ c.title }}</span>
+                        <span v-if="c.fixed" class="atl-colmenu__fixed">fixed</span>
+                    </div>
+                </div>
+            </v-card>
+        </v-menu>
+
+        <v-btn variant="text" class="atl-tool-btn" prepend-icon="mdi-file-pdf-box" :disabled="!sorted.length" @click="exportPdf">Export PDF</v-btn>
+
+        <!-- PRESETS (Atlantis look only — not functional in the mockup) -->
+        <div class="atl-presets" title="Presets are not part of the mockup">
+            <v-chip size="small" variant="outlined" color="primary" prepend-icon="mdi-bookmark">Default</v-chip>
+            <v-btn variant="text" color="primary" size="small" prepend-icon="mdi-bookmark" append-icon="mdi-menu-down" class="atl-tool-btn">Presets</v-btn>
+            <v-btn icon="mdi-content-save" color="primary" size="small"></v-btn>
+        </div>
     </div>
 
-    <div v-else class="flex-1 flex flex-col overflow-hidden">
+    <!-- Grid -->
+    <div class="atl-table__scroll">
+        <v-table class="atl-table__grid" hover>
+            <thead>
+                <tr>
+                    <th v-if="selectable" class="atl-col-check">
+                        <v-checkbox-btn :model-value="allOnPageSelected" :indeterminate="someSelected && !allOnPageSelected"
+                                        density="compact" color="primary" @update:model-value="toggleAllOnPage"></v-checkbox-btn>
+                    </th>
+                    <th v-for="c in shownColumns" :key="c.key" class="atl-th" @click="toggleSort(c)">
+                        <span>{{ c.title }}</span>
+                        <v-icon v-if="sKey === c.key" :icon="sDesc ? 'mdi-arrow-down' : 'mdi-arrow-up'" size="18" class="ml-1"></v-icon>
+                    </th>
+                    <th v-if="$slots['row-actions']" class="atl-col-actions"></th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr v-if="!pageRows.length">
+                    <td :colspan="colspan" class="atl-empty">{{ emptyText }}</td>
+                </tr>
+                <template v-for="(e, i) in pageRows" :key="e.header ? 'h-' + e.header.id + '-' + i : e.row._key">
+                    <tr v-if="e.header" class="atl-section-row">
+                        <td :colspan="colspan">
+                            <v-icon v-if="e.header.icon" :icon="e.header.icon" size="18" class="mr-2"></v-icon>{{ e.header.label }}
+                            <span class="atl-section-count">{{ e.count }}</span>
+                        </td>
+                    </tr>
+                    <tr v-else :class="{ 'is-selected': selected.includes(e.row._key) }">
+                        <td v-if="selectable" class="atl-col-check">
+                            <v-checkbox-btn :model-value="selected.includes(e.row._key)" density="compact" color="primary"
+                                            @update:model-value="toggleRow(e.row._key)"></v-checkbox-btn>
+                        </td>
+                        <td v-for="c in shownColumns" :key="c.key" :class="c.cls ? c.cls(e.row) : ''">
+                            <a v-if="c.type === 'link' && e.row[c.key + '_link'] !== false" href="#" class="atl-link"
+                               @click.prevent="$emit('open', e.row, c)">{{ cell(c, e.row) }}</a>
+                            <v-chip v-else-if="c.type === 'chip' && c.chip(e.row)" :color="c.chip(e.row).color"
+                                    size="small" variant="tonal" label>{{ c.chip(e.row).text }}</v-chip>
+                            <span v-else :class="c.type === 'link' ? 'atl-muted' : ''">{{ cell(c, e.row) }}</span>
+                        </td>
+                        <td v-if="$slots['row-actions']" class="atl-col-actions">
+                            <slot name="row-actions" :row="e.row"></slot>
+                        </td>
+                    </tr>
+                </template>
+            </tbody>
+        </v-table>
+    </div>
 
-        <!-- Vessel cards (click to filter) -->
-        <div class="bg-white border-b px-6 py-3 flex gap-3 shrink-0 overflow-x-auto">
-            <button @click="filterVessel = ''"
-                    :class="['text-left rounded-xl border px-4 py-2.5 min-w-[170px] transition shrink-0',
-                             filterVessel === '' ? 'border-blue-500 ring-2 ring-blue-100 bg-blue-50/40' : 'border-gray-200 hover:border-gray-300 bg-white']">
-                <div class="text-[9px] font-black uppercase tracking-widest text-gray-400">{{ client.name }}</div>
-                <div class="text-sm font-bold text-slate-800">All vessels</div>
-                <div class="mt-1.5 text-[10px] font-bold text-gray-500">
-                    {{ clientVessels.length }} vessels ·
-                    {{ vesselCards.reduce((n, c) => n + c.onboard, 0) }} on board
+    <!-- Footer (Atlantis pagination) -->
+    <div class="atl-table__footer">
+        <span>Rows:</span>
+        <v-select v-model="perPage" :items="[10, 20, 50, 100]" class="atl-rows-select"></v-select>
+        <span class="atl-footer-range">{{ rangeText }}</span>
+        <v-btn icon="mdi-page-first"    variant="text" size="small" :disabled="page === 1" @click="page = 1"></v-btn>
+        <v-btn icon="mdi-chevron-left"  variant="text" size="small" :disabled="page === 1" @click="page--"></v-btn>
+        <span class="atl-footer-page">Page {{ page }} - {{ pageCount }}</span>
+        <v-btn icon="mdi-chevron-right" variant="text" size="small" :disabled="page >= pageCount" @click="page++"></v-btn>
+        <v-btn icon="mdi-page-last"     variant="text" size="small" :disabled="page >= pageCount" @click="page = pageCount"></v-btn>
+    </div>
+</div>
+</script>
+
+<!-- ── Seafarer profile modal x-template ─────────────────────── -->
+<script type="text/x-template" id="tpl-seafarer-profile">
+<v-dialog v-model="open" max-width="1440" scrollable>
+    <v-card v-if="s" class="atl-profile">
+        <div class="atl-profile__head">
+            <v-avatar size="56" color="grey-lighten-3"><v-icon icon="mdi-account" size="40" color="grey"></v-icon></v-avatar>
+            <div class="atl-profile__id">
+                <div class="atl-profile__name">{{ fullName }}</div>
+                <div class="atl-profile__meta">
+                    <span>{{ s.rank.toUpperCase() }}</span>
+                    <span>•</span><span>{{ age }} years old</span>
+                    <span>•</span><span>Services: {{ stats.total }}</span>
+                    <span>•</span><span>At Rank: {{ stats.atRank }}</span>
+                    <template v-if="stats.asOfficer"><span>•</span><span>As Officer: {{ stats.asOfficer }}</span></template>
+                    <v-chip v-if="vesselType" size="x-small" color="primary" variant="tonal" class="ml-1">{{ vesselType }}</v-chip>
                 </div>
-            </button>
-            <button v-for="c in vesselCards" :key="c.vessel.id" @click="filterVessel = c.vessel.id"
-                    :class="['text-left rounded-xl border px-4 py-2.5 min-w-[220px] transition shrink-0',
-                             filterVessel === c.vessel.id ? 'border-blue-500 ring-2 ring-blue-100 bg-blue-50/40' : 'border-gray-200 hover:border-gray-300 bg-white']">
-                <div class="text-[9px] font-black uppercase tracking-widest text-gray-400">{{ c.vessel.type }} · {{ c.vessel.flag }}</div>
-                <div class="text-sm font-bold text-slate-800">🚢 {{ c.vessel.name }}</div>
-                <div class="mt-1.5 flex flex-wrap gap-1 text-[10px] font-bold">
-                    <span class="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700">{{ c.onboard }} on board</span>
-                    <span v-if="c.changes" class="px-1.5 py-0.5 rounded bg-sky-50 text-sky-700">{{ c.changes }} changes ≤ 30d</span>
-                    <span v-if="c.overdue" class="px-1.5 py-0.5 rounded bg-red-50 text-red-600">{{ c.overdue }} overdue</span>
-                    <span v-if="c.expired" class="px-1.5 py-0.5 rounded bg-red-50 text-red-600">✕ {{ c.expired }} docs expired</span>
-                    <span v-if="c.expiring" class="px-1.5 py-0.5 rounded bg-amber-50 text-amber-700">⚠ {{ c.expiring }} expiring</span>
-                </div>
-            </button>
+                <div class="atl-profile__status"><v-icon icon="mdi-ship-wheel" size="18"></v-icon> {{ statusLine }}</div>
+            </div>
+            <v-btn icon="mdi-close" variant="text" @click="open = false"></v-btn>
         </div>
-
-        <!-- Tab bar -->
-        <div class="bg-white border-b px-6 flex shrink-0">
-            <button v-for="tab in tabs" :key="tab.id" @click="activeTab = tab.id"
-                    :class="['px-5 py-2.5 text-sm font-semibold border-b-2 transition -mb-px',
-                             activeTab === tab.id ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-400 hover:text-gray-600']">
-                {{ tab.label }}
-                <span :class="['ml-1.5 text-[10px] font-black px-1.5 py-0.5 rounded-full',
-                               activeTab === tab.id ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500']">{{ tab.count }}</span>
-            </button>
+        <v-divider></v-divider>
+        <div class="atl-profile__body">
+            <v-list nav density="comfortable" class="atl-profile__nav">
+                <v-list-item v-for="t in tabs" :key="t.id" :prepend-icon="t.icon" :title="t.label"
+                             :active="tab === t.id" color="primary" @click="tab = t.id"></v-list-item>
+            </v-list>
+            <div class="atl-profile__content">
+                <atl-table v-if="tab === 'documents'" :columns="docColumns" :items="docRows"
+                           v-model:visible="docVisible" selectable v-model:selected="selectedDocs"
+                           :pdf-title="'Documents — ' + fullName" :pdf-subtitle="s.rank.toUpperCase() + '  ·  ' + statusLine"
+                           @open="viewDoc">
+                    <template #toolbar-left>
+                        <v-btn color="primary" variant="flat" class="ml-3" prepend-icon="mdi-folder-zip-outline"
+                               :disabled="!selectedDocs.length" :loading="zipping" @click="downloadSelected">
+                            Download selected ({{ selectedDocs.length }})
+                        </v-btn>
+                    </template>
+                    <template #row-actions="{ row }">
+                        <v-btn icon="mdi-eye-outline" variant="text" size="small" title="View" @click="viewDoc(row)"></v-btn>
+                        <v-btn icon="mdi-download" variant="text" size="small" color="primary" title="Download" @click="downloadDoc(row)"></v-btn>
+                    </template>
+                </atl-table>
+                <div v-else class="atl-placeholder">
+                    <v-icon :icon="currentTab.icon" size="48" color="grey-lighten-1"></v-icon>
+                    <div class="text-h6 mt-2">{{ currentTab.label }}</div>
+                    <div class="text-medium-emphasis">Placeholder — what clients see here is to be defined.</div>
+                </div>
+            </div>
         </div>
+        <document-viewer :doc="viewerDoc" :seafarer="s" @close="viewerDoc = null"></document-viewer>
+    </v-card>
+</v-dialog>
+</script>
 
-        <!-- ── CREW LIST TAB ─────────────────────────────────── -->
-        <template v-if="activeTab === 'crew'">
-            <div class="bg-white border-b px-6 py-3 flex items-center gap-4 shrink-0 flex-wrap">
-                <div class="flex items-center gap-2">
-                    <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest">On board at</label>
-                    <button @click="shiftMonths(-1)"
-                            class="text-[10px] px-2 py-1.5 rounded border bg-white text-gray-500 hover:bg-gray-50 transition">◀ 1 mo</button>
-                    <input type="date" v-model="onDate"
-                           class="text-sm border rounded px-3 py-1.5 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400">
-                    <button @click="shiftMonths(1)"
-                            class="text-[10px] px-2 py-1.5 rounded border bg-white text-gray-500 hover:bg-gray-50 transition">1 mo ▶</button>
-                    <button @click="goToday" :disabled="dateMode === 'today'"
-                            class="text-[10px] px-2.5 py-1.5 rounded border bg-white text-gray-500 hover:bg-gray-50 transition disabled:opacity-40">Today</button>
+<!-- ── Document viewer x-template ────────────────────────────── -->
+<script type="text/x-template" id="tpl-document-viewer">
+<v-dialog :model-value="!!doc" max-width="1320" @update:model-value="v => !v && $emit('close')">
+    <v-card v-if="doc" class="atl-docview">
+        <div class="atl-docview__bar">
+            <span>View Document</span>
+            <v-btn icon="mdi-close" variant="text" size="small" @click="$emit('close')"></v-btn>
+        </div>
+        <div class="atl-docview__body">
+            <div class="atl-docview__form">
+                <div class="atl-section-title">Document Information</div>
+                <div class="atl-form-grid">
+                    <v-text-field label="Document Category" :model-value="doc.category" readonly></v-text-field>
+                    <v-text-field label="Document Type"     :model-value="doc.name" readonly></v-text-field>
+                    <v-text-field label="Document Number"   :model-value="doc.number" readonly></v-text-field>
+                    <v-text-field label="Country"           :model-value="doc.country" readonly></v-text-field>
+                    <v-text-field label="Issued Date"       :model-value="atlDate(doc.issueDate)" readonly></v-text-field>
+                    <v-text-field label="Expiration Date"   :model-value="doc.expiryDate ? atlDate(doc.expiryDate) : '—'" readonly></v-text-field>
+                    <v-text-field label="Issued By"         :model-value="doc.issuedBy" readonly></v-text-field>
+                    <v-text-field label="Status"            :model-value="statusLabel(doc)" readonly></v-text-field>
                 </div>
-                <span :class="['text-[10px] font-black uppercase px-2.5 py-1 rounded-full border',
-                               dateMode === 'past'   ? 'bg-gray-100 text-gray-600 border-gray-300' :
-                               dateMode === 'future' ? 'bg-sky-50 text-sky-700 border-sky-300' :
-                                                       'bg-emerald-50 text-emerald-700 border-emerald-300']">
-                    {{ dateMode === 'past' ? 'Historical' : dateMode === 'future' ? 'Planned' : 'Today' }}
-                </span>
-                <span class="text-[11px] text-gray-400">
-                    {{ dateMode === 'past'   ? 'Crew as it was on board on this date.' :
-                       dateMode === 'future' ? 'Expected crew based on planned sign-offs and reliefs — subject to change.' :
-                                               'Crew currently on board.' }}
-                </span>
-                <div class="ml-auto flex items-center gap-3 text-[10px] text-gray-500">
-                    <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm bg-emerald-400"></span>On board</span>
-                    <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm bg-gray-300"></span>Former tour</span>
-                    <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm border border-dashed border-sky-500 bg-sky-50"></span>Planned</span>
+                <div class="atl-section-title mt-6">Document File</div>
+                <div class="d-flex align-center ga-3">
+                    <v-icon icon="mdi-file-pdf-box" color="red-darken-2" size="28"></v-icon>
+                    <span>{{ doc.fileName }}</span>
                 </div>
             </div>
+            <div class="atl-docview__preview">
+                <div class="d-flex justify-end">
+                    <v-btn icon="mdi-download" variant="text" color="primary" title="Download" @click="download"></v-btn>
+                </div>
+                <iframe v-if="url" :src="url" class="atl-docview__frame" title="Document preview"></iframe>
+            </div>
+        </div>
+    </v-card>
+</v-dialog>
+</script>
 
-            <div class="flex-1 overflow-auto px-6 py-5 space-y-5">
-                <div v-for="g in crewByVessel" :key="g.vessel.id"
-                     class="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                    <div class="px-5 py-3 flex items-center justify-between border-b">
-                        <div>
-                            <div class="text-sm font-bold text-slate-800">🚢 {{ g.vessel.name }}</div>
-                            <div class="text-[11px] text-gray-400">{{ g.vessel.type }} · {{ g.vessel.flag }} flag · IMO {{ g.vessel.imo }}</div>
+<!-- ── Client UI: Crew Lists x-template ──────────────────────── -->
+<script type="text/x-template" id="tpl-client-crew-lists">
+<div class="atl-page">
+
+    <!-- List type + primary filters -->
+    <div class="atl-filterbar">
+        <v-tabs v-model="list" color="primary" density="comfortable">
+            <v-tab v-for="l in lists" :key="l.id" :value="l.id" :prepend-icon="l.icon">{{ l.label }}</v-tab>
+        </v-tabs>
+        <div class="atl-filterbar__fields">
+            <v-select v-model="filterVessel" :items="vesselItems" item-title="name" item-value="id"
+                      :label="list === 'ashore' ? 'Last vessel' : 'Vessel'" placeholder="All vessels" persistent-placeholder
+                      clearable style="max-width:300px; min-width:240px"></v-select>
+
+            <template v-if="list === 'onboard'">
+                <v-text-field v-model="onDate" type="date" label="On board on" :max="todayStr" style="max-width:200px"></v-text-field>
+                <v-btn variant="text" color="primary" prepend-icon="mdi-calendar-today" :disabled="onDate === todayStr" @click="onDate = todayStr">Today</v-btn>
+                <span class="atl-hint"><v-icon icon="mdi-information-outline" size="16"></v-icon>Crew embarked on the selected date (today or earlier).</span>
+            </template>
+            <template v-else-if="list === 'ashore'">
+                <span class="atl-hint"><v-icon icon="mdi-information-outline" size="16"></v-icon>Seafarers dedicated to {{ client && client.name }} who are ashore today.</span>
+            </template>
+            <template v-else-if="list === 'approved'">
+                <v-text-field v-model="approvedFrom" type="date" label="Embarking from" style="max-width:190px"></v-text-field>
+                <v-text-field v-model="approvedTo"   type="date" label="Embarking to"   style="max-width:190px"></v-text-field>
+                <span class="atl-hint"><v-icon icon="mdi-information-outline" size="16"></v-icon>Candidates you approved, with estimated embarkation date and port.</span>
+            </template>
+            <template v-else>
+                <v-text-field v-model="changesFrom" type="date" label="Period from" style="max-width:190px"></v-text-field>
+                <v-text-field v-model="changesTo"   type="date" label="Period to"   style="max-width:190px"></v-text-field>
+                <span class="atl-hint"><v-icon icon="mdi-information-outline" size="16"></v-icon>Completed and planned sign-ons / sign-offs, shown separately.</span>
+            </template>
+        </div>
+    </div>
+
+    <div class="atl-content">
+        <atl-table :key="list" :columns="columns" :items="filteredRows" v-model:visible="visible[list]"
+                   :sections="sections" :pdf-title="pdfTitle" :pdf-subtitle="pdfSubtitle" @open="openProfile">
+            <template #toolbar-left>
+                <!-- FILTERS: secondary filters (Atlantis dropdown) -->
+                <v-menu v-model="filterMenu" :close-on-content-click="false" location="bottom start">
+                    <template #activator="{ props }">
+                        <v-btn v-bind="props" variant="text" class="atl-tool-btn ml-2" prepend-icon="mdi-filter" append-icon="mdi-menu-down">
+                            Filters
+                            <v-badge v-if="activeFilterCount" :content="activeFilterCount" color="primary" inline></v-badge>
+                        </v-btn>
+                    </template>
+                    <v-card width="420" class="atl-filtermenu">
+                        <div class="atl-filtermenu__head">
+                            <div class="d-flex align-center ga-3"><v-icon icon="mdi-filter"></v-icon><span class="atl-colmenu__title">Filters</span></div>
+                            <v-btn variant="text" size="small" :disabled="!activeFilterCount" @click="clearFilters">Clear all</v-btn>
                         </div>
-                        <div class="text-[10px] font-black uppercase tracking-widest text-gray-400">
-                            {{ g.rows.filter(r => r.kind !== 'unknown').length }} / {{ g.rows.length }} positions
+                        <v-divider></v-divider>
+                        <div class="pa-4 d-flex flex-column ga-4">
+                            <v-autocomplete v-model="filterRanks" :items="rankOptions" label="Rank" multiple chips closable-chips></v-autocomplete>
+                            <v-autocomplete v-model="filterNats" :items="natOptions" label="Nationality" multiple chips closable-chips></v-autocomplete>
                         </div>
-                    </div>
-                    <table class="w-full text-xs">
-                        <thead class="bg-slate-800 text-white text-[10px] font-black uppercase tracking-widest">
-                            <tr>
-                                <th class="text-left px-4 py-2 w-40">Rank</th>
-                                <th class="text-left px-4 py-2">Seafarer</th>
-                                <th class="text-left px-4 py-2">Nationality</th>
-                                <th class="text-left px-4 py-2">Embarked</th>
-                                <th class="text-left px-4 py-2">Sign-off</th>
-                                <th class="text-left px-4 py-2">Time on board</th>
-                                <th class="text-left px-4 py-2">Documents</th>
-                                <th class="text-left px-4 py-2">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr v-for="r in g.rows" :key="r.rank"
-                                :class="['border-b last:border-b-0 align-top',
-                                         r.kind === 'planned' ? 'bg-sky-50/50' : r.kind === 'past' ? 'bg-gray-50/70' : '']">
-                                <td class="px-4 py-2.5 whitespace-nowrap">
-                                    <div class="flex items-center gap-2">
-                                        <span :class="['w-1.5 h-6 rounded-full shrink-0',
-                                                       r.kind === 'current' ? 'bg-emerald-400' :
-                                                       r.kind === 'past'    ? 'bg-gray-300' :
-                                                       r.kind === 'planned' ? 'border border-dashed border-sky-500 bg-sky-50' : 'bg-gray-100']"></span>
-                                        <span class="font-semibold text-slate-700">{{ r.rank }}</span>
-                                    </div>
-                                </td>
-                                <!-- Seafarer -->
-                                <td class="px-4 py-2.5">
-                                    <router-link v-if="r.seafarerId" :to="'/client/seafarer/' + r.seafarerId"
-                                                 :class="['font-bold hover:underline', r.kind === 'planned' ? 'text-sky-700 italic' : 'text-blue-700']">
-                                        {{ person(r.seafarerId).name }}
-                                    </router-link>
-                                    <span v-else-if="r.name" class="font-bold text-sky-700 italic">{{ r.name }}</span>
-                                    <span v-else-if="r.kind === 'planned'" class="italic text-gray-400">
-                                        {{ r.relief ? 'To be nominated' : 'No relief planned' }}
-                                    </span>
-                                    <span v-else class="text-gray-300">No record</span>
-                                </td>
-                                <td class="px-4 py-2.5 text-gray-600">{{ r.seafarerId ? person(r.seafarerId).nationality : '—' }}</td>
-                                <td class="px-4 py-2.5 text-gray-600 whitespace-nowrap">{{ fmtDate(r.embark) }}</td>
-                                <td class="px-4 py-2.5 whitespace-nowrap">
-                                    <span v-if="r.kind === 'current'"
-                                          :class="r.overdue ? 'text-red-600 font-bold' : 'text-gray-600'">{{ fmtDate(r.signoff) }}</span>
-                                    <span v-else-if="r.kind === 'past'" class="text-gray-600">{{ fmtDate(r.signoff) }}</span>
-                                    <span v-else class="text-gray-300">—</span>
-                                </td>
-                                <td class="px-4 py-2.5 text-gray-600 whitespace-nowrap">
-                                    <span v-if="r.kind === 'current'">Day {{ daysBetween(r.embark, onDate) + 1 }}</span>
-                                    <span v-else-if="r.kind === 'past'">{{ fmtDuration(r.embark, r.signoff) }}</span>
-                                    <span v-else-if="r.kind === 'planned' && r.embark > todayStr" class="text-sky-700">joins in {{ daysBetween(todayStr, r.embark) }}d</span>
-                                    <span v-else-if="r.kind === 'planned'" class="text-red-600 font-semibold">{{ daysBetween(r.embark, todayStr) }}d overdue</span>
-                                    <span v-else class="text-gray-300">—</span>
-                                </td>
-                                <!-- Documents summary -->
-                                <td class="px-4 py-2.5 whitespace-nowrap">
-                                    <template v-for="s in [docs(r.seafarerId)]" :key="'docs'">
-                                        <div v-if="s" class="flex gap-1 text-[10px] font-bold">
-                                            <span class="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700" title="Valid">✓ {{ s.valid }}</span>
-                                            <span v-show="s.expiring" class="px-1.5 py-0.5 rounded bg-amber-50 text-amber-700" title="Expiring within 90 days">⚠ {{ s.expiring }}</span>
-                                            <span v-show="s.expired" class="px-1.5 py-0.5 rounded bg-red-50 text-red-600" title="Expired">✕ {{ s.expired }}</span>
-                                        </div>
-                                        <span v-else class="text-gray-300">—</span>
-                                    </template>
-                                </td>
-                                <!-- Status -->
-                                <td class="px-4 py-2.5">
-                                    <template v-if="r.kind === 'current'">
-                                        <div class="flex flex-wrap gap-1">
-                                            <span class="text-[10px] font-black uppercase px-2 py-0.5 rounded-full border bg-emerald-50 text-emerald-700 border-emerald-200">On board</span>
-                                            <span v-show="r.overdue && dateMode !== 'past'"
-                                                  class="text-[10px] font-black uppercase px-2 py-0.5 rounded-full border bg-red-50 text-red-600 border-red-200">Sign-off overdue</span>
-                                        </div>
-                                        <div v-show="r.relief && dateMode !== 'past'" class="mt-1 text-[10px] text-gray-500">
-                                            Relief: <strong class="text-slate-700">{{ r.relief && r.relief.name ? r.relief.name : 'to be nominated' }}</strong>
-                                            · {{ r.relief ? stageMeta(r.relief.stage).label : '' }}
-                                        </div>
-                                    </template>
-                                    <span v-else-if="r.kind === 'past'"
-                                          class="text-[10px] font-black uppercase px-2 py-0.5 rounded-full border bg-gray-100 text-gray-500 border-gray-200">Former tour</span>
-                                    <template v-else-if="r.kind === 'planned'">
-                                        <span :class="['text-[10px] font-black uppercase px-2 py-0.5 rounded-full border',
-                                                       r.relief ? stageMeta(r.relief.stage).cls : 'bg-gray-50 text-gray-500 border-gray-200']">
-                                            {{ r.relief ? stageMeta(r.relief.stage).label : 'Relief not yet requested' }}
-                                        </span>
-                                        <div v-show="r.ref" class="mt-1 text-[10px] text-gray-400 font-mono">{{ r.ref }}</div>
-                                    </template>
-                                    <span v-else class="text-gray-300">—</span>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </template>
-
-        <!-- ── CREW CHANGES TAB ──────────────────────────────── -->
-        <template v-else-if="activeTab === 'changes'">
-            <div class="bg-white border-b px-6 py-3 flex items-center gap-4 shrink-0 flex-wrap">
-                <div class="flex items-center gap-2">
-                    <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Horizon</label>
-                    <div class="flex rounded border overflow-hidden text-xs">
-                        <button v-for="h in [{v:30,l:'30 days'},{v:60,l:'60 days'},{v:90,l:'90 days'},{v:0,l:'All'}]"
-                                :key="h.v" @click="changesHorizon = h.v"
-                                :class="['px-3 py-1.5 font-semibold border-r last:border-r-0 transition',
-                                         changesHorizon === h.v ? 'bg-slate-800 text-white' : 'bg-white text-gray-500 hover:bg-gray-50']">
-                            {{ h.l }}
-                        </button>
-                    </div>
-                </div>
-                <span class="text-[11px] text-gray-400">Pending sign-offs, embarkations, extensions and promotions on your vessels.</span>
-            </div>
-
-            <div class="flex-1 overflow-auto px-6 py-5">
-                <div v-if="!changes.length" class="text-center text-sm text-gray-400 py-16">No crew changes in this period.</div>
-                <div v-else class="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                    <table class="w-full text-xs">
-                        <thead class="bg-slate-800 text-white text-[10px] font-black uppercase tracking-widest">
-                            <tr>
-                                <th class="text-left px-4 py-2">Date</th>
-                                <th class="text-left px-4 py-2">Vessel</th>
-                                <th class="text-left px-4 py-2">Rank</th>
-                                <th class="text-left px-4 py-2">Change</th>
-                                <th class="text-left px-4 py-2">Seafarer</th>
-                                <th class="text-left px-4 py-2">Port</th>
-                                <th class="text-left px-4 py-2">Status</th>
-                                <th class="text-left px-4 py-2">Ref</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <template v-for="section in [{ id:'overdue', label:'Overdue', rows: overdueChanges }, { id:'upcoming', label:'Upcoming', rows: upcomingChanges }]" :key="section.id">
-                                <tr v-show="section.rows.length">
-                                    <td colspan="8"
-                                        :class="['px-4 py-1.5 text-[9px] font-black uppercase tracking-widest',
-                                                 section.id === 'overdue' ? 'bg-red-50 text-red-600' : 'bg-gray-50 text-gray-400']">
-                                        {{ section.label }} · {{ section.rows.length }}
-                                    </td>
-                                </tr>
-                                <tr v-for="(e, i) in section.rows" :key="section.id + i" class="border-b last:border-b-0">
-                                    <td class="px-4 py-2.5 whitespace-nowrap">
-                                        <div :class="e.overdue ? 'text-red-600 font-bold' : 'text-slate-700 font-semibold'">{{ fmtDate(e.date) }}</div>
-                                        <div class="text-[10px] text-gray-400">
-                                            {{ e.overdue ? daysBetween(e.date, todayStr) + 'd overdue' : e.date === todayStr ? 'today' : 'in ' + daysBetween(todayStr, e.date) + 'd' }}
-                                        </div>
-                                    </td>
-                                    <td class="px-4 py-2.5 text-gray-700 whitespace-nowrap">{{ e.vesselName }}</td>
-                                    <td class="px-4 py-2.5 text-gray-700 whitespace-nowrap">{{ e.rank }}</td>
-                                    <td class="px-4 py-2.5 whitespace-nowrap">
-                                        <span :class="['text-[10px] font-black px-2 py-0.5 rounded', eventMeta(e.type).cls]">
-                                            {{ eventMeta(e.type).icon }} {{ eventMeta(e.type).label }}
-                                        </span>
-                                        <span v-show="e.type === 'promotion' && e.newRank" class="ml-1 text-[10px] text-gray-500">→ {{ e.newRank }}</span>
-                                    </td>
-                                    <td class="px-4 py-2.5">
-                                        <router-link v-if="e.seafarerId" :to="'/client/seafarer/' + e.seafarerId"
-                                                     class="font-bold text-blue-700 hover:underline">{{ person(e.seafarerId).name }}</router-link>
-                                        <span v-else-if="e.name" class="font-bold text-slate-700">{{ e.name }}</span>
-                                        <span v-else class="italic text-gray-400">To be nominated</span>
-                                    </td>
-                                    <td class="px-4 py-2.5 text-gray-600">{{ e.port || '—' }}</td>
-                                    <td class="px-4 py-2.5">
-                                        <span :class="['text-[10px] font-black uppercase px-2 py-0.5 rounded-full border whitespace-nowrap', stageMeta(e.stage).cls]">
-                                            {{ stageMeta(e.stage).label }}
-                                        </span>
-                                    </td>
-                                    <td class="px-4 py-2.5 text-[10px] text-gray-400 font-mono">{{ e.ref || '—' }}</td>
-                                </tr>
-                            </template>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </template>
-
-        <!-- ── FORMER CREW TAB ───────────────────────────────── -->
-        <template v-else>
-            <div class="bg-white border-b px-6 py-3 flex items-center gap-4 shrink-0 flex-wrap">
-                <div class="flex items-center gap-2">
-                    <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Search</label>
-                    <input type="text" v-model="formerSearch" placeholder="Name, rank or nationality"
-                           class="text-sm border rounded px-3 py-1.5 bg-white min-w-[260px] focus:outline-none focus:ring-2 focus:ring-blue-400">
-                    <button v-if="formerSearch" @click="formerSearch = ''"
-                            class="text-[10px] px-2 py-1.5 rounded border bg-white text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition">✕</button>
-                </div>
-                <span class="text-[11px] text-gray-400">Completed tours on your vessels, most recent first.</span>
-            </div>
-
-            <div class="flex-1 overflow-auto px-6 py-5">
-                <div v-if="!formerCrew.length" class="text-center text-sm text-gray-400 py-16">No former crew found.</div>
-                <div v-else class="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                    <table class="w-full text-xs">
-                        <thead class="bg-slate-800 text-white text-[10px] font-black uppercase tracking-widest">
-                            <tr>
-                                <th class="text-left px-4 py-2">Seafarer</th>
-                                <th class="text-left px-4 py-2">Nationality</th>
-                                <th class="text-left px-4 py-2">Rank</th>
-                                <th class="text-left px-4 py-2">Vessel</th>
-                                <th class="text-left px-4 py-2">Embarked</th>
-                                <th class="text-left px-4 py-2">Signed off</th>
-                                <th class="text-left px-4 py-2">Duration</th>
-                                <th class="text-left px-4 py-2">Now</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr v-for="(a, i) in formerCrew" :key="i" class="border-b last:border-b-0">
-                                <td class="px-4 py-2.5">
-                                    <router-link :to="'/client/seafarer/' + a.seafarerId"
-                                                 class="font-bold text-blue-700 hover:underline">{{ a.name }}</router-link>
-                                </td>
-                                <td class="px-4 py-2.5 text-gray-600">{{ a.nationality || '—' }}</td>
-                                <td class="px-4 py-2.5 text-gray-700">{{ a.rank }}</td>
-                                <td class="px-4 py-2.5 text-gray-700 whitespace-nowrap">{{ a.vesselName }}</td>
-                                <td class="px-4 py-2.5 text-gray-600 whitespace-nowrap">{{ fmtDate(a.embark) }}</td>
-                                <td class="px-4 py-2.5 text-gray-600 whitespace-nowrap">{{ fmtDate(a.signoff) }}</td>
-                                <td class="px-4 py-2.5 text-gray-600 whitespace-nowrap">{{ fmtDuration(a.embark, a.signoff) }}</td>
-                                <td class="px-4 py-2.5">
-                                    <span v-if="a.nowOnboard"
-                                          class="text-[10px] font-black uppercase px-2 py-0.5 rounded-full border bg-emerald-50 text-emerald-700 border-emerald-200 whitespace-nowrap">
-                                        On board · {{ a.nowOnboard }}
-                                    </span>
-                                    <span v-else class="text-gray-300">—</span>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </template>
-
+                    </v-card>
+                </v-menu>
+            </template>
+        </atl-table>
     </div>
 </div>
 </script>
@@ -3281,7 +3278,9 @@ window.crewPastAssignments = crewPastAssignments;
 <script src="views/ClientsSetup.js"></script>
 <script src="views/RFAs.js"></script>
 <script src="views/RotationAll.js"></script>
-<script src="views/ClientCrew.js"></script>
+<script src="views/ClientCommon.js"></script>
+<script src="views/ClientPortal.js"></script>
+<script src="views/ClientCrewLists.js"></script>
 
 <!-- ── Stub views (replace each with a real view file when ready) ── -->
 <script>
@@ -3299,9 +3298,6 @@ const AdminSettingsView    = makeStub('Admin — Settings');
 const RecruitmentCandidatesView = makeStub('Recruitment — Candidates');
 const RecruitmentPipelineView   = makeStub('Recruitment — Pipeline');
 const HomeView = makeStub('Select a module from the sidebar');
-const ClientDashboardView = makeStub('Client UI — Dashboard');
-const ClientApprovalsView = makeStub('Client UI — Approvals');
-const ClientSeafarerView  = makeStub('Client UI — Seafarer Profile & Documents');
 </script>
 
 <!-- ── Router + App bootstrap ────────────────────────────────── -->
@@ -3320,12 +3316,37 @@ const router = createRouter({
         { path: '/recruitment/pipeline',   component: RecruitmentPipelineView },
         { path: '/operations/rotation',    component: RotationAllView },
         { path: '/operations/rfas',        component: RFAsView },
-        { path: '/client',                 redirect: '/client/crew' },
-        { path: '/client/dashboard',       component: ClientDashboardView },
-        { path: '/client/crew',            component: ClientCrewView },
-        { path: '/client/approvals',       component: ClientApprovalsView },
-        { path: '/client/seafarer/:id',    component: ClientSeafarerView },
+        // Client UI — rendered inside the full-screen client portal shell
+        { path: '/client',                 redirect: '/client/crew-lists' },
+        { path: '/client/crew',            redirect: '/client/crew-lists' },
+        { path: '/client/dashboard',       component: ClientPlaceholderView,
+          meta: { title: 'Dashboard',         icon: 'mdi-view-dashboard-outline', phase: 'Phase 7' } },
+        { path: '/client/crew-lists',      component: ClientCrewListsView,
+          meta: { title: 'Crew Lists',        icon: 'mdi-account-group' } },
+        { path: '/client/rotation',        component: ClientPlaceholderView,
+          meta: { title: 'Rotation Plan',     icon: 'mdi-chart-gantt', phase: 'Phase 5' } },
+        { path: '/client/approvals',       component: ClientPlaceholderView,
+          meta: { title: 'Pending Approvals', icon: 'mdi-account-check-outline', phase: 'Phase 6' } },
     ],
+});
+
+// Vuetify (Client UI only) — Atlantis theme and field defaults
+const vuetify = Vuetify.createVuetify({
+    theme: {
+        defaultTheme: 'atlantis',
+        themes: {
+            atlantis: {
+                dark: false,
+                colors: { primary: '#1565C0', secondary: '#455A64', error: '#C62828',
+                          warning: '#EF6C00', success: '#2E7D32', info: '#0277BD' },
+            },
+        },
+    },
+    defaults: {
+        VTextField:     { variant: 'outlined', density: 'compact', hideDetails: true },
+        VSelect:        { variant: 'outlined', density: 'compact', hideDetails: true },
+        VAutocomplete:  { variant: 'outlined', density: 'compact', hideDetails: true },
+    },
 });
 
 const app = createApp({
@@ -3334,13 +3355,19 @@ const app = createApp({
         const sidebarOpen = ref(true);
         const openSections = reactive({ admin: true, recruitment: false, operations: true, client: true });
         function toggleSection(key) { openSections[key] = !openSections[key]; }
-        // Client UI routes show the portal top bar with a "Viewing as" selector
+        // /client/* routes render the full-screen client portal instead of the ERP shell
         const isClientUi = computed(() => route.path.startsWith('/client'));
-        const portalClients = allClientsData.filter(c => c.isActive);
-        return { sidebarOpen, openSections, toggleSection, isClientUi, portalClients, store: erpStore };
+        // Vuetify's stylesheet applies only to the portal, so the Tailwind views are unaffected
+        Vue.watch(isClientUi, on => { document.getElementById('vuetify-css').disabled = !on; }, { immediate: true });
+        return { sidebarOpen, openSections, toggleSection, isClientUi };
     }
 });
+app.component('client-portal',          ClientPortal);
+app.component('atl-table',              AtlTable);
+app.component('seafarer-profile-dialog', SeafarerProfileDialog);
+app.component('document-viewer',        DocumentViewerDialog);
 app.use(router);
+app.use(vuetify);
 app.mount('#app');
 </script>
 

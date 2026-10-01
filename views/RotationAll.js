@@ -83,7 +83,7 @@ const RotationAllView = {
 
         rankHierarchy() {
             return ['Ordinary Seaman','Able Seaman','Bosun','Third Officer','Third Engineer',
-                    'Second Officer','Second Engineer','Chief Officer','Chief Engineer','Captain'];
+                    'Second Officer','Second Engineer','Chief Officer','Chief Engineer','Master'];
         },
         higherRanks() {
             const currentRank = this.modal.row && this.modal.row.rank;

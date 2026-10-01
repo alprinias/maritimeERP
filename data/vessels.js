@@ -10,7 +10,7 @@
    rfa     : null | { rfaNo, type('Extend'|'Replace'|'Promote'), status,
                       rfaStart, rfaEnd, newRank?, proposed:[], confirmedSeafarer }
    rfs     : null | { rfaNo, dateCreated, signoffDate, port, status }
-   rfr_rfe : null | { rfaNo, dateCreated, embarkDate, port, status }
+   rfr_rfe : null | { rfaNo, dateCreated, embarkDate, port, status, confirmedSeafarer? }
 */
 
 var allVessels = [
@@ -26,7 +26,7 @@ var allVessels = [
         vesselRanks: null,
         ranks:[
             {
-                rank:'Captain',
+                rank:'Master',
                 onboard:{ seafarerId:1001, name:'RAMON ESTRADA',   shortName:'R. Estrada',   embark:'2025-12-15', signoff:'2026-06-15', contract:'6 months' },
                 rfa:{ rfaNo:'RFR-1042', status:'approval',
                       rfaStart:'2026-04-15', rfaEnd:'2026-12-15',
@@ -72,7 +72,7 @@ var allVessels = [
                       proposed:[], confirmedSeafarer:null }
             },
             {
-                rank:'AB Deck', isRating: true,
+                rank:'Able Seaman', isRating: true,
                 onboard:{ seafarerId:1005, name:'PEDRO RAMOS',     shortName:'P. Ramos',     embark:'2026-04-01', signoff:'2026-10-01', contract:'6 months' },
                 rfa:{ rfaNo:'RFR-1082', status:'active',
                       rfaStart:'2026-08-01', rfaEnd:'2027-04-01',
@@ -98,7 +98,7 @@ var allVessels = [
         hullInsurer:'Gard Marine', hullValue:'USD 22,000,000',
         vesselRanks: null,
         vesselContract: [
-            { rank:'Captain',        cba:'PNO IBF', hoursOfWork:40, otRate:null,  basicSalary:3460, guaranteedOt:3114, fixedOt:null, leavePay:1038, leaveSubsistence:70, allowance:10, suppWages:5 },
+            { rank:'Master',        cba:'PNO IBF', hoursOfWork:40, otRate:null,  basicSalary:3460, guaranteedOt:3114, fixedOt:null, leavePay:1038, leaveSubsistence:70, allowance:10, suppWages:5 },
             { rank:'Chief Officer',  cba:'PNO IBF', hoursOfWork:40, otRate:null,  basicSalary:1850, guaranteedOt:1665, fixedOt:null, leavePay:555,  leaveSubsistence:70, allowance:10, suppWages:5 },
             { rank:'Second Officer', cba:'PNO IBF', hoursOfWork:40, otRate:null,  basicSalary:1405, guaranteedOt:1265, fixedOt:null, leavePay:422,  leaveSubsistence:70, allowance:10, suppWages:5 },
             { rank:'Third Officer',  cba:'PNO IBF', hoursOfWork:40, otRate:null,  basicSalary:1160, guaranteedOt:1044, fixedOt:null, leavePay:348,  leaveSubsistence:70, allowance:10, suppWages:5 },
@@ -106,13 +106,13 @@ var allVessels = [
             { rank:'Second Engineer',cba:'PNO IBF', hoursOfWork:40, otRate:null,  basicSalary:1850, guaranteedOt:1665, fixedOt:null, leavePay:555,  leaveSubsistence:70, allowance:10, suppWages:5 },
             { rank:'Third Engineer', cba:'PNO IBF', hoursOfWork:40, otRate:null,  basicSalary:1405, guaranteedOt:1265, fixedOt:null, leavePay:422,  leaveSubsistence:70, allowance:10, suppWages:5 },
             { rank:'Bosun',          cba:'PNO IBF', hoursOfWork:40, otRate:6.16,  basicSalary:854,  guaranteedOt:null, fixedOt:634,  leavePay:256,  leaveSubsistence:70, allowance:10, suppWages:5 },
-            { rank:'AB Deck',        cba:'PNO IBF', hoursOfWork:40, otRate:5.09,  basicSalary:706,  guaranteedOt:null, fixedOt:524,  leavePay:212,  leaveSubsistence:70, allowance:10, suppWages:5 },
+            { rank:'Able Seaman',        cba:'PNO IBF', hoursOfWork:40, otRate:5.09,  basicSalary:706,  guaranteedOt:null, fixedOt:524,  leavePay:212,  leaveSubsistence:70, allowance:10, suppWages:5 },
             { rank:'Oiler',          cba:'PNO IBF', hoursOfWork:40, otRate:5.09,  basicSalary:706,  guaranteedOt:null, fixedOt:524,  leavePay:212,  leaveSubsistence:70, allowance:10, suppWages:5 },
             { rank:'Ordinary Seaman',cba:'PNO IBF', hoursOfWork:40, otRate:3.85,  basicSalary:534,  guaranteedOt:null, fixedOt:397,  leavePay:160,  leaveSubsistence:70, allowance:10, suppWages:5 },
         ],
         ranks:[
             {
-                rank:'Captain',
+                rank:'Master',
                 onboard:{ seafarerId:1007, name:'DMITRI VOLKOV',   shortName:'D. Volkov',    embark:'2026-02-01', signoff:'2026-08-01', contract:'6 months' },
                 rfa:{ rfaNo:'RFR-1055', status:'active',
                       rfaStart:'2026-06-01', rfaEnd:'2027-02-01',
@@ -134,7 +134,7 @@ var allVessels = [
                           { name:'MARCO ESPOSITO', nationality:'Italian', service:63 },
                       ], confirmedSeafarer:null },
                 rfs:    { rfaNo:'RFS-4002', dateCreated:'2026-05-15', signoffDate:'2026-07-15', port:'Rotterdam', status:'active' },
-                rfr_rfe:{ rfaNo:'RFE-4002', dateCreated:'2026-05-15', embarkDate:'2026-07-15',  port:'Rotterdam', status:'preparation' },
+                rfr_rfe:{ rfaNo:'RFE-4002', dateCreated:'2026-05-15', embarkDate:'2026-07-15',  port:'Rotterdam', status:'preparation', confirmedSeafarer:'ANASTASIOS KYRIAKOU' },
             },
             {
                 rank:'Second Officer',
@@ -163,7 +163,7 @@ var allVessels = [
         vesselRanks: null,
         ranks:[
             {
-                rank:'Captain',
+                rank:'Master',
                 onboard:{ seafarerId:1011, name:'ALEXANDER KIM',   shortName:'A. Kim',       embark:'2026-01-20', signoff:'2026-07-20', contract:'6 months' },
                 rfa:{ rfaNo:'RFX-1074', type:'Extend', status:'active',
                       rfaStart:'2026-05-20', rfaEnd:'2026-10-20',
@@ -206,7 +206,7 @@ var allVessels = [
         vesselRanks: null,
         ranks:[
             {
-                rank:'Captain',
+                rank:'Master',
                 onboard:{ seafarerId:1015, name:'GEORGIOS STAVROS', shortName:'G. Stavros',  embark:'2026-02-15', signoff:'2026-08-15', contract:'6 months' },
                 rfa:{ rfaNo:'RFR-1063', status:'active',
                       rfaStart:'2026-06-15', rfaEnd:'2027-02-15',
@@ -244,7 +244,7 @@ var allVessels = [
         vesselRanks: null,
         ranks:[
             {
-                rank:'Captain',
+                rank:'Master',
                 onboard:{ seafarerId:1019, name:'KONSTANTINOS PAPADAKIS', shortName:'K. Papadakis', embark:'2026-03-01', signoff:'2026-09-01', contract:'6 months' },
                 rfa:{ rfaNo:'RFR-1068', status:'active',
                       rfaStart:'2026-07-01', rfaEnd:'2027-03-01',
@@ -280,7 +280,7 @@ var allVessels = [
         vesselRanks: null,
         ranks:[
             {
-                rank:'Captain',
+                rank:'Master',
                 onboard:{ seafarerId:1022, name:'TANAKA HIROSHI',  shortName:'T. Hiroshi',   embark:'2026-04-01', signoff:'2026-10-01', contract:'6 months' },
                 rfa: null
             },

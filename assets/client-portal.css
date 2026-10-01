@@ -1,0 +1,147 @@
+/* ── client-portal.css ────────────────────────────────────────
+   Client UI (Atlantis look) on top of Vuetify 3.
+   All rules are scoped under .atl-portal (the portal's v-app) or to
+   overlay content (menus / dialogs), so the internal ERP views are
+   unaffected.
+──────────────────────────────────────────────────────────────── */
+
+.atl-portal,
+.v-overlay-container .v-overlay__content {
+    font-family: 'Inter', 'Roboto', sans-serif;
+    --atl-blue: #1565C0;
+    --atl-blue-light: #E3EEFB;
+    --atl-border: #E0E0E0;
+    --atl-text: #212121;
+}
+.atl-portal { color: var(--atl-text); }
+
+/* ── App bar ─────────────────────────────────────────────────── */
+.atl-portal .atl-appbar {
+    background: #fff !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.18) !important;
+}
+.atl-pagetab {
+    height: 64px; display: flex; align-items: center; gap: 10px;
+    padding: 0 22px; margin-left: 8px;
+    color: var(--atl-blue); font-weight: 600; font-size: 17px; letter-spacing: 0.06em;
+    border-bottom: 3px solid var(--atl-blue);
+}
+.atl-viewas { width: 300px; margin-right: 20px; }
+.atl-user { text-align: left; margin-right: 12px; line-height: 1.25; }
+.atl-user__name { font-size: 15px; color: var(--atl-text); }
+.atl-user__mail { font-size: 13px; color: #757575; }
+
+/* ── Navigation drawer ───────────────────────────────────────── */
+.atl-drawer__group {
+    display: flex; align-items: center; gap: 18px;
+    margin: 12px 8px 4px; padding: 12px 16px;
+    background: var(--atl-blue-light); border-radius: 6px;
+    color: var(--atl-blue); font-size: 17px; font-weight: 500;
+}
+.atl-drawer__list { padding-top: 4px !important; }
+.atl-drawer__item { min-height: 50px !important; }
+.atl-drawer__item.v-list-item--active {
+    background: var(--atl-blue-light);
+    box-shadow: inset 4px 0 0 var(--atl-blue);
+}
+.atl-drawer__item.v-list-item--active > .v-list-item__overlay { opacity: 0 !important; }
+.atl-brand { display: flex; flex-direction: column; align-items: center; padding: 24px 0 28px; }
+.atl-brand__word { font-size: 30px; font-weight: 700; color: #1B4F72; letter-spacing: -0.02em; }
+.atl-brand__sub { font-size: 11px; color: #9E9E9E; text-transform: uppercase; letter-spacing: 0.1em; }
+
+/* ── Page layout ─────────────────────────────────────────────── */
+.atl-main { background: #fff; }
+.atl-page { height: calc(100vh - 64px); display: flex; flex-direction: column; overflow: hidden; }
+.atl-placeholder-page { align-items: center; justify-content: center; color: #757575; }
+.atl-filterbar {
+    margin: 12px 12px 0; padding: 4px 16px 16px;
+    border: 1px solid var(--atl-border); border-radius: 6px;
+}
+.atl-filterbar__fields { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 14px; }
+.atl-hint { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: #757575; }
+.atl-content { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 8px 12px 0; }
+
+/* ── Atlantis table ──────────────────────────────────────────── */
+.atl-table { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.atl-table__toolbar { display: flex; align-items: center; gap: 4px; padding: 8px 0; flex-wrap: wrap; }
+.atl-tool-btn { font-weight: 600 !important; letter-spacing: 0.08em !important; }
+.atl-presets {
+    display: flex; align-items: center; gap: 6px; margin-left: 10px;
+    padding: 4px 6px 4px 12px; background: var(--atl-blue-light); border-radius: 22px;
+    opacity: 0.85;
+}
+.atl-table__scroll { flex: 1; min-height: 0; overflow: auto; border-top: 1px solid var(--atl-border); }
+.atl-table__grid { font-size: 15px; }
+.atl-table__grid .v-table__wrapper { overflow: visible; }
+.atl-table__grid th.atl-th {
+    font-weight: 600 !important; color: var(--atl-text) !important; font-size: 14px;
+    white-space: nowrap; cursor: pointer; user-select: none;
+    position: sticky; top: 0; background: #fff; z-index: 1;
+}
+.atl-table__grid th.atl-col-check, .atl-table__grid th.atl-col-actions {
+    position: sticky; top: 0; background: #fff; z-index: 1;
+}
+.atl-table__grid td { white-space: nowrap; height: 46px !important; }
+.atl-table__grid tr.is-selected td { background: #F5F9FF; }
+.atl-col-check { width: 52px; }
+.atl-col-actions { width: 96px; text-align: right; }
+.atl-link { color: var(--atl-blue); font-weight: 600; text-decoration: none; }
+.atl-link:hover { text-decoration: underline; }
+.atl-muted { color: #9E9E9E; font-style: italic; }
+.atl-text-error { color: #C62828; font-weight: 600; }
+.atl-text-warning { color: #E65100; font-weight: 600; }
+.atl-empty { text-align: center; color: #9E9E9E; padding: 40px 0 !important; }
+.atl-section-row td {
+    background: #F1F6FD; color: var(--atl-blue); font-weight: 700 !important;
+    font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; height: 38px !important;
+}
+.atl-section-count {
+    display: inline-block; margin-left: 8px; padding: 0 8px; border-radius: 10px;
+    background: var(--atl-blue); color: #fff; font-size: 11px; line-height: 18px;
+}
+.atl-table__footer {
+    display: flex; align-items: center; justify-content: flex-end; gap: 10px;
+    padding: 10px 16px; border-top: 1px solid var(--atl-border); font-size: 15px; color: #424242;
+}
+.atl-rows-select { flex: 0 0 96px; }
+.atl-footer-range { margin: 0 24px 0 12px; }
+.atl-footer-page { margin: 0 8px; }
+
+/* Column visibility / filters menus */
+.atl-colmenu__head, .atl-filtermenu__head { padding: 14px 16px 8px; }
+.atl-filtermenu__head { display: flex; align-items: center; justify-content: space-between; }
+.atl-colmenu__title { font-size: 17px; font-weight: 500; }
+.atl-colmenu__list { max-height: 380px; overflow-y: auto; }
+.atl-colmenu__item {
+    display: flex; align-items: center; gap: 10px; padding: 4px 16px; cursor: pointer; font-size: 15px;
+}
+.atl-colmenu__item.is-on { background: #EEEEEE; }
+.atl-colmenu__item.is-fixed { cursor: default; color: #616161; }
+.atl-colmenu__fixed { margin-left: auto; font-size: 11px; color: #9E9E9E; text-transform: uppercase; letter-spacing: 0.06em; }
+
+/* ── Seafarer profile modal ──────────────────────────────────── */
+.atl-profile { height: 90vh; }
+.atl-profile__head { display: flex; align-items: flex-start; gap: 18px; padding: 16px 16px 12px 20px; }
+.atl-profile__id { flex: 1; }
+.atl-profile__name { font-size: 24px; font-weight: 500; color: var(--atl-text); }
+.atl-profile__meta { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; color: #616161; font-size: 15px; margin-top: 2px; }
+.atl-profile__status { color: var(--atl-blue); font-size: 15px; margin-top: 4px; }
+.atl-profile__body { flex: 1; min-height: 0; display: flex; }
+.atl-profile__nav { width: 230px; flex: 0 0 230px; border-right: 1px solid var(--atl-border); padding-top: 12px !important; }
+.atl-profile__content { flex: 1; min-width: 0; display: flex; flex-direction: column; padding: 0 16px; overflow: hidden; }
+.atl-placeholder { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #757575; }
+
+/* ── Document viewer ─────────────────────────────────────────── */
+.atl-docview__bar {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--atl-blue); color: #fff; padding: 8px 12px 8px 20px; font-size: 20px; font-weight: 500;
+}
+.atl-docview__body { display: flex; min-height: 70vh; }
+.atl-docview__form { flex: 0 0 46%; padding: 20px; border-right: 1px solid var(--atl-border); }
+.atl-docview__preview { flex: 1; padding: 12px 20px 20px; background: #FAFAFA; display: flex; flex-direction: column; }
+.atl-docview__frame { flex: 1; width: 100%; min-height: 60vh; border: 1px solid #BDBDBD; background: #fff; }
+.atl-section-title {
+    color: var(--atl-blue); font-weight: 600; font-size: 17px;
+    padding-bottom: 6px; margin-bottom: 16px; border-bottom: 2px solid var(--atl-border);
+}
+.atl-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
