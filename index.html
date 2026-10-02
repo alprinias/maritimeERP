@@ -151,7 +151,8 @@
                     <!-- Opens the full-screen client portal -->
                     <div v-show="openSections.client" class="pl-4">
                         <router-link v-for="l in [{ to:'/client/dashboard', label:'Dashboard' }, { to:'/client/crew-lists', label:'Crew Lists' },
-                                                  { to:'/client/rotation', label:'Rotation Plan' }, { to:'/client/approvals', label:'Pending Approvals' }]"
+                                                  { to:'/client/rotation', label:'Rotation Plan' }, { to:'/client/approvals', label:'Pending Approvals' },
+                                                  { to:'/client/preparation', label:'On Preparation' }]"
                             :key="l.to" :to="l.to"
                             class="flex items-center gap-2 px-4 py-2 text-xs text-slate-400 hover:text-white hover:bg-slate-700 transition rounded-sm whitespace-nowrap">
                             {{ l.label }} <span class="ml-auto text-[10px] text-slate-500">↗</span>
