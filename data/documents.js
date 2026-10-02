@@ -3,7 +3,8 @@
    (Travel Doc, STCW, Flag Req., Medical).
    Depends on: utils.js, crew.js (seafarerById, lastTourOf), vessels.js
    Exposes globals:
-     DOC_CATEGORIES, seafarerDocuments(), docStatus(), docSummary()
+     DOC_CATEGORIES, seafarerDocuments(), docStatus(), docSummary(),
+     cocNameForRank(), findDocument()
 
    Documents are generated deterministically per seafarer (same id →
    same documents on every load). Expiry dates are relative to TODAY so
@@ -163,6 +164,13 @@ function docSummary(seafarerId, refIso) {
         out[st === 'permanent' ? 'valid' : st]++;
     });
     return out;
+}
+
+// Competency certificate a rank requires (CoC for officers, COP for ratings), or null
+function cocNameForRank(rank) {
+    var t = _docTemplatesFor({ rank: rank }, null)
+        .find(x => x.category === 'STCW' && /^(Certificate of Competency|Able Seafarer|Rating)/.test(x.name));
+    return t ? t.name : null;
 }
 
 // First document of a seafarer whose name starts with the given text

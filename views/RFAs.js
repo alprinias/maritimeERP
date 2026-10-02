@@ -24,51 +24,57 @@
 ──────────────────────────────────────────────────────────────── */
 
 // ── Default task lists per RFA type ──────────────────────────
-// Each new RFA of that type gets a fresh copy of these tasks.
+// Each new RFA of that type gets a fresh copy of these tasks. group = the
+// Atlantis "Manual Tasks" group shown in the client preparation checklist
+// (cost stays internal — never shown to the client).
 const DEFAULT_TASKS = {
     rfs: [
-        { name: 'Notify seafarer of sign-off date',    cost: 0 },
-        { name: 'Arrange travel & flights',            cost: 450 },
-        { name: 'Book port agent for disembarkation',  cost: 200 },
-        { name: 'Collect original documents onboard',  cost: 0 },
-        { name: 'Process final wage account',          cost: 0 },
-        { name: 'Medical clearance certificate',       cost: 85 },
-        { name: 'Update crew list with flag state',    cost: 0 },
+        { name: 'Notify seafarer of sign-off date',    cost: 0,   group: 'GENERAL' },
+        { name: 'Arrange travel & flights',            cost: 450, group: 'TRAVEL' },
+        { name: 'Book port agent for disembarkation',  cost: 200, group: 'TRAVEL' },
+        { name: 'Collect original documents onboard',  cost: 0,   group: 'DOCUMENTS' },
+        { name: 'Process final wage account',          cost: 0,   group: 'GENERAL' },
+        { name: 'Medical clearance certificate',       cost: 85,  group: 'DOCUMENTS' },
+        { name: 'Update crew list with flag state',    cost: 0,   group: 'DOCUMENTS' },
     ],
     rfx: [
-        { name: 'Obtain seafarer consent for extension', cost: 0 },
-        { name: 'Verify certificate validity covers extension', cost: 0 },
-        { name: 'Medical fitness confirmation',          cost: 85 },
-        { name: 'Amend employment agreement',            cost: 0 },
-        { name: 'Notify flag state / MLC compliance',   cost: 120 },
-        { name: 'Update rotation plan',                  cost: 0 },
+        { name: 'Obtain seafarer consent for extension', cost: 0,   group: 'GENERAL' },
+        { name: 'Verify certificate validity covers extension', cost: 0, group: 'DOCUMENTS' },
+        { name: 'Medical fitness confirmation',          cost: 85,  group: 'GENERAL' },
+        { name: 'Amend employment agreement',            cost: 0,   group: 'DOCUMENTS' },
+        { name: 'Notify flag state / MLC compliance',   cost: 120, group: 'DOCUMENTS' },
+        { name: 'Update rotation plan',                  cost: 0,   group: 'GENERAL' },
     ],
     rfp: [
-        { name: 'Verify promotion eligibility & sea service', cost: 0 },
-        { name: 'Confirm certificate of competency (CoC)',    cost: 0 },
-        { name: 'Issue new employment contract at new rank',  cost: 0 },
-        { name: 'Notify flag state of rank change',          cost: 150 },
-        { name: 'Update crew list & vessel documentation',    cost: 0 },
-        { name: 'Salary adjustment effective date',          cost: 0 },
+        { name: 'Verify promotion eligibility & sea service', cost: 0,   group: 'GENERAL' },
+        { name: 'Confirm certificate of competency (CoC)',    cost: 0,   group: 'DOCUMENTS' },
+        { name: 'Issue new employment contract at new rank',  cost: 0,   group: 'DOCUMENTS' },
+        { name: 'Notify flag state of rank change',          cost: 150, group: 'DOCUMENTS' },
+        { name: 'Update crew list & vessel documentation',    cost: 0,   group: 'DOCUMENTS' },
+        { name: 'Salary adjustment effective date',          cost: 0,   group: 'GENERAL' },
     ],
     rfe: [
-        { name: 'Confirm seafarer acceptance',               cost: 0 },
-        { name: 'Verify all certificates are valid',         cost: 0 },
-        { name: 'Medical fitness examination',               cost: 120 },
-        { name: 'Arrange travel & flights to join port',     cost: 450 },
-        { name: 'Book port agent for embarkation',           cost: 200 },
-        { name: 'Issue joining instructions & vessel info',  cost: 0 },
-        { name: 'Prepare & sign employment agreement',       cost: 0 },
-        { name: 'Update crew list with flag state',          cost: 0 },
+        { name: 'Confirm seafarer acceptance',               cost: 0,   group: 'GENERAL' },
+        { name: 'Verify all certificates are valid',         cost: 0,   group: 'DOCUMENTS' },
+        { name: 'Has passed medical examination (PEME)',     cost: 120, group: 'GENERAL' },
+        { name: 'Arrange travel & flights to join port',     cost: 450, group: 'TRAVEL' },
+        { name: 'Book port agent for embarkation',           cost: 200, group: 'TRAVEL' },
+        { name: 'Issue joining instructions & vessel info',  cost: 0,   group: 'GENERAL' },
+        { name: 'Has signed employment contract',            cost: 0,   group: 'DOCUMENTS' },
+        { name: 'Update crew list with flag state',          cost: 0,   group: 'DOCUMENTS' },
+        { name: 'Received working gear',                     cost: 150, group: 'GENERAL' },
+        { name: 'Pre-departure briefing completed',          cost: 0,   group: 'GENERAL' },
     ],
 };
 
-function makeTasks(type) {
+// done: task ids already completed (seed data), or true for all
+function makeTasks(type, done) {
     return (DEFAULT_TASKS[type] || []).map((t, i) => ({
         id: i + 1,
         name: t.name,
         cost: t.cost,
-        done: false,
+        group: t.group,
+        done: done === true || (Array.isArray(done) && done.includes(i + 1)),
     }));
 }
 
@@ -389,8 +395,9 @@ const RFAsView = {
                         embarkPort:  r.rfr_rfe.port,
                         status:      r.rfs.status,
                         rfeStatus,
-                        rfsTasks:      makeTasks('rfs'),
-                        rfeTasks:      rfeStatus === 'OnPreparation' ? makeTasks('rfe') : [],
+                        rfsTasks:      makeTasks('rfs', r.rfs.prepDone),
+                        rfeTasks:      rfeStatus === 'OnPreparation' ? makeTasks('rfe', r.rfr_rfe.prepDone) : [],
+                        prepRenewed:   r.rfr_rfe.renewed || null,   // documents renewed during preparation
                         confirmedSeafarer: r.rfr_rfe.confirmedSeafarer || null,
                         rfeCandidates,
                         approvalHistory: [],   // principal decisions (Client UI)
@@ -416,7 +423,7 @@ const RFAsView = {
                         deadline:   r.rfs.signoffDate,
                         port:       r.rfs.port,
                         status:     r.rfs.status,
-                        tasks:      makeTasks('rfs'),
+                        tasks:      makeTasks('rfs', r.rfs.prepDone),
                     });
                 });
             });
@@ -439,7 +446,8 @@ const RFAsView = {
                         currentSignoff: r.onboard && r.onboard.signoff,
                         deadline:       r.rfa.rfaEnd,
                         status:         r.rfa.status,
-                        tasks:          makeTasks('rfx'),
+                        tasks:          makeTasks('rfx', r.rfa.prepDone),
+                        prepRenewed:    r.rfa.renewed || null,
                     });
                 });
             });
@@ -470,7 +478,8 @@ const RFAsView = {
                     // populated lazily by selectRfa() — on the row so Vue tracks it — or
                     // up front when candidates were already sent to the principal
                     candidates: rfe.proposed ? this.buildCandidatesForRfe(rfe, rfe.proposed) : null,
-                    tasks: rfeStatus === 'OnPreparation' ? makeTasks('rfe') : [],
+                    tasks: rfeStatus === 'OnPreparation' ? makeTasks('rfe', rfe.prepDone) : [],
+                    prepRenewed: rfe.renewed || null,
                     approvalHistory: [],   // principal decisions (Client UI)
                 });
             });
@@ -493,7 +502,8 @@ const RFAsView = {
                         seafarer:   r.onboard && r.onboard.name,
                         deadline:   r.rfa.rfaEnd,
                         status:     r.rfa.status,
-                        tasks:      makeTasks('rfp'),
+                        tasks:      makeTasks('rfp', r.rfa.prepDone),
+                        prepRenewed: r.rfa.renewed || null,
                     });
                 });
             });

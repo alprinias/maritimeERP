@@ -345,7 +345,8 @@ const ClientCrewListsView = {
                 crewEvents(v).forEach(e => {
                     if (!inPeriod(e.date)) return;
                     const type = e.type === 'embark' ? 'signon' : e.type;
-                    const status = (CREW_STAGE_LABEL[e.stage] || e.stage).toUpperCase() + (e.overdue ? ' (OVERDUE)' : '');
+                    const label  = e.type !== 'embark' && e.stage === 'preparation' ? 'On preparation' : (CREW_STAGE_LABEL[e.stage] || e.stage);
+                    const status = label.toUpperCase() + (e.overdue ? ' (OVERDUE)' : '');
                     const named = e.type !== 'embark' || isApprovedStage(e.stage);
                     push('planned', type, e.date, v, e.rank,
                          named ? e.seafarerId : null, named ? e.name : null,

@@ -89,22 +89,23 @@ function clientGanttRows(vessel) {
             const off = promoDate && promoDate < crewSignoffDate(row) ? promoDate : crewSignoffDate(row);
             bars.push(_ganttServiceBar('running', ob.seafarerId, ob.embark, off, row.rank));
 
+            const prepLine = st => st === 'preparation' ? [['Status', 'On Preparation']] : [];
             if (row.rfs) {
                 const from = [row.rfs.dateCreated, _ganttAddDays(off, -45)].sort()[1];
-                bars.push({ kind: 'rfs', from, to: off, label: row.rfs.rfaNo,
+                bars.push({ kind: 'rfs', from, to: off, label: row.rfs.rfaNo, ref: row.rfs.rfaNo,
                     tip: { title: row.rfs.rfaNo, chip: 'Sign-off',
-                           lines: [['Seafarer', fullNameLF(s)], ['Sign-off', atlDate(off)], ['Port', row.rfs.port]] } });
+                           lines: [['Seafarer', fullNameLF(s)], ['Sign-off', atlDate(off)], ['Port', row.rfs.port], ...prepLine(row.rfs.status)] } });
             }
             if (row.rfa && row.rfa.type === 'Extend') {
-                bars.push({ kind: 'rfx', from: ob.signoff, to: row.rfa.rfaEnd, label: row.rfa.rfaNo,
+                bars.push({ kind: 'rfx', from: ob.signoff, to: row.rfa.rfaEnd, label: row.rfa.rfaNo, ref: row.rfa.rfaNo,
                     tip: { title: row.rfa.rfaNo, chip: 'Extension',
-                           lines: [['Seafarer', fullNameLF(s)], ['Contract end', atlDate(ob.signoff)], ['Extended to', atlDate(row.rfa.rfaEnd)]] } });
+                           lines: [['Seafarer', fullNameLF(s)], ['Contract end', atlDate(ob.signoff)], ['Extended to', atlDate(row.rfa.rfaEnd)], ...prepLine(row.rfa.status)] } });
             }
             if (row.rfa && row.rfa.type === 'Promote') {
                 const date = row.rfa.rfaEnd;
-                bars.push({ kind: 'rfp', from: _ganttAddDays(date, -45), to: date, label: row.rfa.rfaNo,
+                bars.push({ kind: 'rfp', from: _ganttAddDays(date, -45), to: date, label: row.rfa.rfaNo, ref: row.rfa.rfaNo,
                     tip: { title: row.rfa.rfaNo, chip: 'Promotion',
-                           lines: [['Seafarer', fullNameLF(s)], ['To rank', (row.rfa.newRank || '—').toUpperCase()], ['Promotion date', atlDate(date)]] } });
+                           lines: [['Seafarer', fullNameLF(s)], ['To rank', (row.rfa.newRank || '—').toUpperCase()], ['Promotion date', atlDate(date)], ...prepLine(row.rfa.status)] } });
                 if (row.rfa.newRank) promo = { date, toRank: row.rfa.newRank };
             }
             const relief = crewRelief(vessel, row);
@@ -285,13 +286,28 @@ const ClientRotationView = {
             return out;
         },
 
-        // Relief bars backed by an RFE open the approval dialog (Atlantis: approve on the Gantt line)
-        canOpen(bar) { return !!(GANTT_STAGE_LABEL[bar.kind] && bar.ref && findApprovalItem(bar.ref)); },
+        // What a click on a bar opens: 'prep' — preparation checklist (green relief bars and
+        // RFS / RFX / RFP bars of requests On Preparation); 'approval' — approval dialog
+        // (other relief bars backed by an RFE, as in Atlantis); null — nothing
+        barTarget(bar) {
+            if (!bar.ref) return null;
+            if (findPrepItem(bar.ref)) return 'prep';
+            if (GANTT_STAGE_LABEL[bar.kind] && findApprovalItem(bar.ref)) return 'approval';
+            return null;
+        },
+        canOpen(bar) { return !!this.barTarget(bar); },
+        openLabel(bar) {
+            const t = this.barTarget(bar);
+            if (t === 'prep') return 'Preparation checklist';
+            return bar.kind === 'approval' ? 'Review candidates' : 'Request details';
+        },
         openBar(bar) {
-            if (!this.canOpen(bar)) return;
+            const target = this.barTarget(bar);
+            if (!target) return;
             this.tip = null;
             this.sheet = null;
-            this.store.clientUi.approvalRef = bar.ref;
+            if (target === 'prep') this.store.clientUi.prepRef = bar.ref;
+            else this.store.clientUi.approvalRef = bar.ref;
         },
         // Touch screens can't hover: a tap shows the bar's card in a bottom sheet
         onBarClick(bar, row, vessel) {

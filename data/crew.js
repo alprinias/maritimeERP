@@ -154,7 +154,8 @@ function isApprovedStage(stage) {
 // Stage of an RFE row in erpStore.rfaRows: approval while candidates sent to
 // the principal are undecided, preparation once one is approved
 function rfeLiveStage(live) {
-    if (live.rfeStatus === 'OnPreparation') return 'preparation';
+    // ready = preparation checklist complete (data/preparation.js)
+    if (live.rfeStatus === 'OnPreparation') return prepIsComplete(live, 'rfe') ? 'ready' : 'preparation';
     var cands = live.rfeCandidates || live.candidates || [];
     return cands.some(c => c.acceptance === 'onApproval' && !c.approvalChoice) ? 'approval' : 'search';
 }
@@ -184,7 +185,7 @@ function crewSignoffDate(row) {
 
 /* Planned relief for a rank row, or null.
    stage: 'search' | 'approval' | 'preparation' | 'ready'
-   (legacy rfa status 'deployment' = joining preparation done → 'ready')
+   (ready = preparation checklist complete; legacy rfa status 'deployment' → 'ready')
    Replacement RFEs read live state from erpStore.rfaRows when the RFAs
    view has built it, so approvals made there are reflected here. */
 function crewRelief(vessel, row) {
@@ -257,7 +258,8 @@ function crewEvents(vessel) {
                   seafarerId: ob.seafarerId, name: ob.name,
                   ref: row.rfs ? row.rfs.rfaNo : (relief ? relief.ref : null),
                   port: row.rfs ? row.rfs.port : null,
-                  stage: row.rfs ? 'requested' : (relief ? 'relief' : 'contract') });
+                  stage: row.rfs ? (row.rfs.status === 'preparation' ? 'preparation' : 'requested')
+                                 : (relief ? 'relief' : 'contract') });
         if (relief) {
             ev.push({ type: 'embark', date: relief.date, rank: row.rank,
                       seafarerId: relief.seafarerId, name: relief.name,

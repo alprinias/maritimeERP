@@ -30,7 +30,12 @@ function shiftSeedDates(obj, months) {
     if (!months || !obj || typeof obj !== 'object') return;
     Object.keys(obj).forEach(k => {
         const v = obj[k];
-        if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)) obj[k] = isoDate(addM(d(v), months));
+        if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)) {
+            // UTC month arithmetic — local-time addM can lose a day across daylight-saving changes
+            const dt = d(v);
+            dt.setUTCMonth(dt.getUTCMonth() + months);
+            obj[k] = isoDate(dt);
+        }
         else if (v && typeof v === 'object') shiftSeedDates(v, months);
     });
 }

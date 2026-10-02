@@ -1,5 +1,5 @@
 # CONTEXT.md — Maritime ERP Mockup
-**For AI model continuation. Updated after Client UI phase 8 (phones and tablets).**
+**For AI model continuation. Updated after Client UI phase 9 (On Preparation).**
 
 ---
 
@@ -35,6 +35,7 @@ maritimeERP/
 │   ├── store.js            ← var erpStore (Vue.reactive shared state)
 │   ├── crew.js             ← crewSeafarers, crewPastAssignments, crew-list helpers
 │   ├── documents.js        ← generated seafarer documents + status helpers
+│   ├── preparation.js      ← preparation checklist (document requirements + manual tasks)
 │   └── clients.js          ← var allClientsData (4 clients, salaryRanges, docTypes, vesselIds)
 ├── views/
 │   ├── RotationAll.js      ← Fleet Rotation Gantt view
@@ -45,6 +46,7 @@ maritimeERP/
 │   ├── ClientDashboard.js  ← Client UI → Dashboard (landing page)
 │   ├── ClientCrewLists.js  ← Client UI → Crew Lists view
 │   ├── ClientRotation.js   ← Client UI → Rotation Plan (Atlantis Gantt; crew plan on phones)
+│   ├── ClientPreparation.js← Client UI → On Preparation + <preparation-dialog>, contractPdf()
 │   └── ClientApprovals.js  ← Client UI → Pending Approvals + <approval-dialog>, cvPdf()
 └── CONTEXT.md
 ```
@@ -75,6 +77,8 @@ const MyView = { template: '#tpl-my-view', data() {...}, ... }
 | `tpl-client-crew-lists` | `ClientCrewListsView` |
 | `tpl-client-approvals` | `ClientApprovalsView` |
 | `tpl-approval-dialog` | `ApprovalDialog` (global `approval-dialog`) |
+| `tpl-client-preparation` | `ClientPreparationView` |
+| `tpl-preparation-dialog` | `PreparationDialog` (global `preparation-dialog`) |
 | `tpl-client-rotation` | `ClientRotationView` |
 | `tpl-rotation-all` | `RotationAllView` |
 
@@ -94,9 +98,9 @@ window.TODAY          = TODAY;
 CDN: Vue → VueRouter → Vuetify (css #vuetify-css, mdi, Inter, js) → jsPDF/autotable/JSZip → Tailwind
 assets/erp-base.css + gantt.css + client-portal.css
 x-template blocks (see table above)
-data/utils.js → data/vessels.js → data/seafarers.js → data/store.js → data/crew.js → data/documents.js
+data/utils.js → data/vessels.js → data/seafarers.js → data/store.js → data/crew.js → data/documents.js → data/preparation.js
 [inline: window.* bridge + data/clients.js]
-views/ClientsSetup.js → views/RFAs.js → views/RotationAll.js → views/ClientCommon.js → views/ClientPortal.js → views/ClientCrewLists.js → views/ClientRotation.js → views/ClientApprovals.js
+views/ClientsSetup.js → views/RFAs.js → views/RotationAll.js → views/ClientCommon.js → views/ClientPortal.js → views/ClientCrewLists.js → views/ClientRotation.js → views/ClientApprovals.js → views/ClientDashboard.js → views/ClientPreparation.js
 [inline: makeStub() + router + createVuetify() + createApp() + app.component(client-portal, atl-table, …) + mount]
 [inline: makeStub() + stub views + router + createApp().mount()]
 ```
@@ -424,6 +428,7 @@ Seed data in vessels.js / seafarers.js is authored as of `DATA_AUTHORED_ON = '20
 | `/client/crew-lists` | ClientCrewListsView | BUILT |
 | `/client/rotation` | ClientRotationView | BUILT |
 | `/client/approvals` | ClientApprovalsView | BUILT |
+| `/client/preparation` | ClientPreparationView | BUILT |
 
 Deep links: Crew Lists reads `?list=onboard|ashore|approved|changes` and `?vessel=`; Rotation Plan reads `?vessel=`.
 
@@ -501,6 +506,15 @@ FILTERS menu: Rank, Nationality.
 - `/recruitment/candidates` — seafarer database / profiles (data partially in `allSeafarers`)
 - `/recruitment/pipeline` — RFC → shortlist → proposal → confirmation workflow
 - `/` (home) — dashboard
+
+### On Preparation (phase 9)
+Requests whose preparation is under way: approved embarkations (replacement rows `rfeStatus:'OnPreparation'` → `rfeTasks`, standalone RFE rows → `tasks`) and sign-off / extension / promotion rows with `status:'preparation'` (→ `tasks`). Atlantis reference: `atlantis-ref/OnPreparation.png` (red areas = excluded for clients).
+- **Checklist** (`data/preparation.js`): *Document requirements* per kind (`PREP_DOC_RULES`: rfe — passport, seaman's book, USA visa, own CoC/COP, basic training, PSCRB, PEME, D&A; rfx — passport, seaman's book, CoC, PEME; rfp — CoC/COP of the new rank (`cocNameForRank`), PEME; rfs — none), fulfilled when the seafarer's document is valid until `prepNeedUntil` (end of service / extended date) or the row has `prepRenewed`; *Manual tasks* = the row's task list grouped by `group` (DOCUMENTS / GENERAL / TRAVEL — see `DEFAULT_TASKS` in RFAs.js). Shared with the internal RFAs view, so tasks ticked there show for the client. `prepProgress()`, `prepIsComplete()`.
+- **Ready** stage of an embarkation = checklist complete (`rfeLiveStage`); dark green on the Gantt.
+- Seed: `prepDone: [task ids] | true` and `renewed: true` on rfs / rfr_rfe / rfa / seedRfeRows (e.g. RFE-4061 Reyes ready; RFE-4083, RFE-4002, RFS-4002/4061/4083, RFX-2031 on v1/v2; RFS-3002, RFX-1074, RFP-1090 on v3; RFE-2024 on v4).
+- **Page** `/client/preparation` (menu "On Preparation", info badge with the count): type segment (All / Embarkation / Sign-off / Extension / Promotion), vessel filter, atl-table (Request link, Vessel, Rank, type chip, seafarer, date, due = date − 14 d, days left, progress n / N, open documents, status On Preparation / Ready).
+- **Dialog** `<preparation-dialog>` (store `clientUi.prepRef`): Atlantis header (request + On Preparation / Ready chip, rank + seafarer link, due / date, client, vessel – type – port) + PRINT CONTRACT (`contractPdf()`, not for sign-offs); "Preparation Checklist" with progress chip; Document Requirements by category (✓ / ✗ missing / clock expiring, note, eye → document viewer); Manual Tasks by group with read-only checkboxes. **Excluded for clients:** Edit Contract/Allotments, Cancel, costs and all totals.
+- Opened from the list, from green (preparation / ready) relief bars and from RFS / RFX / RFP bars of requests in preparation on the Rotation Plan (`barTarget()` → 'prep' | 'approval'), from "Checklist" buttons on the phone crew plan, and from the approval dialog after approving.
 
 ### Phones and tablets (phase 8)
 - Global mixin (index.html bootstrap): `isPhone` = width < 600, or a phone held sideways (height < 500 and width < 1000), from `this.$vuetify.display` (reactive, follows rotation); `isTouch` = `(hover: none)`. Templates switch layouts with `isPhone`; tablets (600–1280) keep the desktop layout with media-query fixes.

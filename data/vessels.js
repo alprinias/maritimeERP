@@ -14,6 +14,9 @@
    rfs     : null | { rfaNo, dateCreated, signoffDate, port, status }
    rfr_rfe : null | { rfaNo, dateCreated, embarkDate, port, status, confirmedSeafarer?, proposed? }
              status 'approval' + proposed: [seafarer ids] = candidates sent to the principal
+   Requests in status 'preparation' (rfs, rfr_rfe, rfa Extend / Promote) may carry
+   prepDone: [task ids] | true (preparation tasks already done, see RFAs.js
+   DEFAULT_TASKS) and renewed: true (documents renewed during preparation).
 */
 
 var allVessels = [
@@ -57,12 +60,12 @@ var allVessels = [
             {
                 rank:'Second Engineer',
                 onboard:{ seafarerId:1003, name:'MARIO SANTOS',    shortName:'M. Santos',    embark:'2026-02-01', signoff:'2026-08-01', contract:'6 months' },
-                rfa:{ rfaNo:'RFR-1061', status:'deployment',
-                      rfaStart:'2026-06-01', rfaEnd:'2027-02-01',
-                      proposed:[
-                          { name:'CARLOS REYES', nationality:'Filipino', service:26 },
-                          { name:'AHMED HASSAN', nationality:'Egyptian', service:46 },
-                      ], confirmedSeafarer:'CARLOS REYES' }
+                rfa: null,
+                // Approved relief, preparation complete (all tasks done, documents renewed) → Ready
+                rfs:    { rfaNo:'RFS-4061', dateCreated:'2026-04-01', signoffDate:'2026-08-01', port:'Singapore', status:'preparation',
+                          prepDone:[1, 2, 3, 4, 5] },
+                rfr_rfe:{ rfaNo:'RFE-4061', dateCreated:'2026-04-01', embarkDate:'2026-08-01',  port:'Singapore', status:'preparation',
+                          confirmedSeafarer:'CARLOS REYES', prepDone:true, renewed:true },
             },
             {
                 rank:'Bosun',
@@ -86,17 +89,19 @@ var allVessels = [
             {
                 rank:'Oiler', isRating: true,
                 onboard:{ seafarerId:1006, name:'MARK VILLANUEVA', shortName:'M. Villanueva', embark:'2026-02-10', signoff:'2026-08-10', contract:'6 months' },
-                rfa:{ rfaNo:'RFR-1083', status:'deployment',
-                      rfaStart:'2026-06-10', rfaEnd:'2027-02-10',
-                      proposed:[
-                          { name:'JOSE GARCIA', nationality:'Filipino', service:18 },
-                      ], confirmedSeafarer:'JOSE GARCIA' }
+                rfa: null,
+                rfs:    { rfaNo:'RFS-4083', dateCreated:'2026-04-10', signoffDate:'2026-08-10', port:'Singapore', status:'preparation',
+                          prepDone:[1, 4] },
+                rfr_rfe:{ rfaNo:'RFE-4083', dateCreated:'2026-04-10', embarkDate:'2026-08-10',  port:'Singapore', status:'preparation',
+                          confirmedSeafarer:'JOSE GARCIA', prepDone:[1, 2, 3, 6, 9] },
             },
             {
                 // Supernumerary — not part of the vessel's safe manning
                 rank:'Deck Cadet', isRating: true, safeManning: false,
                 onboard:{ seafarerId:1028, name:'KEN MALLARI', shortName:'K. Mallari', embark:'2026-03-01', signoff:'2026-11-01', contract:'8 months' },
-                rfa: null
+                rfa:{ rfaNo:'RFX-2031', type:'Extend', status:'preparation',
+                      rfaStart:'2026-06-01', rfaEnd:'2026-12-01',
+                      proposed:[], confirmedSeafarer:null, prepDone:[1, 3] },
             },
         ]
     },
@@ -144,8 +149,10 @@ var allVessels = [
                       proposed:[
                           { name:'MARCO ESPOSITO', nationality:'Italian', service:63 },
                       ], confirmedSeafarer:null },
-                rfs:    { rfaNo:'RFS-4002', dateCreated:'2026-05-15', signoffDate:'2026-07-15', port:'Rotterdam', status:'active' },
-                rfr_rfe:{ rfaNo:'RFE-4002', dateCreated:'2026-05-15', embarkDate:'2026-07-15',  port:'Rotterdam', status:'preparation', confirmedSeafarer:'ANASTASIOS KYRIAKOU' },
+                rfs:    { rfaNo:'RFS-4002', dateCreated:'2026-05-15', signoffDate:'2026-07-15', port:'Rotterdam', status:'preparation',
+                          prepDone:[1, 2] },
+                rfr_rfe:{ rfaNo:'RFE-4002', dateCreated:'2026-05-15', embarkDate:'2026-07-15',  port:'Rotterdam', status:'preparation', confirmedSeafarer:'ANASTASIOS KYRIAKOU',
+                          prepDone:[1, 2, 3, 6, 7, 9] },
             },
             {
                 rank:'Second Officer',
@@ -176,9 +183,9 @@ var allVessels = [
             {
                 rank:'Master',
                 onboard:{ seafarerId:1011, name:'ALEXANDER KIM',   shortName:'A. Kim',       embark:'2026-01-20', signoff:'2026-07-20', contract:'6 months' },
-                rfa:{ rfaNo:'RFX-1074', type:'Extend', status:'active',
+                rfa:{ rfaNo:'RFX-1074', type:'Extend', status:'preparation',
                       rfaStart:'2026-05-20', rfaEnd:'2026-10-20',
-                      proposed:[], confirmedSeafarer:null }
+                      proposed:[], confirmedSeafarer:null, prepDone:[1, 2, 3] }
             },
             {
                 rank:'Chief Officer',
@@ -197,15 +204,16 @@ var allVessels = [
                 rank:'Able Seaman', isRating: true,
                 onboard:{ seafarerId:1026, name:'ELMER DIZON',     shortName:'E. Dizon',     embark:'2026-02-15', signoff:'2026-08-15', contract:'6 months' },
                 rfa: null,
-                rfs:{ rfaNo:'RFS-3002', dateCreated:'2026-05-12', signoffDate:'2026-08-15', port:'Singapore', status:'preparation' },
+                rfs:{ rfaNo:'RFS-3002', dateCreated:'2026-05-12', signoffDate:'2026-08-15', port:'Singapore', status:'preparation',
+                      prepDone:[1, 2, 3] },
             },
             {
                 // Promoted to Able Seaman when the AB above signs off (RFS-3002)
                 rank:'Ordinary Seaman', isRating: true,
                 onboard:{ seafarerId:1014, name:'NOEL BACALTOS',   shortName:'N. Bacaltos',  embark:'2026-04-01', signoff:'2026-10-01', contract:'6 months' },
-                rfa:{ rfaNo:'RFP-1090', type:'Promote', status:'active',
+                rfa:{ rfaNo:'RFP-1090', type:'Promote', status:'preparation',
                       rfaStart:'2026-07-01', rfaEnd:'2026-08-15', newRank:'Able Seaman',
-                      proposed:[], confirmedSeafarer:null },
+                      proposed:[], confirmedSeafarer:null, prepDone:[1, 3] },
             },
         ]
     },

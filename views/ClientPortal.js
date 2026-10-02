@@ -25,12 +25,14 @@ const ClientPortal = {
         portalClients() { return allClientsData.filter(c => c.isActive); },
         client() { return allClientsData.find(c => c.id === this.store.clientUi.clientId) || null; },
         pendingCount() { return clientApprovalItems(this.client).filter(i => i.status === 'pending').length; },
+        prepCount()    { return clientPreparationItems(this.client).length; },
         menu() {
             return [
                 { to: '/client/dashboard',  title: 'Dashboard',         short: 'Dashboard', icon: 'mdi-view-dashboard-outline' },
                 { to: '/client/crew-lists', title: 'Crew Lists',        short: 'Crew',      icon: 'mdi-account-group' },
                 { to: '/client/rotation',   title: 'Rotation Plan',     short: 'Rotation',  icon: 'mdi-chart-gantt' },
-                { to: '/client/approvals',  title: 'Pending Approvals', short: 'Approvals', icon: 'mdi-account-check-outline', badge: this.pendingCount },
+                { to: '/client/approvals',  title: 'Pending Approvals', short: 'Approvals', icon: 'mdi-account-check-outline', badge: this.pendingCount, badgeColor: 'deep-purple' },
+                { to: '/client/preparation', title: 'On Preparation',   short: 'Preparation', icon: 'mdi-clipboard-check-outline', badge: this.prepCount, badgeColor: 'info' },
             ];
         },
         toastOpen: {

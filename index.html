@@ -1905,7 +1905,7 @@
             <v-list-item v-for="m in menu" :key="m.to" :to="m.to" :prepend-icon="m.icon" :title="m.title"
                          color="primary" class="atl-drawer__item">
                 <template #append>
-                    <v-badge v-if="m.badge" :content="m.badge" color="deep-purple" inline></v-badge>
+                    <v-badge v-if="m.badge" :content="m.badge" :color="m.badgeColor" inline></v-badge>
                 </template>
             </v-list-item>
         </v-list>
@@ -1924,7 +1924,7 @@
     <!-- Phone: bottom navigation -->
     <v-bottom-navigation v-if="isPhone" grow color="primary" class="atl-bottomnav">
         <v-btn v-for="m in menu" :key="m.to" :to="m.to">
-            <v-badge v-if="m.badge" :content="m.badge" color="deep-purple" floating>
+            <v-badge v-if="m.badge" :content="m.badge" :color="m.badgeColor" floating>
                 <v-icon :icon="m.icon"></v-icon>
             </v-badge>
             <v-icon v-else :icon="m.icon"></v-icon>
@@ -1933,6 +1933,7 @@
     </v-bottom-navigation>
 
     <approval-dialog></approval-dialog>
+    <preparation-dialog></preparation-dialog>
     <seafarer-profile-dialog></seafarer-profile-dialog>
     <v-snackbar v-model="toastOpen" color="grey-darken-4" timeout="4000" location="bottom right">{{ store.clientUi.toast }}</v-snackbar>
 </v-app>
@@ -2614,7 +2615,13 @@
                             :color="statusMeta.color" size="28"></v-icon>
                     <div>
                         <div class="atl-approval__outcome-title">{{ statusMeta.label }}</div>
-                        <div v-if="item.status === 'approved'">You approved <strong>{{ approvedName }}</strong>. The agency is preparing the joining.</div>
+                        <div v-if="item.status === 'approved'">
+                            You approved <strong>{{ approvedName }}</strong>. The agency is preparing the joining.
+                            <div class="mt-2">
+                                <v-btn color="primary" variant="tonal" size="small" prepend-icon="mdi-clipboard-check-outline" class="atl-tool-btn"
+                                       @click="store.clientUi.prepRef = item.ref; store.clientUi.approvalRef = null">Preparation checklist</v-btn>
+                            </div>
+                        </div>
                         <div v-else-if="item.status === 'rejected'">You rejected all candidates. The agency continues the candidate search and will send new candidates for your approval.</div>
                         <div v-else>No candidates are waiting for your approval yet — the agency is searching.</div>
                     </div>
@@ -2656,6 +2663,114 @@
         </v-dialog>
 
         <document-viewer :doc="cvDoc" :seafarer="cvSeafarer" @close="cvDoc = null"></document-viewer>
+    </v-card>
+</v-dialog>
+</script>
+
+<!-- ── Client UI: On Preparation x-template ──────────────────── -->
+<script type="text/x-template" id="tpl-client-preparation">
+<div class="atl-page">
+    <div class="atl-filterbar">
+        <div class="atl-filterbar__fields">
+            <div :class="['atl-seg', { 'atl-hscroll': isPhone }]">
+                <button v-for="k in kinds" :key="k.id" :class="{ 'is-on': kind === k.id }" @click="kind = k.id">
+                    {{ k.label }}
+                    <v-badge :content="k.count" :color="k.count ? 'info' : 'grey'" inline></v-badge>
+                </button>
+            </div>
+            <v-select v-model="filterVessel" :items="vesselItems" item-title="name" item-value="id"
+                      label="Vessel" placeholder="All vessels" persistent-placeholder clearable style="max-width:300px; min-width:240px"></v-select>
+            <span v-if="!isPhone" class="atl-hint"><v-icon icon="mdi-information-outline" size="16"></v-icon>
+                Approved embarkations, sign-offs, extensions and promotions going through their preparation.</span>
+        </div>
+    </div>
+    <div class="atl-content">
+        <atl-table :columns="columns" :items="rows" v-model:visible="visible"
+                   pdf-title="On Preparation" :pdf-subtitle="pdfSubtitle"
+                   empty-text="Nothing is on preparation." @open="openItem"></atl-table>
+    </div>
+</div>
+</script>
+
+<!-- ── Preparation checklist dialog x-template (Atlantis, client view) ── -->
+<script type="text/x-template" id="tpl-preparation-dialog">
+<v-dialog v-model="open" max-width="1180" scrollable :fullscreen="isPhone">
+    <v-card v-if="item" :class="['atl-approval', 'atl-prep', { 'is-phone': isPhone }]">
+        <div class="atl-approval__top">
+            <v-btn icon="mdi-close" variant="text" @click="open = false"></v-btn>
+        </div>
+        <v-card-text class="atl-approval__body">
+
+            <!-- Request header (no Edit Contract / Allotments, no Cancel) -->
+            <div class="atl-approval__head">
+                <div class="atl-approval__cell">
+                    <div class="atl-approval__ref">{{ refLabel }}</div>
+                    <div class="d-flex flex-wrap ga-2 mt-2">
+                        <v-chip size="small" :color="statusMeta.color" variant="tonal">{{ statusMeta.label }}</v-chip>
+                        <v-chip v-if="item.kind !== 'rfe'" size="small" color="grey-darken-1" variant="tonal">{{ kindMeta.label }}</v-chip>
+                    </div>
+                </div>
+                <div class="atl-approval__cell">
+                    <div class="atl-approval__rank">{{ item.rank.toUpperCase() }}<template v-if="item.kind === 'rfp' && item.row.newRank"> → {{ item.row.newRank.toUpperCase() }}</template></div>
+                    <a v-if="seafarer" href="#" class="atl-prep__name" @click.prevent="openProfile">{{ fullNameLF(seafarer) }}</a>
+                </div>
+                <div class="atl-approval__cell atl-approval__dates">
+                    <div><span class="atl-approval__label">Due:</span> {{ atlDate(item.due) }}
+                        <span :class="daysLeftCls(item.due)">– {{ daysLeftText(item.due) }}</span></div>
+                    <div><span class="atl-approval__label">{{ kindMeta.dateLabel }}:</span> {{ atlDate(item.date) }} – {{ daysLeftText(item.date) }}</div>
+                </div>
+                <div class="atl-approval__cell atl-approval__client">{{ item.vessel.client.toUpperCase() }}</div>
+                <div class="atl-approval__cell">{{ vesselLine }}</div>
+                <div v-if="item.kind !== 'rfs'" class="atl-approval__cell atl-prep__actions">
+                    <v-btn color="primary" variant="tonal" prepend-icon="mdi-file-pdf-box" class="atl-tool-btn" @click="printContract">Print Contract</v-btn>
+                </div>
+            </div>
+
+            <div class="atl-prep__title">
+                <span>Preparation Checklist</span>
+                <v-chip size="small" :color="statusMeta.color" variant="tonal"
+                        :prepend-icon="item.status === 'ready' ? 'mdi-check-circle-outline' : 'mdi-progress-clock'">
+                    {{ item.progress.done }} of {{ item.progress.total }} done
+                </v-chip>
+            </div>
+
+            <!-- Document requirements -->
+            <div class="atl-prep__section">
+                <div class="atl-prep__sechead atl-prep__sechead--docs">
+                    <v-icon icon="mdi-file-document-outline"></v-icon><span>Document Requirements</span>
+                </div>
+                <div v-if="!docGroups.length" class="atl-prep__empty">No document requirements for this {{ kindMeta.label.toLowerCase() }}.</div>
+                <template v-for="g in docGroups" :key="g.name">
+                    <div class="atl-prep__group">{{ g.name }}</div>
+                    <div v-for="r in g.items" :key="r.name" :class="['atl-prep__row', { 'is-open': !r.fulfilled }]">
+                        <v-icon :icon="r.fulfilled ? 'mdi-check' : (r.state === 'missing' ? 'mdi-close' : 'mdi-clock-alert-outline')"
+                                :color="r.fulfilled ? 'success' : (r.state === 'missing' ? 'error' : 'warning')" size="22"></v-icon>
+                        <div class="atl-prep__rowmain">
+                            <div>{{ r.name }}</div>
+                            <div class="atl-prep__note">{{ reqNote(r) }}</div>
+                        </div>
+                        <v-btn v-if="r.doc" icon="mdi-eye-outline" variant="text" size="small" title="View document" @click="viewDoc(r)"></v-btn>
+                    </div>
+                </template>
+            </div>
+
+            <!-- Manual tasks (no costs, no totals) -->
+            <div class="atl-prep__section">
+                <div class="atl-prep__sechead atl-prep__sechead--tasks">
+                    <v-icon icon="mdi-clipboard-check-outline"></v-icon><span>Manual Tasks</span>
+                </div>
+                <template v-for="g in taskGroups" :key="g.name">
+                    <div class="atl-prep__group atl-prep__group--caps">{{ g.name }}</div>
+                    <div v-for="t in g.items" :key="t.id" class="atl-prep__row">
+                        <v-icon :icon="t.done ? 'mdi-checkbox-marked' : 'mdi-checkbox-blank-outline'"
+                                :color="t.done ? 'primary' : 'grey'" size="24"></v-icon>
+                        <div class="atl-prep__rowmain">{{ t.name }}</div>
+                    </div>
+                </template>
+            </div>
+        </v-card-text>
+
+        <document-viewer :doc="viewerDoc" :seafarer="seafarer" @close="viewerDoc = null"></document-viewer>
     </v-card>
 </v-dialog>
 </script>
@@ -2707,13 +2822,16 @@
                     </div>
                     <div v-for="q in r.requests" :key="q.label" class="atl-pcard__line">
                         <span :class="['atl-pchip', 'atl-bar--' + q.kind]">{{ q.label }}</span>
-                        <span class="atl-pcard__meta">{{ q.tip.chip }} · {{ atlDate(q.to) }}<template v-if="q.kind === 'rfp' && r.promo"> → {{ r.promo.toRank.toUpperCase() }}</template></span>
+                        <span class="atl-pcard__meta flex-grow-1">{{ q.tip.chip }} · {{ atlDate(q.to) }}<template v-if="q.kind === 'rfp' && r.promo"> → {{ r.promo.toRank.toUpperCase() }}</template></span>
+                        <v-btn v-if="canOpen(q)" size="small" color="primary" variant="tonal"
+                               class="atl-tool-btn" @click.stop="openBar(q)">Checklist</v-btn>
                     </div>
                     <div v-if="r.relief" class="atl-pcard__line">
                         <span :class="['atl-pchip', 'atl-bar--' + r.relief.kind]">{{ r.relief.tip.chip }}</span>
                         <span class="atl-pcard__meta flex-grow-1">{{ r.relief.label }} · from {{ atlDate(r.relief.from) }}</span>
-                        <v-btn v-if="r.relief.kind === 'approval' && canOpen(r.relief)" size="small" color="primary" variant="flat"
-                               class="atl-tool-btn" @click.stop="openBar(r.relief)">Review</v-btn>
+                        <v-btn v-if="canOpen(r.relief) && r.relief.kind !== 'search'" size="small" color="primary"
+                               :variant="r.relief.kind === 'approval' ? 'flat' : 'tonal'"
+                               class="atl-tool-btn" @click.stop="openBar(r.relief)">{{ r.relief.kind === 'approval' ? 'Review' : 'Checklist' }}</v-btn>
                     </div>
                     <div v-if="r.prev" class="atl-pcard__prev">Previous: {{ r.prev.label }} until {{ atlDate(r.prev.to) }}</div>
                 </div>
@@ -2837,8 +2955,8 @@
                     <div v-for="l in b.tip.lines" :key="l[0]" class="atl-gantt-tip__line">
                         <span>{{ l[0] }}</span><strong>{{ l[1] }}</strong>
                     </div>
-                    <v-btn v-if="canOpen(b)" block color="primary" :variant="b.kind === 'approval' ? 'flat' : 'tonal'" class="mt-2 atl-tool-btn"
-                           @click="openBar(b)">{{ b.kind === 'approval' ? 'Review candidates' : 'Request details' }}</v-btn>
+                    <v-btn v-if="canOpen(b)" block color="primary" :variant="b.kind === 'approval' || barTarget(b) === 'prep' ? 'flat' : 'tonal'"
+                           class="mt-2 atl-tool-btn" @click="openBar(b)">{{ openLabel(b) }}</v-btn>
                 </div>
             </div>
         </v-card>
@@ -2855,7 +2973,7 @@
         </div>
         <div v-if="canOpen(tip.bar)" class="atl-gantt-tip__hint">
             <v-icon icon="mdi-cursor-default-click-outline" size="16"></v-icon>
-            {{ tip.bar.kind === 'approval' ? 'Click to review the candidates' : 'Click for details' }}
+            Click: {{ openLabel(tip.bar).toLowerCase() }}
         </div>
     </div>
 </div>
@@ -3894,6 +4012,7 @@
 <script src="data/store.js"></script>
 <script src="data/crew.js"></script>
 <script src="data/documents.js"></script>
+<script src="data/preparation.js"></script>
 
 <!-- ── Expose data as true window globals so all view scripts can see them ── -->
 <script src="data/clients.js"></script>
@@ -3918,6 +4037,7 @@ window.crewPastAssignments = crewPastAssignments;
 <script src="views/ClientRotation.js"></script>
 <script src="views/ClientApprovals.js"></script>
 <script src="views/ClientDashboard.js"></script>
+<script src="views/ClientPreparation.js"></script>
 
 <!-- ── Stub views (replace each with a real view file when ready) ── -->
 <script>
@@ -3964,6 +4084,8 @@ const router = createRouter({
           meta: { title: 'Rotation Plan',     icon: 'mdi-chart-gantt' } },
         { path: '/client/approvals',       component: ClientApprovalsView,
           meta: { title: 'Pending Approvals', icon: 'mdi-account-check-outline' } },
+        { path: '/client/preparation',     component: ClientPreparationView,
+          meta: { title: 'On Preparation',    icon: 'mdi-clipboard-check-outline' } },
     ],
 });
 
@@ -4014,6 +4136,7 @@ app.component('atl-table',              AtlTable);
 app.component('seafarer-profile-dialog', SeafarerProfileDialog);
 app.component('document-viewer',        DocumentViewerDialog);
 app.component('approval-dialog',        ApprovalDialog);
+app.component('preparation-dialog',     PreparationDialog);
 app.use(router);
 app.use(vuetify);
 app.mount('#app');

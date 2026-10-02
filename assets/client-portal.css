@@ -353,6 +353,35 @@
 .atl-cand__svc span { font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #616161; }
 .atl-cand__svc strong { font-size: 16px; font-weight: 600; }
 
+/* ── Preparation checklist dialog (Atlantis, client view) ────── */
+.atl-prep__name { display: block; margin-top: 4px; color: var(--atl-blue); font-weight: 700; font-size: 16px; text-decoration: none; }
+.atl-prep__name:hover { text-decoration: underline; }
+.atl-prep__actions { grid-column: 1 / -1; border-right: none !important; border-bottom: none !important; }
+.atl-prep__title {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    font-size: 24px; font-weight: 700; padding: 6px 8px 14px; margin-bottom: 16px; border-bottom: 1px solid var(--atl-border);
+}
+.atl-prep__section { border: 1px solid var(--atl-border); border-radius: 6px; overflow: hidden; margin-bottom: 20px; }
+.atl-prep__sechead { display: flex; align-items: center; gap: 12px; padding: 14px 18px; font-size: 18px; font-weight: 700; }
+.atl-prep__sechead--docs  { background: #E3EEFB; color: var(--atl-blue); }
+.atl-prep__sechead--tasks { background: #E3F2F1; color: #212121; }
+.atl-prep__group {
+    padding: 10px 18px; background: #F5F5F5; border-top: 1px solid var(--atl-border); border-bottom: 1px solid var(--atl-border);
+    font-size: 15px; font-weight: 500;
+}
+.atl-prep__group--caps { text-transform: uppercase; letter-spacing: 0.04em; }
+.atl-prep__row { display: flex; align-items: center; gap: 14px; padding: 9px 18px; border-bottom: 1px solid #EEEEEE; font-size: 16px; }
+.atl-prep__row:last-child { border-bottom: none; }
+.atl-prep__rowmain { flex: 1; min-width: 0; }
+.atl-prep__note { font-size: 12px; color: #757575; margin-top: 1px; }
+.atl-prep__row.is-open .atl-prep__note { color: #E65100; }
+.atl-prep__empty { padding: 14px 18px; color: #757575; }
+.atl-approval.is-phone .atl-prep__actions { grid-column: auto; }
+.atl-approval.is-phone .atl-prep__title { font-size: 18px; padding: 4px 2px 10px; }
+.atl-approval.is-phone .atl-prep__row { padding: 8px 12px; font-size: 14px; gap: 10px; }
+.atl-approval.is-phone .atl-prep__group, .atl-approval.is-phone .atl-prep__sechead { padding-left: 12px; padding-right: 12px; }
+.atl-approval.is-phone .atl-prep__sechead { font-size: 16px; }
+
 /* ══ Phase 8 — phones and tablets ═══════════════════════════════
    Phone layouts are switched in templates with isPhone (width < 600, or a
    phone held sideways); the rules below style them. Tablet fixes use
