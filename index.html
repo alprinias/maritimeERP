@@ -2429,6 +2429,25 @@
                 </div>
             </div>
 
+            <!-- Appraisals to give -->
+            <div class="atl-dash__panel">
+                <div class="atl-dash__panelhead">
+                    <span class="atl-section-title atl-dash__h">Appraisals to give</span>
+                    <v-btn variant="text" color="primary" size="small" class="atl-tool-btn" to="/client/appraisals?status=pending">View all</v-btn>
+                </div>
+                <div v-if="!pendingAppraisals.length" class="atl-dash__empty">
+                    <v-icon icon="mdi-check-circle-outline" color="success"></v-icon> All recent sign-offs are appraised.
+                </div>
+                <div v-for="t in pendingAppraisals" :key="t.vesselId + t.seafarerId + t.signoff" class="atl-dash__item">
+                    <div class="atl-dash__itemmain">
+                        <a href="#" class="atl-link" @click.prevent="openProfile(t.seafarerId)">{{ fullNameLF(person(t.seafarerId)) }}</a>
+                        <div class="atl-dash__meta">{{ t.rank.toUpperCase() }} · {{ vesselName(t.vesselId).toUpperCase() }}</div>
+                        <div class="atl-dash__meta">Signed off {{ atlDate(t.signoff) }} ({{ -daysLeft(t.signoff) }} days ago)</div>
+                    </div>
+                    <v-btn color="primary" variant="flat" size="small" class="atl-tool-btn" @click="appraise(t)">Appraise</v-btn>
+                </div>
+            </div>
+
             <!-- Next 30 days -->
             <div class="atl-dash__panel">
                 <div class="atl-dash__panelhead">

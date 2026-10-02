@@ -172,7 +172,8 @@ const ClientAppraisalsView = {
         return {
             store:        erpStore,
             period:       6,            // months back; 0 = all
-            status:       '',           // '' | 'pending' | 'done'
+            // '' | 'pending' | 'done' — ?status= lets the dashboard deep-link to the pending ones
+            status:       ['pending', 'done'].includes(this.$route.query.status) ? this.$route.query.status : '',
             filterVessel: null,
             visible:      ['signOff', 'status', 'overall', 'rehire', 'appraisalDate'],
         };

@@ -275,7 +275,7 @@
 .atl-dash__hello { margin-bottom: 18px; }
 .atl-dash__title { font-size: 24px; font-weight: 600; color: var(--atl-text); }
 .atl-dash__subtitle { font-size: 14px; color: #757575; margin-top: 2px; }
-.atl-dash__tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 16px; margin-bottom: 20px; }
+.atl-dash__tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 16px; margin-bottom: 20px; }
 .atl-tile { padding: 16px 18px !important; border-color: var(--atl-border) !important; background: #fff !important; border-radius: 8px !important; }
 .atl-tile__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
 .atl-tile__label { font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #616161; }
@@ -288,7 +288,7 @@
 .atl-dash__panel { background: #fff; border: 1px solid var(--atl-border); border-radius: 8px; padding: 14px 18px; margin-bottom: 20px; }
 .atl-dash__panelhead { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
 .atl-dash__h { border-bottom: none !important; margin-bottom: 0 !important; padding-bottom: 0 !important; }
-.atl-dash__cols { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.atl-dash__cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px; }
 .atl-dash__cols .atl-dash__panel { margin-bottom: 20px; }
 .atl-dash__item { display: flex; align-items: center; gap: 14px; padding: 10px 0; border-top: 1px solid #EEEEEE; font-size: 15px; }
 .atl-dash__itemmain { flex: 1; min-width: 0; }

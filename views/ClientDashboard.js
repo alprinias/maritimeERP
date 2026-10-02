@@ -4,11 +4,11 @@
 
    For the client selected in the portal top bar:
    - KPI tiles: crew on board, ashore (dedicated pool), pending approvals,
-     crew changes in the next 30 days, overdue sign-offs, documents of the
-     crew on board that are expired / expiring (≤ 90 days)
+     appraisals to give, crew changes in the next 30 days, overdue sign-offs,
+     documents of the crew on board that are expired / expiring (≤ 90 days)
    - Fleet table: one row per vessel with the same figures
-   - Lists: requests awaiting approval, changes in the next 30 days,
-     documents needing attention
+   - Lists: requests awaiting approval, appraisals to give (Appraise opens the
+     form), changes in the next 30 days, documents needing attention
    Every tile / row links to the page with the detail (deep links use
    ?list= / ?vessel= on Crew Lists and ?vessel= on Rotation Plan).
    Status is always shown with an icon + label, never by colour alone.
@@ -61,6 +61,12 @@ const ClientDashboardView = {
                 .sort((a, b) => a.due.localeCompare(b.due));
         },
         ashoreCount() { return this.client ? ashoreDedicated(this.client.id).length : 0; },
+        // Sign-offs of the last 6 months without an appraisal, longest waiting first
+        pendingAppraisals() {
+            return clientAppraisalTours(this.client, 6)
+                .filter(t => !appraisalFor(appraisalKey(t)))
+                .sort((a, b) => a.signoff.localeCompare(b.signoff));
+        },
         sum() {
             const s = (k) => this.fleet.reduce((n, f) => n + (Array.isArray(f[k]) ? f[k].length : f[k]), 0);
             return { onboard: s('onboard'), positions: s('positions'), upcoming: s('upcoming'),
@@ -79,6 +85,11 @@ const ClientDashboardView = {
                   sub: this.pendingItems.length ? 'Next due ' + atlDate(this.pendingItems[0].due) : 'Nothing waiting for you',
                   status: this.pendingItems.length ? { text: 'Action needed', icon: 'mdi-alert-circle-outline', color: 'deep-purple' } : null,
                   to: '/client/approvals' },
+                { id: 'appraisals', label: 'Appraisals to give', icon: 'mdi-star-check-outline', value: this.pendingAppraisals.length,
+                  sub: this.pendingAppraisals.length ? 'Oldest sign-off ' + atlDate(this.pendingAppraisals[0].signoff) : 'All recent sign-offs appraised',
+                  status: this.pendingAppraisals.length ? { text: 'Action needed', icon: 'mdi-alert-circle-outline', color: 'warning' }
+                                                        : { text: 'Up to date', icon: 'mdi-check-circle-outline', color: 'success' },
+                  to: '/client/appraisals?status=pending' },
                 { id: 'changes',  label: 'Crew changes · next 30 days', icon: 'mdi-swap-vertical', value: t.upcoming,
                   sub: 'Sign-ons, sign-offs, extensions, promotions', to: '/client/crew-lists?list=changes' },
                 { id: 'overdue',  label: 'Overdue sign-offs', icon: 'mdi-timer-alert-outline', value: t.overdue,
@@ -130,6 +141,8 @@ const ClientDashboardView = {
             }
         },
         openApproval(item) { this.store.clientUi.approvalRef = item.ref; },
+        appraise(tour)     { this.store.clientUi.appraisal = { key: appraisalKey(tour), mode: 'new' }; },
+        vesselName(id)     { return allVessels.find(v => v.id === id).name; },
         openProfile(id)    { if (id) this.store.clientUi.profileId = id; },
         changeMeta(e) {
             return {
