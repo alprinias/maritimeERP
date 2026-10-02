@@ -26,6 +26,10 @@ const ClientPortal = {
         client() { return allClientsData.find(c => c.id === this.store.clientUi.clientId) || null; },
         pendingCount() { return clientApprovalItems(this.client).filter(i => i.status === 'pending').length; },
         prepCount()    { return clientPreparationItems(this.client).length; },
+        // Sign-offs of the last 6 months still waiting for an appraisal
+        appraisalCount() {
+            return clientAppraisalTours(this.client, 6).filter(t => !appraisalFor(appraisalKey(t))).length;
+        },
         menu() {
             return [
                 { to: '/client/dashboard',  title: 'Dashboard',         short: 'Dashboard', icon: 'mdi-view-dashboard-outline' },
@@ -33,8 +37,11 @@ const ClientPortal = {
                 { to: '/client/rotation',   title: 'Rotation Plan',     short: 'Rotation',  icon: 'mdi-chart-gantt' },
                 { to: '/client/approvals',  title: 'Pending Approvals', short: 'Approvals', icon: 'mdi-account-check-outline', badge: this.pendingCount, badgeColor: 'deep-purple' },
                 { to: '/client/preparation', title: 'On Preparation',   short: 'Preparation', icon: 'mdi-clipboard-check-outline', badge: this.prepCount, badgeColor: 'info' },
+                { to: '/client/appraisals',  title: 'Appraisals',       short: 'Appraisals',  icon: 'mdi-star-check-outline', badge: this.appraisalCount, badgeColor: 'warning' },
             ];
         },
+        // Phone bottom navigation "More": badges of the items beyond the first four
+        moreBadge() { return this.menu.slice(4).reduce((n, m) => n + (m.badge || 0), 0); },
         toastOpen: {
             get() { return !!this.store.clientUi.toast; },
             set(v) { if (!v) this.store.clientUi.toast = ''; },

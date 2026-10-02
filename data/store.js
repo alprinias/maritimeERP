@@ -22,6 +22,9 @@ var erpStore = Vue.reactive({
     // Rotation Plan — standalone RFE rows (seeded once)
     rfeRows: seedRfeRows.map(r => Object.assign({}, r)),
 
+    // Client appraisals of completed tours (seeded by data/appraisals.js)
+    appraisals: [],
+
     // RFAs view — aggregated rows per tab ({ signoff, extension, ... }).
     // null until the RFAs view is first opened; merged on each later visit.
     rfaRows: null,

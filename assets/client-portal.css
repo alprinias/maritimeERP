@@ -382,6 +382,39 @@
 .atl-approval.is-phone .atl-prep__group, .atl-approval.is-phone .atl-prep__sechead { padding-left: 12px; padding-right: 12px; }
 .atl-approval.is-phone .atl-prep__sechead { font-size: 16px; }
 
+/* ── Appraisal form ──────────────────────────────────────────── */
+.atl-appr__top { align-items: center; padding-left: 20px; }
+.atl-appr__title { font-size: 20px; font-weight: 600; }
+.atl-appr__legend { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; margin: 0 4px 16px; font-size: 13px; color: #616161; }
+.atl-appr__legend-item { display: inline-flex; align-items: center; gap: 6px; }
+.atl-appr__dot { display: inline-block; width: 12px; height: 12px; border-radius: 3px; }
+.atl-appr__avg { font-size: 14px; font-weight: 600; color: #424242; }
+.atl-appr__crit { display: flex; align-items: center; gap: 16px; padding: 10px 18px; border-bottom: 1px solid #EEEEEE; }
+.atl-appr__label { flex: 1; min-width: 0; font-size: 15px; }
+.atl-appr__scale { display: flex; gap: 4px; flex: 0 0 auto; }
+.atl-appr__g {
+    width: 34px; height: 34px; border-radius: 6px; border: 1px solid #BDBDBD; background: #fff;
+    font-size: 14px; font-weight: 600; color: #424242; cursor: pointer;
+}
+.atl-appr__g:disabled { cursor: default; }
+.atl-appr__g:not(:disabled):hover { border-color: var(--atl-blue); }
+.atl-appr__g.is-on { color: #fff; border-color: transparent; }
+/* grade bands: poor / below / meets / exceeds (label always shown next to the grade) */
+.g-poor.is-on,    .atl-appr__dot.g-poor    { background: #C62828; }
+.g-below.is-on,   .atl-appr__dot.g-below   { background: #EF6C00; }
+.g-meets.is-on,   .atl-appr__dot.g-meets   { background: #1565C0; }
+.g-exceeds.is-on, .atl-appr__dot.g-exceeds { background: #2E7D32; }
+.atl-appr__comment { padding: 10px 18px 14px; }
+.atl-appr__overall { padding: 14px 18px 18px; }
+.atl-appr__q { font-size: 16px; font-weight: 600; }
+.atl-appr__actions { display: flex; align-items: center; gap: 8px; }
+.atl-appr__missing { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: #757575; }
+.atl-appr.is-phone .atl-appr__crit { flex-direction: column; align-items: stretch; gap: 8px; padding: 10px 12px; }
+.atl-appr.is-phone .atl-appr__scale { justify-content: space-between; }
+.atl-appr.is-phone .atl-appr__g { width: auto; flex: 1; height: 32px; font-size: 13px; padding: 0; }
+.atl-appr.is-phone .atl-appr__comment, .atl-appr.is-phone .atl-appr__overall { padding-left: 12px; padding-right: 12px; }
+.atl-appr.is-phone .atl-appr__actions { flex-wrap: wrap; }
+
 /* ══ Phase 8 — phones and tablets ═══════════════════════════════
    Phone layouts are switched in templates with isPhone (width < 600, or a
    phone held sideways); the rules below style them. Tablet fixes use

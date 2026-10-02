@@ -1,5 +1,5 @@
 # CONTEXT.md — Maritime ERP Mockup
-**For AI model continuation. Updated after Client UI phase 9 (On Preparation).**
+**For AI model continuation. Updated after Client UI phase 10 (Appraisals).**
 
 ---
 
@@ -36,6 +36,7 @@ maritimeERP/
 │   ├── crew.js             ← crewSeafarers, crewPastAssignments, crew-list helpers
 │   ├── documents.js        ← generated seafarer documents + status helpers
 │   ├── preparation.js      ← preparation checklist (document requirements + manual tasks)
+│   ├── appraisals.js       ← appraisal form definition + seeded appraisals (loaded after clients.js)
 │   └── clients.js          ← var allClientsData (4 clients, salaryRanges, docTypes, vesselIds)
 ├── views/
 │   ├── RotationAll.js      ← Fleet Rotation Gantt view
@@ -47,6 +48,7 @@ maritimeERP/
 │   ├── ClientCrewLists.js  ← Client UI → Crew Lists view
 │   ├── ClientRotation.js   ← Client UI → Rotation Plan (Atlantis Gantt; crew plan on phones)
 │   ├── ClientPreparation.js← Client UI → On Preparation + <preparation-dialog>, contractPdf()
+│   ├── ClientAppraisals.js ← Client UI → Appraisals + <appraisal-dialog>, appraisalPdf()
 │   └── ClientApprovals.js  ← Client UI → Pending Approvals + <approval-dialog>, cvPdf()
 └── CONTEXT.md
 ```
@@ -77,6 +79,8 @@ const MyView = { template: '#tpl-my-view', data() {...}, ... }
 | `tpl-client-crew-lists` | `ClientCrewListsView` |
 | `tpl-client-approvals` | `ClientApprovalsView` |
 | `tpl-approval-dialog` | `ApprovalDialog` (global `approval-dialog`) |
+| `tpl-client-appraisals` | `ClientAppraisalsView` |
+| `tpl-appraisal-dialog` | `AppraisalDialog` (global `appraisal-dialog`) |
 | `tpl-client-preparation` | `ClientPreparationView` |
 | `tpl-preparation-dialog` | `PreparationDialog` (global `preparation-dialog`) |
 | `tpl-client-rotation` | `ClientRotationView` |
@@ -99,8 +103,8 @@ CDN: Vue → VueRouter → Vuetify (css #vuetify-css, mdi, Inter, js) → jsPDF/
 assets/erp-base.css + gantt.css + client-portal.css
 x-template blocks (see table above)
 data/utils.js → data/vessels.js → data/seafarers.js → data/store.js → data/crew.js → data/documents.js → data/preparation.js
-[inline: window.* bridge + data/clients.js]
-views/ClientsSetup.js → views/RFAs.js → views/RotationAll.js → views/ClientCommon.js → views/ClientPortal.js → views/ClientCrewLists.js → views/ClientRotation.js → views/ClientApprovals.js → views/ClientDashboard.js → views/ClientPreparation.js
+[inline: window.* bridge + data/clients.js] → data/appraisals.js
+views/ClientsSetup.js → views/RFAs.js → views/RotationAll.js → views/ClientCommon.js → views/ClientPortal.js → views/ClientCrewLists.js → views/ClientRotation.js → views/ClientApprovals.js → views/ClientDashboard.js → views/ClientPreparation.js → views/ClientAppraisals.js
 [inline: makeStub() + router + createVuetify() + createApp() + app.component(client-portal, atl-table, …) + mount]
 [inline: makeStub() + stub views + router + createApp().mount()]
 ```
@@ -429,6 +433,7 @@ Seed data in vessels.js / seafarers.js is authored as of `DATA_AUTHORED_ON = '20
 | `/client/rotation` | ClientRotationView | BUILT |
 | `/client/approvals` | ClientApprovalsView | BUILT |
 | `/client/preparation` | ClientPreparationView | BUILT |
+| `/client/appraisals` | ClientAppraisalsView | BUILT |
 
 Deep links: Crew Lists reads `?list=onboard|ashore|approved|changes` and `?vessel=`; Rotation Plan reads `?vessel=`.
 
@@ -506,6 +511,14 @@ FILTERS menu: Rank, Nationality.
 - `/recruitment/candidates` — seafarer database / profiles (data partially in `allSeafarers`)
 - `/recruitment/pipeline` — RFC → shortlist → proposal → confirmation workflow
 - `/` (home) — dashboard
+
+### Appraisals (phase 10)
+One common end-of-service appraisal form for all clients (instead of each client's own), so results can be collected and summarised.
+- **Form definition** (`data/appraisals.js`): `APPRAISAL_SECTIONS` — Performance, Behaviour, Knowledge, Soft Skills, 4 criteria each, graded 1–10; bands `APPRAISAL_GRADES` (1–3 Poor, 4–5 Below expectations, 6–7 Meets, 8–9 Exceeds, 10 Outstanding; label always shown with the colour); optional comment per section; rehire yes / no with a **required justification for no**; optional remarks. `appraisalAverages()` → per-section and overall averages.
+- **Store**: `erpStore.appraisals` [{ key = vesselId|seafarerId|signoff, seafarerId, vesselId, rank, embark, signoff, clientId, date, appraiser, grades, comments, rehire, justification, remarks }], seeded for tours signed off > 65 days ago (~80 %; Edgar Bautista 1107 = "do not rehire"); recent ones are pending. Dialog state `clientUi.appraisal = { key, mode: 'new' | 'view' | 'edit' }`.
+- **Page** `/client/appraisals` (menu "Appraisals", warning badge = sign-offs of the last 6 months not appraised): signed-off period 3 / 6 / 12 mo / All, status All / To be appraised / Appraised, vessel; atl-table of completed tours (`clientAppraisalTours`) with status, overall, rehire chips and optional per-section averages; row actions Add appraisal / view / PDF; toolbar **Add Appraisal** opens the form with a service picker.
+- **Dialog** `<appraisal-dialog>`: header (seafarer link, rank, vessel, sign-on / sign-off, client, appraised by), grade legend, a 1–10 button scale per criterion with band label, section averages, Overall (score, rehire radio, justification, remarks); footer shows what is missing, Submit enabled when all 16 grades + rehire (+ justification) are given; view mode with PDF (`appraisalPdf()`) and Edit.
+- Phone: bottom navigation shows Dashboard · Crew · Rotation · Approvals + **More** (opens the drawer; badge = sum of hidden badges); the form is fullscreen with the scale stretched to the width.
 
 ### On Preparation (phase 9)
 Requests whose preparation is under way: approved embarkations (replacement rows `rfeStatus:'OnPreparation'` → `rfeTasks`, standalone RFE rows → `tasks`) and sign-off / extension / promotion rows with `status:'preparation'` (→ `tasks`). Atlantis reference: `atlantis-ref/OnPreparation.png` (red areas = excluded for clients).

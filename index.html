@@ -152,7 +152,7 @@
                     <div v-show="openSections.client" class="pl-4">
                         <router-link v-for="l in [{ to:'/client/dashboard', label:'Dashboard' }, { to:'/client/crew-lists', label:'Crew Lists' },
                                                   { to:'/client/rotation', label:'Rotation Plan' }, { to:'/client/approvals', label:'Pending Approvals' },
-                                                  { to:'/client/preparation', label:'On Preparation' }]"
+                                                  { to:'/client/preparation', label:'On Preparation' }, { to:'/client/appraisals', label:'Appraisals' }]"
                             :key="l.to" :to="l.to"
                             class="flex items-center gap-2 px-4 py-2 text-xs text-slate-400 hover:text-white hover:bg-slate-700 transition rounded-sm whitespace-nowrap">
                             {{ l.label }} <span class="ml-auto text-[10px] text-slate-500">↗</span>
@@ -1924,17 +1924,26 @@
 
     <!-- Phone: bottom navigation -->
     <v-bottom-navigation v-if="isPhone" grow color="primary" class="atl-bottomnav">
-        <v-btn v-for="m in menu" :key="m.to" :to="m.to">
+        <v-btn v-for="m in menu.slice(0, 4)" :key="m.to" :to="m.to">
             <v-badge v-if="m.badge" :content="m.badge" :color="m.badgeColor" floating>
                 <v-icon :icon="m.icon"></v-icon>
             </v-badge>
             <v-icon v-else :icon="m.icon"></v-icon>
             <span>{{ m.short }}</span>
         </v-btn>
+        <!-- Max 5 items (Material): the rest of the menu is in the drawer -->
+        <v-btn :active="menu.slice(4).some(m => $route.path === m.to)" @click="drawer = true">
+            <v-badge v-if="moreBadge" :content="moreBadge" color="warning" floating>
+                <v-icon icon="mdi-dots-horizontal"></v-icon>
+            </v-badge>
+            <v-icon v-else icon="mdi-dots-horizontal"></v-icon>
+            <span>More</span>
+        </v-btn>
     </v-bottom-navigation>
 
     <approval-dialog></approval-dialog>
     <preparation-dialog></preparation-dialog>
+    <appraisal-dialog></appraisal-dialog>
     <seafarer-profile-dialog></seafarer-profile-dialog>
     <v-snackbar v-model="toastOpen" color="grey-darken-4" timeout="4000" location="bottom right">{{ store.clientUi.toast }}</v-snackbar>
 </v-app>
@@ -2772,6 +2781,165 @@
         </v-card-text>
 
         <document-viewer :doc="viewerDoc" :seafarer="seafarer" @close="viewerDoc = null"></document-viewer>
+    </v-card>
+</v-dialog>
+</script>
+
+<!-- ── Client UI: Appraisals x-template ──────────────────────── -->
+<script type="text/x-template" id="tpl-client-appraisals">
+<div class="atl-page">
+    <div class="atl-filterbar">
+        <div class="atl-filterbar__fields">
+            <span v-if="!isPhone" class="atl-seg-label">Signed off</span>
+            <div class="atl-seg">
+                <button v-for="p in [{ v: 3, l: '3 mo' }, { v: 6, l: '6 mo' }, { v: 12, l: '12 mo' }, { v: 0, l: 'All' }]" :key="p.v"
+                        :class="{ 'is-on': period === p.v }" @click="period = p.v">{{ p.l }}</button>
+            </div>
+            <div class="atl-seg">
+                <button :class="{ 'is-on': status === '' }" @click="status = ''">All</button>
+                <button :class="{ 'is-on': status === 'pending' }" @click="status = 'pending'">
+                    To be appraised <v-badge :content="pendingCount" :color="pendingCount ? 'warning' : 'grey'" inline></v-badge>
+                </button>
+                <button :class="{ 'is-on': status === 'done' }" @click="status = 'done'">Appraised</button>
+            </div>
+            <v-select v-model="filterVessel" :items="vesselItems" item-title="name" item-value="id"
+                      label="Vessel" placeholder="All vessels" persistent-placeholder clearable style="max-width:300px; min-width:240px"></v-select>
+        </div>
+    </div>
+    <div class="atl-content">
+        <atl-table :columns="columns" :items="rows" v-model:visible="visible"
+                   pdf-title="Appraisals" :pdf-subtitle="pdfSubtitle"
+                   empty-text="No sign-offs in this period." @open="openProfile">
+            <template #toolbar-left>
+                <v-btn color="primary" variant="flat" class="atl-tool-btn ml-3" prepend-icon="mdi-plus" @click="add(null)">Add Appraisal</v-btn>
+            </template>
+            <template #row-actions="{ row }">
+                <v-btn v-if="!row.appraised" size="small" color="primary" variant="tonal" class="atl-tool-btn" @click="add(row)">Add appraisal</v-btn>
+                <template v-else>
+                    <v-btn icon="mdi-eye-outline" variant="text" size="small" title="View appraisal" @click="view(row)"></v-btn>
+                    <v-btn icon="mdi-file-pdf-box" variant="text" size="small" color="primary" title="Appraisal PDF" @click="pdf(row)"></v-btn>
+                </template>
+            </template>
+        </atl-table>
+    </div>
+</div>
+</script>
+
+<!-- ── Appraisal form dialog x-template ──────────────────────── -->
+<script type="text/x-template" id="tpl-appraisal-dialog">
+<v-dialog v-model="open" max-width="1100" scrollable :fullscreen="isPhone">
+    <v-card v-if="open && draft" :class="['atl-approval', 'atl-appr', { 'is-phone': isPhone }]">
+        <div class="atl-approval__top atl-appr__top">
+            <span class="atl-appr__title">{{ title }}</span>
+            <v-spacer></v-spacer>
+            <v-btn icon="mdi-close" variant="text" @click="open = false"></v-btn>
+        </div>
+        <v-card-text class="atl-approval__body">
+
+            <!-- Service to appraise (when opened from "Add Appraisal") -->
+            <v-autocomplete v-if="pickable" v-model="draft.key" :items="pendingTours" item-title="label" item-value="key"
+                            label="Seafarer / completed service" placeholder="Choose a sign-off to appraise" persistent-placeholder
+                            class="mb-4" no-data-text="All services of the last 12 months are appraised"></v-autocomplete>
+
+            <template v-if="tour">
+                <!-- Service header -->
+                <div class="atl-approval__head">
+                    <div class="atl-approval__cell">
+                        <a href="#" class="atl-prep__name mt-0" @click.prevent="openProfile">{{ fullNameLF(seafarer) }}</a>
+                        <div class="atl-approval__rank mt-1">{{ tour.rank.toUpperCase() }}</div>
+                    </div>
+                    <div class="atl-approval__cell">
+                        <div><span class="atl-approval__label">Vessel:</span> {{ vessel.name.toUpperCase() }}</div>
+                        <div class="text-medium-emphasis">{{ vessel.type }} · {{ vessel.flag }}</div>
+                    </div>
+                    <div class="atl-approval__cell atl-approval__dates">
+                        <div><span class="atl-approval__label">Sign-on:</span> {{ atlDate(tour.embark) }}</div>
+                        <div><span class="atl-approval__label">Sign-off:</span> {{ atlDate(tour.signoff) }} · {{ months(tour) }} months</div>
+                    </div>
+                    <div class="atl-approval__cell atl-approval__client">{{ vessel.client.toUpperCase() }}</div>
+                    <div class="atl-approval__cell">
+                        <v-text-field v-if="!readonly" v-model="draft.appraiser" label="Appraised by"></v-text-field>
+                        <span v-else><span class="atl-approval__label">Appraised by:</span> {{ draft.appraiser }} · {{ atlDate(draft.date) }}</span>
+                    </div>
+                </div>
+
+                <!-- Grading scale legend -->
+                <div class="atl-appr__legend">
+                    <span class="atl-approval__label">Grading 1–10:</span>
+                    <span v-for="g in [{ r: '1–3', l: 'Poor', b: 'poor' }, { r: '4–5', l: 'Below expectations', b: 'below' },
+                                       { r: '6–7', l: 'Meets expectations', b: 'meets' }, { r: '8–10', l: 'Exceeds / outstanding', b: 'exceeds' }]"
+                          :key="g.b" class="atl-appr__legend-item"><i :class="'atl-appr__dot g-' + g.b"></i>{{ g.r }} {{ g.l }}</span>
+                </div>
+
+                <!-- Sections -->
+                <div v-for="s in sections" :key="s.id" class="atl-prep__section">
+                    <div class="atl-prep__sechead atl-prep__sechead--docs">
+                        <v-icon :icon="s.icon"></v-icon><span>{{ s.title }}</span>
+                        <v-spacer></v-spacer>
+                        <span v-if="averages.sections[s.id] != null" class="atl-appr__avg">
+                            Avg {{ averages.sections[s.id].toFixed(1) }} · {{ gradeLabel(averages.sections[s.id]) }}
+                        </span>
+                    </div>
+                    <div v-for="c in s.criteria" :key="c.id" class="atl-appr__crit">
+                        <div class="atl-appr__label">
+                            {{ c.label }}
+                            <div v-if="draft.grades[c.id] != null" class="atl-prep__note">{{ gradeLabel(draft.grades[c.id]) }}</div>
+                        </div>
+                        <div class="atl-appr__scale" role="radiogroup" :aria-label="c.label">
+                            <button v-for="n in 10" :key="n" type="button" role="radio" :aria-checked="draft.grades[c.id] === n"
+                                    :class="['atl-appr__g', 'g-' + band(n), { 'is-on': draft.grades[c.id] === n }]"
+                                    :disabled="readonly" @click="setGrade(c.id, n)">{{ n }}</button>
+                        </div>
+                    </div>
+                    <div v-if="!readonly || draft.comments[s.id]" class="atl-appr__comment">
+                        <v-textarea v-model="draft.comments[s.id]" :label="s.title + ' comments (optional)'" rows="1" auto-grow :readonly="readonly"></v-textarea>
+                    </div>
+                </div>
+
+                <!-- Overall -->
+                <div class="atl-prep__section">
+                    <div class="atl-prep__sechead atl-prep__sechead--tasks">
+                        <v-icon icon="mdi-star-check-outline"></v-icon><span>Overall</span>
+                        <v-spacer></v-spacer>
+                        <span class="atl-appr__avg">Score {{ averages.overall != null ? averages.overall.toFixed(1) : '—' }} / 10
+                            <template v-if="averages.overall != null"> · {{ gradeLabel(averages.overall) }}</template></span>
+                    </div>
+                    <div class="atl-appr__overall">
+                        <div class="atl-appr__q">Would you rehire this seafarer?</div>
+                        <v-radio-group v-model="draft.rehire" inline hide-details :readonly="readonly">
+                            <v-radio :value="true" label="Yes, rehire" color="success"></v-radio>
+                            <v-radio :value="false" label="No, do not rehire" color="error"></v-radio>
+                        </v-radio-group>
+                        <v-textarea v-if="draft.rehire === false" v-model="draft.justification" label="Justification (required)"
+                                    rows="2" auto-grow :readonly="readonly" class="mt-3"
+                                    :error="!readonly && !draft.justification.trim()"></v-textarea>
+                        <v-textarea v-if="!readonly || draft.remarks" v-model="draft.remarks" label="General remarks (optional)"
+                                    rows="1" auto-grow :readonly="readonly" class="mt-3"></v-textarea>
+                    </div>
+                </div>
+            </template>
+        </v-card-text>
+
+        <!-- Actions -->
+        <div class="atl-approval__actions atl-appr__actions">
+            <template v-if="readonly">
+                <v-spacer></v-spacer>
+                <v-btn variant="tonal" color="primary" prepend-icon="mdi-file-pdf-box" class="atl-tool-btn" @click="print">PDF</v-btn>
+                <v-btn variant="flat" color="primary" prepend-icon="mdi-pencil" class="atl-tool-btn" @click="edit">Edit</v-btn>
+            </template>
+            <template v-else>
+                <span class="atl-appr__missing">
+                    <template v-if="!tour">Choose a service to appraise.</template>
+                    <template v-else-if="missing">{{ missing }} grade{{ missing > 1 ? 's' : '' }} missing</template>
+                    <template v-else-if="draft.rehire === null">Answer the rehire question</template>
+                    <template v-else-if="!valid">Justification required</template>
+                    <template v-else><v-icon icon="mdi-check-circle-outline" color="success" size="18"></v-icon> Ready to submit</template>
+                </span>
+                <v-spacer></v-spacer>
+                <v-btn variant="text" class="atl-tool-btn" @click="open = false">Cancel</v-btn>
+                <v-btn variant="flat" color="primary" class="atl-tool-btn" :disabled="!valid" @click="save">Submit appraisal</v-btn>
+            </template>
+        </div>
     </v-card>
 </v-dialog>
 </script>
@@ -4027,6 +4195,7 @@ window.erpStore            = erpStore;
 window.crewSeafarers       = crewSeafarers;
 window.crewPastAssignments = crewPastAssignments;
 </script>
+<script src="data/appraisals.js"></script>
 
 <!-- ── Views ─────────────────────────────────────────────────── -->
 <script src="views/ClientsSetup.js"></script>
@@ -4039,6 +4208,7 @@ window.crewPastAssignments = crewPastAssignments;
 <script src="views/ClientApprovals.js"></script>
 <script src="views/ClientDashboard.js"></script>
 <script src="views/ClientPreparation.js"></script>
+<script src="views/ClientAppraisals.js"></script>
 
 <!-- ── Stub views (replace each with a real view file when ready) ── -->
 <script>
@@ -4087,6 +4257,8 @@ const router = createRouter({
           meta: { title: 'Pending Approvals', icon: 'mdi-account-check-outline' } },
         { path: '/client/preparation',     component: ClientPreparationView,
           meta: { title: 'On Preparation',    icon: 'mdi-clipboard-check-outline' } },
+        { path: '/client/appraisals',      component: ClientAppraisalsView,
+          meta: { title: 'Appraisals',        icon: 'mdi-star-check-outline' } },
     ],
 });
 
@@ -4138,6 +4310,7 @@ app.component('seafarer-profile-dialog', SeafarerProfileDialog);
 app.component('document-viewer',        DocumentViewerDialog);
 app.component('approval-dialog',        ApprovalDialog);
 app.component('preparation-dialog',     PreparationDialog);
+app.component('appraisal-dialog',       AppraisalDialog);
 app.use(router);
 app.use(vuetify);
 app.mount('#app');
