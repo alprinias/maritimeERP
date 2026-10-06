@@ -412,7 +412,7 @@ allRows: { signoff, extension, promotion, embarkation, replacement }  // built i
 - The internal RFAs view no longer approves: candidates On Approval show read-only "Awaiting / Approved by / Rejected by principal".
 
 ### Seed dates are re-anchored to today
-Seed data in vessels.js / seafarers.js is authored as of `DATA_AUTHORED_ON = '2026-05-20'` (utils.js). store.js calls `shiftSeedDates([allVessels, allSeafarers, seedRfeRows], seedMonthShift())`, moving every YYYY-MM-DD string forward by whole months on load. Write new seed dates relative to 2026-05-20.
+Seed data in vessels.js / seafarers.js tells a story whose "today" is `DATA_AUTHORED_ON = '2026-06-01'` (utils.js). store.js calls `shiftSeedDates([allVessels, allSeafarers, seedRfeRows], seedDayShift())`, moving every YYYY-MM-DD string forward by the exact number of days since then, so the real today always maps to 2026-06-01 of the story and the dashboard looks the same every day (an earlier whole-month shift made the picture jump by a month around mid-month). Write new seed dates as if today were 2026-06-01.
 
 ### Naming conventions (Atlantis)
 - Ranks: `Master` (not Captain), `Able Seaman` (not AB Deck). Displayed UPPERCASE in the Client UI.

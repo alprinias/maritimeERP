@@ -10,7 +10,7 @@
 ──────────────────────────────────────────────────────────────── */
 
 // Re-anchor seed dates to today (see utils.js) before anything derives from them
-shiftSeedDates([allVessels, allSeafarers, seedRfeRows], seedMonthShift());
+shiftSeedDates([allVessels, allSeafarers, seedRfeRows], seedDayShift());
 
 var erpStore = Vue.reactive({
 

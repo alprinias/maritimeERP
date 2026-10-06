@@ -17,25 +17,26 @@ function shortName(full) {
     return parts.length === 1 ? parts[0] : parts[0][0] + '. ' + parts.slice(1).join(' ');
 }
 
-/* Seed data (vessels.js, seafarers.js) is written as of DATA_AUTHORED_ON.
-   shiftSeedDates() moves every YYYY-MM-DD string in it forward by whole
-   months so the mockup always sits around today. Called from store.js. */
-var DATA_AUTHORED_ON = '2026-05-20';
+/* Seed data (vessels.js, seafarers.js) tells a story whose "today" is
+   DATA_AUTHORED_ON. shiftSeedDates() moves every YYYY-MM-DD string in it
+   forward by the exact number of days since then, so the real today always
+   sits at the same point of the story (the dashboard looks the same whatever
+   the date). 1 June gives a busy picture: several crew changes in the next
+   30 days, approvals due, nothing overdue. Called from store.js. */
+var DATA_AUTHORED_ON = '2026-06-01';
 
-function seedMonthShift() {
-    return Math.round(daysB(d(DATA_AUTHORED_ON), TODAY) / 30.44);
+function seedDayShift() {
+    return daysB(d(DATA_AUTHORED_ON), d(isoDate(TODAY)));
 }
 
-function shiftSeedDates(obj, months) {
-    if (!months || !obj || typeof obj !== 'object') return;
+function shiftSeedDates(obj, days) {
+    if (!days || !obj || typeof obj !== 'object') return;
     Object.keys(obj).forEach(k => {
         const v = obj[k];
         if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)) {
-            // UTC month arithmetic — local-time addM can lose a day across daylight-saving changes
-            const dt = d(v);
-            dt.setUTCMonth(dt.getUTCMonth() + months);
-            obj[k] = isoDate(dt);
+            // UTC arithmetic — no day lost across daylight-saving changes
+            obj[k] = isoDate(new Date(d(v).getTime() + days * 86400000));
         }
-        else if (v && typeof v === 'object') shiftSeedDates(v, months);
+        else if (v && typeof v === 'object') shiftSeedDates(v, days);
     });
 }
