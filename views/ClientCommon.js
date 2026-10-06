@@ -6,7 +6,8 @@
    - AtlTable               — Atlantis data table: COLUMNS visibility menu,
                               PRESETS (visual only), sortable headers, optional
                               row selection and section header rows, Atlantis
-                              pagination footer, Export PDF of visible columns.
+                              pagination footer, Export PDF / Export Excel of
+                              the visible columns.
                               On phones it renders cards (title / subtitle /
                               label-value lines) with "Show more" instead.
    - SeafarerProfileDialog  — profile modal opened by setting
@@ -15,7 +16,7 @@
    - DocumentViewerDialog   — "View Document" dialog with PDF preview.
 
    Depends on globals: erpStore, utils.js, crew.js, documents.js,
-     window.jspdf (jsPDF + autotable), JSZip
+     window.jspdf (jsPDF + autotable), JSZip, XLSX (SheetJS)
    Exposes globals: AtlTable, SeafarerProfileDialog, DocumentViewerDialog,
      atlDate(), downloadBlob(), documentPdf()
 ──────────────────────────────────────────────────────────────── */
@@ -230,6 +231,45 @@ const AtlTable = {
                 pdf.text('Page ' + i + ' of ' + n, W - 40, H - 20, { align: 'right' });
             }
             pdf.save(_slug(this.pdfTitle) + '.pdf');
+        },
+
+        // Excel value of a cell: chips as text, numbers as numbers, ISO dates as real dates
+        excelValue(col, row) {
+            if (col.type === 'chip') { const ch = col.chip(row); return ch ? ch.text : ''; }
+            const v = row[col.key];
+            if (typeof v === 'number') return v;
+            if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)) {
+                const [y, m, dd] = v.split('-').map(Number);
+                return new Date(y, m - 1, dd);                    // local midnight → same day in Excel
+            }
+            const t = this.cell(col, row);
+            return t === '—' ? '' : t;
+        },
+
+        // .xlsx of all rows (not just the page) with the visible columns (SheetJS):
+        // sheet 1 = data with a header filter, sheet 2 = Info (title, filters, export date)
+        exportExcel() {
+            const cols = this.shownColumns;
+            const head = (this.sections ? ['Section'] : []).concat(cols.map(c => c.title));
+            const rows = this.sorted.map(r => (this.sections
+                ? [(this.sections.find(s => s.id === r._section) || { label: r._section }).label] : [])
+                .concat(cols.map(c => this.excelValue(c, r))));
+            const ws = XLSX.utils.aoa_to_sheet([head, ...rows], { cellDates: true });
+            Object.keys(ws).forEach(k => { if (k[0] !== '!' && ws[k].t === 'd') ws[k].z = 'dd mmm yyyy'; });
+            ws['!cols'] = head.map((h, i) => ({
+                wch: Math.min(48, 2 + Math.max(h.length, ...rows.map(x => x[i] instanceof Date ? 11 : String(x[i] == null ? '' : x[i]).length))),
+            }));
+            ws['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: rows.length, c: head.length - 1 } }) };
+            const info = XLSX.utils.aoa_to_sheet([
+                ['Title', this.pdfTitle], ['Filters', this.pdfSubtitle], ['Rows', rows.length],
+                ['Exported', atlDate(isoDate(new Date()))], ['Source', 'Client Portal — mockup'],
+            ]);
+            info['!cols'] = [{ wch: 12 }, { wch: 90 }];
+            const wb = XLSX.utils.book_new();
+            // sheet names: max 31 characters, no : \ / ? * [ ]
+            XLSX.utils.book_append_sheet(wb, ws, this.pdfTitle.replace(/[:\\\/?*\[\]]/g, ' ').slice(0, 31));
+            XLSX.utils.book_append_sheet(wb, info, 'Info');
+            XLSX.writeFile(wb, _slug(this.pdfTitle) + '.xlsx');
         },
     },
 };

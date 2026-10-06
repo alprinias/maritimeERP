@@ -17,6 +17,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <!-- Client UI: Excel export (SheetJS) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="assets/erp-base.css">
     <link rel="stylesheet" href="assets/gantt.css">
@@ -152,7 +154,8 @@
                     <div v-show="openSections.client" class="pl-4">
                         <router-link v-for="l in [{ to:'/client/dashboard', label:'Dashboard' }, { to:'/client/crew-lists', label:'Crew Lists' },
                                                   { to:'/client/rotation', label:'Rotation Plan' }, { to:'/client/approvals', label:'Pending Approvals' },
-                                                  { to:'/client/preparation', label:'On Preparation' }, { to:'/client/appraisals', label:'Appraisals' }]"
+                                                  { to:'/client/preparation', label:'On Preparation' }, { to:'/client/appraisals', label:'Appraisals' },
+                                                  { to:'/client/reports', label:'Reports' }]"
                             :key="l.to" :to="l.to"
                             class="flex items-center gap-2 px-4 py-2 text-xs text-slate-400 hover:text-white hover:bg-slate-700 transition rounded-sm whitespace-nowrap">
                             {{ l.label }} <span class="ml-auto text-[10px] text-slate-500">↗</span>
@@ -1997,6 +2000,8 @@
 
         <v-btn v-if="!isPhone" variant="text" class="atl-tool-btn" prepend-icon="mdi-file-pdf-box" :disabled="!sorted.length" @click="exportPdf">Export PDF</v-btn>
         <v-btn v-else icon="mdi-file-pdf-box" variant="text" title="Export PDF" :disabled="!sorted.length" @click="exportPdf"></v-btn>
+        <v-btn v-if="!isPhone" variant="text" class="atl-tool-btn" prepend-icon="mdi-microsoft-excel" :disabled="!sorted.length" @click="exportExcel">Export Excel</v-btn>
+        <v-btn v-else icon="mdi-microsoft-excel" variant="text" title="Export Excel" :disabled="!sorted.length" @click="exportExcel"></v-btn>
 
         <!-- PRESETS (Atlantis look only — not functional in the mockup) -->
         <div v-if="!isPhone" class="atl-presets" title="Presets are not part of the mockup">
@@ -2802,6 +2807,21 @@
         <document-viewer :doc="viewerDoc" :seafarer="seafarer" @close="viewerDoc = null"></document-viewer>
     </v-card>
 </v-dialog>
+</script>
+
+<!-- ── Client UI: Reports x-template (placeholder) ───────────── -->
+<script type="text/x-template" id="tpl-client-reports">
+<div class="atl-page atl-reports">
+    <div class="atl-reports__box">
+        <v-icon icon="mdi-file-chart-outline" size="64" color="primary"></v-icon>
+        <div class="atl-reports__title">Reports</div>
+        <div class="atl-reports__text">Placeholder — the client reports will be defined with the stakeholders.</div>
+        <div class="atl-reports__hint">
+            <v-icon icon="mdi-information-outline" size="18"></v-icon>
+            Meanwhile, every list in the portal can be exported with <strong>Export PDF</strong> or <strong>Export Excel</strong>.
+        </div>
+    </div>
+</div>
 </script>
 
 <!-- ── Client UI: Appraisals x-template ──────────────────────── -->
@@ -4278,6 +4298,8 @@ const router = createRouter({
           meta: { title: 'On Preparation',    icon: 'mdi-clipboard-check-outline' } },
         { path: '/client/appraisals',      component: ClientAppraisalsView,
           meta: { title: 'Appraisals',        icon: 'mdi-star-check-outline' } },
+        { path: '/client/reports',         component: ClientReportsView,
+          meta: { title: 'Reports',           icon: 'mdi-file-chart-outline' } },
     ],
 });
 

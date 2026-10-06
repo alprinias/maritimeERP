@@ -12,7 +12,7 @@ A **single-page web application** mockup for a maritime manning agency ERP syste
 - Vue Router 4 via CDN — hash-based routing (`#/path`)
 - Tailwind CSS via CDN — internal ERP views
 - Vuetify 3 + Material Design Icons + Inter via CDN — Client UI only (Atlantis look)
-- jsPDF + jspdf-autotable + JSZip via cdnjs — Client UI PDF export / ZIP download
+- jsPDF + jspdf-autotable + JSZip + SheetJS (xlsx) via cdnjs — Client UI PDF / Excel export, ZIP download
 - No npm, no bundler, no compilation
 
 **Atlantis:** the stakeholders' real ERP (Vue + Vuetify + Material). The Client UI copies its look; reference screenshots are in `atlantis-ref/` (not committed).
@@ -434,12 +434,13 @@ Seed data in vessels.js / seafarers.js is authored as of `DATA_AUTHORED_ON = '20
 | `/client/approvals` | ClientApprovalsView | BUILT |
 | `/client/preparation` | ClientPreparationView | BUILT |
 | `/client/appraisals` | ClientAppraisalsView | BUILT |
+| `/client/reports` | ClientReportsView (`tpl-client-reports`) | placeholder |
 
 Deep links: Crew Lists reads `?list=onboard|ashore|approved|changes` and `?vessel=`; Rotation Plan reads `?vessel=`.
 
 **Dashboard** (landing page) — greeting (client, date, vessel count); 7 KPI tiles, each linking to its detail: crew on board (/positions), ashore (dedicated pool, `ashoreDedicated()`), pending approvals (with next due), appraisals to give (sign-offs of the last 6 months without appraisal, oldest first → `/client/appraisals?status=pending`), crew changes in the next 30 days, overdue sign-offs, expired / expiring (≤ 90 d) documents of the crew on board (scrolls to the list); Fleet table per vessel (crew on board / positions, next crew change, changes ≤ 30 d, pending approvals, document chips, crew-list and rotation shortcuts); "Awaiting your approval" list with Review (opens the approval dialog); "Appraisals to give" list with Appraise (opens the appraisal form); "Crew changes · next 30 days"; "Documents needing attention" (first 8, Show all). Status always icon + label (dataviz rule: never colour alone); values in text colour.
 
-**AtlTable (`atl-table`)** — Atlantis table: toolbar (refresh, `#toolbar-left` slot e.g. FILTERS, COLUMNS visibility menu with SHOW ALL / HIDE ALL and fixed columns, Export PDF, PRESETS look-only), sortable headers, optional checkbox selection (`v-model:selected`), section header rows (`sections` + row `_section`), `#row-actions` slot, footer "Rows · 1 to N of M · Page x - y". Columns: `{ key, title, fixed?, type?: 'link'|'chip', format?, cls?, chip? }`; rows need `_key`, may carry `<key>_sort` and `<key>_link === false`. Export PDF = all rows, visible columns, jsPDF + autotable.
+**AtlTable (`atl-table`)** — Atlantis table: toolbar (refresh, `#toolbar-left` slot e.g. FILTERS, COLUMNS visibility menu with SHOW ALL / HIDE ALL and fixed columns, Export PDF, PRESETS look-only), sortable headers, optional checkbox selection (`v-model:selected`), section header rows (`sections` + row `_section`), `#row-actions` slot, footer "Rows · 1 to N of M · Page x - y". Columns: `{ key, title, fixed?, type?: 'link'|'chip', format?, cls?, chip? }`; rows need `_key`, may carry `<key>_sort` and `<key>_link === false`. Export PDF = all rows, visible columns, jsPDF + autotable. **Export Excel** (SheetJS `XLSX`, cdnjs xlsx 0.18.5) = all rows, visible columns (+ "Section" column when sections are used); chips as text, numbers as numbers, ISO dates as real dates (`dd mmm yyyy`), header autofilter, column widths, second sheet "Info" (title, filters = pdfSubtitle, row count, export date).
 
 **Crew Lists** — tabs + filter box, then atl-table. Fixed columns Full Name (opens profile modal), Rank, Age; optional columns per list in `CREW_LIST_COLUMNS` (`def: true` = visible by default).
 1. *On Board* — vessel + date (≤ today) via `crewOnDate`.

@@ -4,10 +4,10 @@
    ERP shell for every /client/* route (see isClientUi in index.html).
    On phones (isPhone, global mixin in index.html) the app bar is compact with
    an account menu, and a bottom navigation bar mirrors the drawer menu.
-   Templates live in index.html: tpl-client-portal, tpl-client-placeholder
+   Templates live in index.html: tpl-client-portal, tpl-client-reports
 
    Depends on globals: erpStore, allClientsData
-   Exposes global: ClientPortal
+   Exposes globals: ClientPortal, ClientReportsView (placeholder page)
 ──────────────────────────────────────────────────────────────── */
 const ClientPortal = {
     template: '#tpl-client-portal',
@@ -38,6 +38,7 @@ const ClientPortal = {
                 { to: '/client/approvals',  title: 'Pending Approvals', short: 'Approvals', icon: 'mdi-account-check-outline', badge: this.pendingCount, badgeColor: 'deep-purple' },
                 { to: '/client/preparation', title: 'On Preparation',   short: 'Preparation', icon: 'mdi-clipboard-check-outline', badge: this.prepCount, badgeColor: 'info' },
                 { to: '/client/appraisals',  title: 'Appraisals',       short: 'Appraisals',  icon: 'mdi-star-check-outline', badge: this.appraisalCount, badgeColor: 'warning' },
+                { to: '/client/reports',     title: 'Reports',          short: 'Reports',     icon: 'mdi-file-chart-outline' },
             ];
         },
         // Phone bottom navigation "More": badges of the items beyond the first four
@@ -57,4 +58,9 @@ const ClientPortal = {
     methods: {
         exit() { this.$router.push('/operations/rotation'); },
     },
+};
+
+// Client UI → Reports: placeholder until the reports are defined with the stakeholders
+const ClientReportsView = {
+    template: '#tpl-client-reports',
 };
