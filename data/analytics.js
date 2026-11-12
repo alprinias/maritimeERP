@@ -27,16 +27,18 @@ var RFE_STAGES = [
     { id: 'embarked',    label: 'Embarked' },
 ];
 
-// The 7 steps between consecutive stages; colour = validated 7-step ordinal blue ramp
-// (dataviz validator --ordinal: monotone L, adjacent ΔL >= 0.06, light end 2.11:1 on white)
+// The 7 steps between consecutive stages. Colour = the Atlantis colour of the stage the
+// RFE is waiting in (as on the Rotation Plan Gantt: search light blue, approval purple,
+// preparation light green, ready dark green); Created / Ask / Accepted have no Atlantis
+// colour → grey and two blues. `line` = darker variant for thin lines on white.
 var RFE_STEPS = [
-    { id: 's1', from: 'created',     to: 'search',      label: 'Created → Pool Search',            short: 'Start search',  color: '#86b6ef', ink: '#0b0b0b' },
-    { id: 's2', from: 'search',      to: 'ask',         label: 'Pool Search → Ask for Acceptance', short: 'Search',        color: '#719fd8', ink: '#0b0b0b' },
-    { id: 's3', from: 'ask',         to: 'accepted',    label: 'Ask for Acceptance → Accepted',    short: 'Acceptance',    color: '#5c89c1', ink: '#ffffff' },
-    { id: 's4', from: 'accepted',    to: 'approval',    label: 'Accepted → Principal Approval',    short: 'To principal',  color: '#4874ab', ink: '#ffffff' },
-    { id: 's5', from: 'approval',    to: 'preparation', label: 'Principal Approval → Preparation', short: 'Approval',      color: '#345f95', ink: '#ffffff' },
-    { id: 's6', from: 'preparation', to: 'ready',       label: 'Preparation → Ready',              short: 'Preparation',   color: '#214a80', ink: '#ffffff' },
-    { id: 's7', from: 'ready',       to: 'embarked',    label: 'Ready → Embarked',                 short: 'Joining',       color: '#0d366b', ink: '#ffffff' },
+    { id: 's1', from: 'created',     to: 'search',      label: 'Created → Pool Search',            short: 'Start search',  color: '#BDBDBD', ink: '#212121', line: '#9E9E9E' },
+    { id: 's2', from: 'search',      to: 'ask',         label: 'Pool Search → Ask for Acceptance', short: 'Search',        color: '#A9C5EA', ink: '#1A3A66', line: '#7FA6D9' },
+    { id: 's3', from: 'ask',         to: 'accepted',    label: 'Ask for Acceptance → Accepted',    short: 'Acceptance',    color: '#4F7DBF', ink: '#ffffff' },
+    { id: 's4', from: 'accepted',    to: 'approval',    label: 'Accepted → Principal Approval',    short: 'To principal',  color: '#1565C0', ink: '#ffffff' },
+    { id: 's5', from: 'approval',    to: 'preparation', label: 'Principal Approval → Preparation', short: 'Approval',      color: '#7E57C2', ink: '#ffffff' },
+    { id: 's6', from: 'preparation', to: 'ready',       label: 'Preparation → Ready',              short: 'Preparation',   color: '#8FC48A', ink: '#1B3A17' },
+    { id: 's7', from: 'ready',       to: 'embarked',    label: 'Ready → Embarked',                 short: 'Joining',       color: '#3D8B47', ink: '#ffffff' },
 ];
 
 var RFE_POOLS = [

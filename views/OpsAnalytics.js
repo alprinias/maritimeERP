@@ -286,7 +286,7 @@ const OpsAnalyticsView = {
                 const lo = q1 - 1.5 * (q3 - q1), hi = q3 + 1.5 * (q3 - q1);
                 const inside = v.filter(x => x >= lo && x <= hi);
                 boxes.push({ value: [inside[0] || q1, q1, q2, q3, inside[inside.length - 1] || q3],
-                             itemStyle: { color: s.color + '40', borderColor: s.color, borderWidth: 1.5 } });
+                             itemStyle: { color: s.color + '55', borderColor: s.line || s.color, borderWidth: 1.5 } });
                 v.filter(x => x < lo || x > hi).forEach(x => outliers.push([Math.round(x * 10) / 10, i]));
             });
             return {
@@ -357,7 +357,7 @@ const OpsAnalyticsView = {
                                    + '<br><span style="color:' + AN_INK.secondary + '">' + this.statLabel + ' · target ' + this.targets[s.id] + ' d</span>' },
                     series: [{
                         type: 'line', data, connectNulls: true, showSymbol: false, symbolSize: 8,
-                        lineStyle: { width: 2, color: s.color }, itemStyle: { color: s.color, borderColor: '#fff', borderWidth: 2 },
+                        lineStyle: { width: 2, color: s.line || s.color }, itemStyle: { color: s.line || s.color, borderColor: '#fff', borderWidth: 2 },
                         endLabel: { show: !!last, color: AN_INK.primary, fontSize: 11, formatter: p => _anFmt(p.value) },
                         markLine: { silent: true, symbol: 'none', lineStyle: { color: AN_INK.secondary, type: 'dashed', width: 1 },
                                     label: { show: false }, data: [{ yAxis: +this.targets[s.id] }] },
