@@ -40,6 +40,23 @@ const EChart = {
     beforeUnmount() { if (this.ro) this.ro.disconnect(); if (this.chart) this.chart.dispose(); },
 };
 
+// Atlantis search / approval stripes (Gantt: repeating-linear-gradient(135deg,
+// #DCE8F7 0 7px, #A9C5EA 7px 9px)) as a seamless 13 × 13 tile for ECharts pattern fills
+let _anHatchTile = null;
+function _anHatch() {
+    if (!_anHatchTile) {
+        const c = document.createElement('canvas'); c.width = c.height = 13;
+        const x = c.getContext('2d');
+        x.fillStyle = '#DCE8F7'; x.fillRect(0, 0, 13, 13);
+        x.strokeStyle = '#A9C5EA'; x.lineWidth = 2.6;
+        [-13, 0, 13].forEach(k => { x.beginPath(); x.moveTo(k, 13); x.lineTo(k + 13, 0); x.stroke(); });
+        _anHatchTile = c;
+    }
+    return { image: _anHatchTile, repeat: 'repeat' };
+}
+const AN_APPROVAL_STRIP = '#7E57C2';
+const AN_BAR = 22;   // bar thickness (px)
+
 // ── Statistics ────────────────────────────────────────────────
 function _anQuantile(sorted, q) {
     if (!sorted.length) return null;
@@ -206,8 +223,8 @@ const OpsAnalyticsView = {
             const labelMin = maxTotal * 0.065;          // a segment label must fit inside its segment
             const statLabel = this.statLabel;
             const series = RFE_STEPS.map((s, i) => ({
-                name: s.short, type: 'bar', stack: 'lead', barWidth: 22,
-                itemStyle: { color: s.color, borderColor: '#ffffff', borderWidth: 1,
+                name: s.short, type: 'bar', stack: 'lead', barWidth: AN_BAR,
+                itemStyle: { color: s.hatch ? _anHatch() : s.color, borderColor: '#ffffff', borderWidth: 1,
                              borderRadius: i === RFE_STEPS.length - 1 ? [0, 4, 4, 0] : 0 },
                 emphasis: { focus: 'none', itemStyle: { opacity: 0.85 } },
                 label: { show: true, position: 'inside', color: s.ink, fontSize: 11, fontFamily: AN_FONT,
@@ -222,17 +239,29 @@ const OpsAnalyticsView = {
             }));
             // total at the bar tip (zero-width stacked bar carrying the label)
             series.push({
-                name: '_total', type: 'bar', stack: 'lead', barWidth: 22, itemStyle: { color: 'transparent' },
+                name: '_total', type: 'bar', stack: 'lead', barWidth: AN_BAR, itemStyle: { color: 'transparent' },
                 tooltip: { show: false }, legendHoverLink: false, silent: true,
                 label: { show: true, position: 'right', color: AN_INK.primary, fontFamily: AN_FONT, fontSize: 12, fontWeight: 600,
                          formatter: p => _anFmt(G[p.dataIndex].sumSteps) + ' d' + (G[p.dataIndex].low ? '  · low sample' : '') },
                 data: G.map(() => 0.0001),
             });
+            // purple bottom strip of the approval segment (as on the Atlantis Gantt)
+            const before = g => RFE_STEPS.slice(0, 4).reduce((a, s) => a + (g.steps[s.id] || 0), 0);
+            series.push({
+                name: '_approvalStrip', type: 'custom', silent: true, tooltip: { show: false }, z: 5,
+                encode: { x: [0, 1], y: 2 },
+                data: G.map((g, i) => [before(g), before(g) + (g.steps.s5 || 0), i]),
+                renderItem: (params, api) => {
+                    const a = api.coord([api.value(0), api.value(2)]), b = api.coord([api.value(1), api.value(2)]);
+                    const w = b[0] - a[0] - 1;
+                    if (w <= 0) return null;
+                    return { type: 'rect', shape: { x: a[0] + 0.5, y: a[1] + AN_BAR / 2 - 5.5, width: w, height: 5 },
+                             style: { fill: AN_APPROVAL_STRIP, opacity: G[params.dataIndex].low ? 0.35 : 1 } };
+                },
+            });
             return {
                 textStyle: { fontFamily: AN_FONT },
-                legend: { top: 0, left: 0, itemWidth: 14, itemHeight: 10, icon: 'rect', textStyle: { color: AN_INK.secondary, fontSize: 12 },
-                          data: RFE_STEPS.map(s => s.short) },
-                grid: { top: 40, left: 24, right: 110, bottom: 28, containLabel: true },
+                grid: { top: 14, left: 24, right: 110, bottom: 28, containLabel: true },
                 xAxis: { type: 'value', name: 'days', nameLocation: 'end', nameTextStyle: { color: AN_INK.muted },
                          max: v => Math.ceil(Math.max(v.max, this.targetTotal) * 1.05),
                          axisLabel: { color: AN_INK.muted }, splitLine: { lineStyle: { color: AN_INK.grid } },
@@ -248,7 +277,7 @@ const OpsAnalyticsView = {
                     formatter: ps => {
                         const g = G[ps[0].dataIndex];
                         const rows = RFE_STEPS.map(s => '<div style="display:flex;align-items:center;gap:8px">'
-                            + '<span style="display:inline-block;width:12px;height:3px;background:' + s.color + '"></span>'
+                            + '<span class="atl-an__swatch ' + (s.cls || '') + '" style="' + (s.cls ? '' : 'background:' + s.color) + '"></span>'
                             + '<b style="min-width:42px;text-align:right">' + _anFmt(g.steps[s.id]) + ' d</b>'
                             + '<span style="color:' + AN_INK.secondary + '">' + _anEsc(s.label) + '</span></div>').join('');
                         return '<div style="font-weight:600;margin-bottom:4px">' + _anEsc(g.label) + ' · ' + g.n + ' RFEs'

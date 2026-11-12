@@ -2024,7 +2024,14 @@
                 </div>
             </div>
         </div>
-        <e-chart v-if="leadView === 'chart'" :option="leadOption" :height="leadHeight" @bar-click="onBarClick"></e-chart>
+        <template v-if="leadView === 'chart'">
+            <div class="atl-an__legend">
+                <span v-for="s in steps" :key="s.id" class="atl-an__legenditem">
+                    <span :class="['atl-an__swatch', 'atl-an__swatch--wide', s.cls]" :style="s.cls ? null : { background: s.color }"></span>{{ s.short }}
+                </span>
+            </div>
+            <e-chart :option="leadOption" :height="leadHeight" @bar-click="onBarClick"></e-chart>
+        </template>
         <div v-else class="atl-an__table">
             <atl-table :columns="leadColumns" :items="leadRows" v-model:visible="leadVisible"
                        pdf-title="RFE lead time by step" :pdf-subtitle="pdfSubtitle"></atl-table>
@@ -2074,7 +2081,7 @@
         <div class="atl-an__multiples">
             <div v-for="t in trendOptions" :key="t.step.id" class="atl-an__mini">
                 <div class="atl-an__minihead">
-                    <span class="atl-an__swatch" :style="{ background: t.step.color }"></span>
+                    <span :class="['atl-an__swatch', t.step.cls]" :style="t.step.cls ? null : { background: t.step.color }"></span>
                     <span class="atl-an__minititle">{{ t.step.label }}</span>
                     <span class="atl-an__minitarget">target {{ targets[t.step.id] }} d</span>
                 </div>
@@ -2104,7 +2111,7 @@
         <v-card-text>
             <div class="atl-dash__meta mb-4">Targets apply to every client. The lead-time target is the sum of the step targets.</div>
             <div v-for="s in steps" :key="s.id" class="atl-an__trow">
-                <span class="atl-an__swatch" :style="{ background: s.color }"></span>
+                <span :class="['atl-an__swatch', s.cls]" :style="s.cls ? null : { background: s.color }"></span>
                 <span class="atl-an__tlabel">{{ s.label }}</span>
                 <v-text-field v-model.number="draftTargets[s.id]" type="number" min="0" step="0.5" suffix="d"
                               density="compact" variant="outlined" hide-details class="atl-an__tinput"></v-text-field>
