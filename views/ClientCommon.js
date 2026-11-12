@@ -82,7 +82,7 @@ function _atlCmp(a, b) {
 
 // ── AtlTable ──────────────────────────────────────────────────
 /* columns: [{ key, title, fixed?, type?: 'link' | 'chip', format?(value, row),
-              cls?(row) → class, chip?(row) → { text, color } | null }]
+              cls?(row) → class, chip?(row) → { text, color, icon? } | null }]
    items:   rows with a unique _key, optional _section, raw values per key and
             optional <key>_sort (sort value) / <key>_link === false (no link) */
 const AtlTable = {

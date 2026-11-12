@@ -19,6 +19,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <!-- Client UI: Excel export (SheetJS) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- Operations: RFE Analytics charts (Apache ECharts) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.0/echarts.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="assets/erp-base.css">
     <link rel="stylesheet" href="assets/gantt.css">
@@ -136,6 +138,11 @@
                             class="flex items-center gap-2 px-4 py-2 text-xs text-slate-400 hover:text-white hover:bg-slate-700 transition rounded-sm whitespace-nowrap"
                             active-class="!text-white !bg-blue-600 font-semibold">
                             RFAs
+                        </router-link>
+                        <router-link to="/operations/rfe-analytics"
+                            class="flex items-center gap-2 px-4 py-2 text-xs text-slate-400 hover:text-white hover:bg-slate-700 transition rounded-sm whitespace-nowrap"
+                            active-class="!text-white !bg-blue-600 font-semibold">
+                            RFE Analytics
                         </router-link>
                     </div>
                 </div>
@@ -1952,6 +1959,169 @@
 </v-app>
 </script>
 
+<!-- ── Operations: RFE Analytics x-template (Atlantis look, ECharts) ── -->
+<script type="text/x-template" id="tpl-ops-analytics">
+<v-theme-provider theme="atlantis" with-background class="atl-portal atl-an">
+<div class="atl-an__scroll">
+
+    <div class="atl-an__head">
+        <div>
+            <div class="atl-dash__title">RFE Pipeline Analytics</div>
+            <div class="atl-dash__subtitle">How long Requests For Embarkation take from stage to stage · {{ statLabel.toLowerCase() }} days · last {{ period }} months</div>
+        </div>
+        <div class="atl-an__headbtns">
+            <div class="atl-seg" role="group" aria-label="Statistic">
+                <button :class="{ 'is-on': stat === 'median' }" @click="stat = 'median'">Median</button>
+                <button :class="{ 'is-on': stat === 'average' }" @click="stat = 'average'">Average</button>
+            </div>
+            <v-btn variant="outlined" color="primary" prepend-icon="mdi-target" @click="openTargets">Targets</v-btn>
+        </div>
+    </div>
+
+    <!-- Filters: one row, scope the whole page -->
+    <div class="atl-an__filters">
+        <v-select v-model="period" :items="[{ value: 3, title: '3 months' }, { value: 6, title: '6 months' }, { value: 12, title: '12 months' }]"
+                  label="Period" density="compact" variant="outlined" hide-details class="atl-an__f"></v-select>
+        <v-select v-model="f.client" :items="options.client" label="Client" clearable density="compact" variant="outlined" hide-details class="atl-an__f"></v-select>
+        <v-select v-model="f.vesselType" :items="options.vesselType" label="Vessel type" clearable density="compact" variant="outlined" hide-details class="atl-an__f"></v-select>
+        <v-select v-model="f.rank" :items="options.rank" label="Rank" clearable density="compact" variant="outlined" hide-details class="atl-an__f"></v-select>
+        <v-select v-model="f.pool" :items="options.pool" label="Seafarer pool" clearable density="compact" variant="outlined" hide-details class="atl-an__f"></v-select>
+        <v-select v-model="f.group" :items="options.group" label="User group" clearable density="compact" variant="outlined" hide-details class="atl-an__f"></v-select>
+        <v-select v-model="f.user" :items="options.user" label="User" clearable density="compact" variant="outlined" hide-details class="atl-an__f"></v-select>
+        <v-btn v-if="activeFilterCount" variant="text" color="primary" prepend-icon="mdi-filter-remove-outline" @click="clearFilters">Clear ({{ activeFilterCount }})</v-btn>
+    </div>
+
+    <div v-if="!completed.length" class="atl-dash__panel atl-dash__empty">
+        <v-icon icon="mdi-information-outline"></v-icon> No completed RFEs match these filters.
+    </div>
+
+    <template v-else>
+    <!-- KPI tiles -->
+    <div class="atl-an__tiles">
+        <v-card v-for="k in kpis" :key="k.id" variant="outlined" class="atl-tile">
+            <div class="atl-tile__head">
+                <div class="atl-tile__label">{{ k.label }}</div>
+                <span class="atl-tile__icon"><v-icon :icon="k.icon" size="20"></v-icon></span>
+            </div>
+            <div class="atl-tile__value atl-an__kpi">{{ k.value }}</div>
+            <div class="atl-tile__sub">{{ k.sub }}</div>
+            <v-chip v-if="k.status" :color="k.status.color" :prepend-icon="k.status.icon" size="small" variant="tonal" label class="mt-2">{{ k.status.text }}</v-chip>
+        </v-card>
+    </div>
+
+    <!-- Lead time per group -->
+    <div class="atl-dash__panel">
+        <div class="atl-an__panelhead">
+            <div>
+                <div class="atl-section-title atl-dash__h">Lead time by step</div>
+                <div class="atl-dash__meta">{{ statLabel }} days per step, slowest first · dashed line = target lead time · click a bar to filter</div>
+            </div>
+            <div class="atl-an__headbtns">
+                <v-select v-model="compareBy" :items="compareItems" label="Compare by" density="compact" variant="outlined" hide-details class="atl-an__compare"></v-select>
+                <div class="atl-seg" role="group" aria-label="View">
+                    <button :class="{ 'is-on': leadView === 'chart' }" @click="leadView = 'chart'"><v-icon icon="mdi-chart-bar" size="18"></v-icon>Chart</button>
+                    <button :class="{ 'is-on': leadView === 'table' }" @click="leadView = 'table'"><v-icon icon="mdi-table" size="18"></v-icon>Table</button>
+                </div>
+            </div>
+        </div>
+        <e-chart v-if="leadView === 'chart'" :option="leadOption" :height="leadHeight" @bar-click="onBarClick"></e-chart>
+        <div v-else class="atl-an__table">
+            <atl-table :columns="leadColumns" :items="leadRows" v-model:visible="leadVisible"
+                       pdf-title="RFE lead time by step" :pdf-subtitle="pdfSubtitle"></atl-table>
+        </div>
+        <div class="atl-an__note">
+            <v-icon icon="mdi-information-outline" size="16"></v-icon>
+            <span v-if="stat === 'median'">Bar length = sum of the step medians. The median lead time (in the tooltip and table) is measured per RFE, so it differs from the sum.</span>
+            <span v-else>Bar length = sum of the step averages, which equals the average lead time of the final pass. Rework before the final pass is shown below.</span>
+            Groups with fewer than 5 RFEs are greyed out.
+        </div>
+    </div>
+
+    <div class="atl-an__cols">
+        <!-- Spread per step -->
+        <div class="atl-dash__panel">
+            <div class="atl-section-title atl-dash__h">Spread per step</div>
+            <div class="atl-dash__meta">Box = middle 50% of RFEs, line = median, whiskers = typical range, dots = outliers, ◆ = target</div>
+            <e-chart :option="boxOption" :height="330"></e-chart>
+        </div>
+        <!-- Rework -->
+        <div class="atl-dash__panel">
+            <div class="atl-section-title atl-dash__h">Rework</div>
+            <div class="atl-dash__meta">RFEs sent back to pool search after a principal rejection, by {{ compareItems.find(c => c.value === compareBy).title.toLowerCase() }}</div>
+            <v-table density="compact" class="atl-an__rework">
+                <thead><tr>
+                    <th>{{ compareItems.find(c => c.value === compareBy).title }}</th>
+                    <th class="text-right">RFEs</th><th class="text-right">Back to search</th>
+                    <th style="width: 34%">Rework rate</th><th class="text-right">Days lost ({{ statLabel.toLowerCase() }})</th>
+                </tr></thead>
+                <tbody>
+                    <tr v-for="r in reworkRows" :key="r.key">
+                        <td>{{ r.label }}</td>
+                        <td class="text-right">{{ r.n }}</td>
+                        <td class="text-right">{{ r.loops }}</td>
+                        <td><div class="atl-an__meter"><span class="atl-an__meterbar"><span :style="{ width: Math.min(100, r.rate * 250) + '%' }"></span></span>{{ pct(r.rate) }}</div></td>
+                        <td class="text-right">{{ r.loops ? fmt(r.lost) : '—' }}</td>
+                    </tr>
+                </tbody>
+            </v-table>
+        </div>
+    </div>
+
+    <!-- Monthly trend per step -->
+    <div class="atl-dash__panel">
+        <div class="atl-section-title atl-dash__h">Monthly trend per step</div>
+        <div class="atl-dash__meta">{{ statLabel }} days per step by month of embarkation · dashed line = step target</div>
+        <div class="atl-an__multiples">
+            <div v-for="t in trendOptions" :key="t.step.id" class="atl-an__mini">
+                <div class="atl-an__minihead">
+                    <span class="atl-an__swatch" :style="{ background: t.step.color }"></span>
+                    <span class="atl-an__minititle">{{ t.step.label }}</span>
+                    <span class="atl-an__minitarget">target {{ targets[t.step.id] }} d</span>
+                </div>
+                <e-chart :option="t.option" :height="130"></e-chart>
+            </div>
+        </div>
+    </div>
+    </template>
+
+    <!-- In-flight RFEs -->
+    <div class="atl-dash__panel">
+        <div class="atl-section-title atl-dash__h">In-flight RFEs</div>
+        <div class="atl-dash__meta">Open requests (from RFAs) and how long they have been in their current stage, against the step target</div>
+        <div class="atl-an__table">
+            <atl-table :columns="flightColumns" :items="flightRows" v-model:visible="flightVisible"
+                       pdf-title="In-flight RFEs" :pdf-subtitle="pdfSubtitle" sort-key="status_sort"
+                       empty-text="No open RFEs match these filters"></atl-table>
+        </div>
+    </div>
+
+</div>
+
+<!-- Targets dialog -->
+<v-dialog v-model="targetsOpen" max-width="560">
+    <v-card v-if="draftTargets" class="atl-an__dialog">
+        <v-card-title class="atl-an__dialogtitle">Step targets (days)</v-card-title>
+        <v-card-text>
+            <div class="atl-dash__meta mb-4">Targets apply to every client. The lead-time target is the sum of the step targets.</div>
+            <div v-for="s in steps" :key="s.id" class="atl-an__trow">
+                <span class="atl-an__swatch" :style="{ background: s.color }"></span>
+                <span class="atl-an__tlabel">{{ s.label }}</span>
+                <v-text-field v-model.number="draftTargets[s.id]" type="number" min="0" step="0.5" suffix="d"
+                              density="compact" variant="outlined" hide-details class="atl-an__tinput"></v-text-field>
+            </div>
+            <div class="atl-an__trow atl-an__ttotal"><span></span><span class="atl-an__tlabel">Lead time target</span><b>{{ draftTotal() }} d</b></div>
+        </v-card-text>
+        <v-card-actions>
+            <v-btn variant="text" @click="resetTargets">Reset</v-btn>
+            <v-spacer></v-spacer>
+            <v-btn variant="text" @click="targetsOpen = false">Cancel</v-btn>
+            <v-btn variant="flat" color="primary" @click="saveTargets">Save</v-btn>
+        </v-card-actions>
+    </v-card>
+</v-dialog>
+</v-theme-provider>
+</script>
+
 <!-- ── Atlantis data table x-template (AtlTable) ─────────────── -->
 <script type="text/x-template" id="tpl-atl-table">
 <div class="atl-table">
@@ -2047,7 +2217,7 @@
                             <a v-if="c.type === 'link' && e.row[c.key + '_link'] !== false" href="#" class="atl-link"
                                @click.prevent="$emit('open', e.row, c)">{{ cell(c, e.row) }}</a>
                             <v-chip v-else-if="c.type === 'chip' && c.chip(e.row)" :color="c.chip(e.row).color"
-                                    size="small" variant="tonal" label>{{ c.chip(e.row).text }}</v-chip>
+                                    :prepend-icon="c.chip(e.row).icon" size="small" variant="tonal" label>{{ c.chip(e.row).text }}</v-chip>
                             <span v-else :class="c.type === 'link' ? 'atl-muted' : ''">{{ cell(c, e.row) }}</span>
                         </td>
                         <td v-if="$slots['row-actions']" class="atl-col-actions">
@@ -2083,7 +2253,7 @@
                     <template v-for="c in cardBodyCols" :key="c.key">
                         <span class="atl-mcard__label">{{ c.title }}</span>
                         <span :class="['atl-mcard__value', c.cls ? c.cls(e.row) : '']">
-                            <v-chip v-if="c.type === 'chip' && c.chip(e.row)" :color="c.chip(e.row).color" size="x-small" variant="tonal" label>{{ c.chip(e.row).text }}</v-chip>
+                            <v-chip v-if="c.type === 'chip' && c.chip(e.row)" :color="c.chip(e.row).color" :prepend-icon="c.chip(e.row).icon" size="x-small" variant="tonal" label>{{ c.chip(e.row).text }}</v-chip>
                             <template v-else>{{ c.type === 'chip' ? '—' : cell(c, e.row) }}</template>
                         </span>
                     </template>
@@ -4231,6 +4401,7 @@ window.crewSeafarers       = crewSeafarers;
 window.crewPastAssignments = crewPastAssignments;
 </script>
 <script src="data/appraisals.js"></script>
+<script src="data/analytics.js"></script>
 
 <!-- ── Views ─────────────────────────────────────────────────── -->
 <script src="views/ClientsSetup.js"></script>
@@ -4244,6 +4415,7 @@ window.crewPastAssignments = crewPastAssignments;
 <script src="views/ClientDashboard.js"></script>
 <script src="views/ClientPreparation.js"></script>
 <script src="views/ClientAppraisals.js"></script>
+<script src="views/OpsAnalytics.js"></script>
 
 <!-- ── Stub views (replace each with a real view file when ready) ── -->
 <script>
@@ -4279,6 +4451,8 @@ const router = createRouter({
         { path: '/recruitment/pipeline',   component: RecruitmentPipelineView },
         { path: '/operations/rotation',    component: RotationAllView },
         { path: '/operations/rfas',        component: RFAsView },
+        // Atlantis-look view inside the internal shell: needs the Vuetify stylesheet
+        { path: '/operations/rfe-analytics', component: OpsAnalyticsView, meta: { vuetify: true } },
         // Client UI — rendered inside the full-screen client portal shell
         { path: '/client',                 redirect: '/client/dashboard' },
         { path: '/client/crew',            redirect: '/client/crew-lists' },
@@ -4327,7 +4501,9 @@ const app = createApp({
         // /client/* routes render the full-screen client portal instead of the ERP shell
         const isClientUi = computed(() => route.path.startsWith('/client'));
         // Vuetify's stylesheet applies only to the portal, so the Tailwind views are unaffected
-        Vue.watch(isClientUi, on => { document.getElementById('vuetify-css').disabled = !on; }, { immediate: true });
+        // (also for internal routes with meta.vuetify, e.g. RFE Analytics)
+        const needsVuetify = computed(() => isClientUi.value || !!route.meta.vuetify);
+        Vue.watch(needsVuetify, on => { document.getElementById('vuetify-css').disabled = !on; }, { immediate: true });
         return { sidebarOpen, openSections, toggleSection, isClientUi };
     }
 });
@@ -4348,6 +4524,7 @@ app.component('document-viewer',        DocumentViewerDialog);
 app.component('approval-dialog',        ApprovalDialog);
 app.component('preparation-dialog',     PreparationDialog);
 app.component('appraisal-dialog',       AppraisalDialog);
+app.component('e-chart',                EChart);
 app.use(router);
 app.use(vuetify);
 app.mount('#app');

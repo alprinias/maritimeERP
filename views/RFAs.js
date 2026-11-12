@@ -302,12 +302,16 @@ const RFAsView = {
                 ? rfa.rfeCandidates
                 : rfa.candidates;
             if (!candidates) return;
+            let sent = 0;
             candidates.forEach(c => {
                 if (c.checked && c.acceptance === 'accepted') {
                     c.acceptance = 'onApproval';
                     c.checked = false;
+                    sent++;
                 }
             });
+            // RFE analytics: the request entered Principal Approval
+            if (sent) logRfeStage(source === 'rfr' ? rfa.rfeNo : rfa.rfaNo, 'approval');
         },
 
         // Approve / reject of candidates On Approval is done by the principal in
@@ -561,6 +565,7 @@ function principalApprove(row, candidateId) {
         row.tasks = makeTasks('rfe');
     }
     row.approvalHistory.push({ date: isoDate(new Date()), action: 'approved', candidates: [target.name] });
+    logRfeStage(row.rfeNo || row.rfaNo, 'preparation');      // RFE analytics
 }
 
 // Reject every candidate on approval (reason required); the RFE stays OnSearch
@@ -569,4 +574,5 @@ function principalRejectAll(row, reason) {
     const pending = pendingCandidates(row);
     pending.forEach(c => { c.approvalChoice = 'rejected'; });
     row.approvalHistory.push({ date: isoDate(new Date()), action: 'rejected', reason, candidates: pending.map(c => c.name) });
+    logRfeStage(row.rfeNo || row.rfaNo, 'search');           // RFE analytics: back to Pool Search (loop)
 }

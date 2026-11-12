@@ -37,11 +37,13 @@ maritimeERP/
 │   ├── documents.js        ← generated seafarer documents + status helpers
 │   ├── preparation.js      ← preparation checklist (document requirements + manual tasks)
 │   ├── appraisals.js       ← appraisal form definition + seeded appraisals (loaded after clients.js)
+│   ├── analytics.js        ← RFE pipeline stages/steps, ops users & groups, targets, 12-month RFE history, stage log
 │   └── clients.js          ← var allClientsData (4 clients, salaryRanges, docTypes, vesselIds)
 ├── views/
 │   ├── RotationAll.js      ← Fleet Rotation Gantt view
 │   ├── ClientsSetup.js     ← Admin → Clients Setup view
 │   ├── RFAs.js             ← Operations → RFAs view (+ RfaCardComponent)
+│   ├── OpsAnalytics.js     ← Operations → RFE Analytics (Atlantis look, ECharts) + <e-chart>
 │   ├── ClientCommon.js     ← Client UI: AtlTable, SeafarerProfileDialog, DocumentViewerDialog, atlDate, documentPdf
 │   ├── ClientPortal.js     ← Client UI shell (ClientPortal)
 │   ├── ClientDashboard.js  ← Client UI → Dashboard (landing page)
@@ -103,8 +105,8 @@ CDN: Vue → VueRouter → Vuetify (css #vuetify-css, mdi, Inter, js) → jsPDF/
 assets/erp-base.css + gantt.css + client-portal.css
 x-template blocks (see table above)
 data/utils.js → data/vessels.js → data/seafarers.js → data/store.js → data/crew.js → data/documents.js → data/preparation.js
-[inline: window.* bridge + data/clients.js] → data/appraisals.js
-views/ClientsSetup.js → views/RFAs.js → views/RotationAll.js → views/ClientCommon.js → views/ClientPortal.js → views/ClientCrewLists.js → views/ClientRotation.js → views/ClientApprovals.js → views/ClientDashboard.js → views/ClientPreparation.js → views/ClientAppraisals.js
+[inline: window.* bridge + data/clients.js] → data/appraisals.js → data/analytics.js
+views/ClientsSetup.js → views/RFAs.js → views/RotationAll.js → views/ClientCommon.js → views/ClientPortal.js → views/ClientCrewLists.js → views/ClientRotation.js → views/ClientApprovals.js → views/ClientDashboard.js → views/ClientPreparation.js → views/ClientAppraisals.js → views/OpsAnalytics.js
 [inline: makeStub() + router + createVuetify() + createApp() + app.component(client-portal, atl-table, …) + mount]
 [inline: makeStub() + stub views + router + createApp().mount()]
 ```
@@ -512,6 +514,12 @@ FILTERS menu: Rank, Nationality.
 - `/recruitment/candidates` — seafarer database / profiles (data partially in `allSeafarers`)
 - `/recruitment/pipeline` — RFC → shortlist → proposal → confirmation workflow
 - `/` (home) — dashboard
+
+### RFE Pipeline Analytics (internal ERP, `/operations/rfe-analytics`)
+For Operations (own performance) and management (the department): how long RFEs take from stage to stage. Internal ERP page in the **Atlantis look** — route `meta: { vuetify: true }` turns the Vuetify stylesheet on inside the Tailwind shell (root watcher `needsVuetify` = `isClientUi || route.meta.vuetify`); the template is wrapped in `<v-theme-provider with-background class="atl-portal atl-an">` (with-background is needed so the wrapper renders an element carrying the `--atl-*` vars). Charts: **Apache ECharts 5.5** (cdnjs) via `<e-chart :option :height @bar-click>` (`EChart` in views/OpsAnalytics.js, SVG renderer, ResizeObserver).
+- **Data** (`data/analytics.js`, after appraisals.js): `RFE_STAGES` (Created → Pool Search → Ask for Acceptance → Accepted → Principal Approval → Preparation → Ready → Embarked), `RFE_STEPS` s1–s7 with a validated 7-step ordinal blue ramp (`color`, label `ink`), `RFE_POOLS` (dedicated to client / ex-crew not dedicated / new candidate), `OPS_GROUPS` (g1 Desk A c1+c3, g2 Desk B c2+c4), `OPS_USERS` (u1–u6, each 1–2 clients of the group), `opsUserForClient()`, `erpStore.rfeTargets` (days per step, editable on the page), `rfeHistory` (160 completed RFEs, seeded mulberry32, log-normal durations with built-in differences: new candidates slower search/preparation, c2 slow principal approval + more rejections, u5 slow search, u6 slow preparation, senior ranks slower search, search improving over the year), `rfeStepDurations(events)` (**final-pass rule**: steps measured from the last Pool Search entry; earlier passes = rework, loops = search entries − 1), `erpStore.rfeStageLog` + `logRfeStage(ref, stage)` — called from RFAs.js `sendForApproval` (approval), `principalApprove` (preparation), `principalRejectAll` (search).
+- **Page**: statistic Median (default) / Average; Targets dialog; one filter row (period 3/6/12 months by embarkation date, client, vessel type, rank, pool, user group, user); KPI tiles (lead time, % within target = total ≤ sum of step targets, completed, slowest step, most over target, rework rate); **Lead time by step** — stacked horizontal bars per Compare-by group (none / client / rank / vessel type / pool / user / group), slowest first, target line, n per group, n < 5 greyed, total at the tip, tooltip with every step + per-RFE lead time, chart ⇄ table (atl-table with export); clicking a bar filters to that group and drills down (group/client → user → pool → client; rank → pool; vessel type → rank); footnote: step medians don't add up to the median lead time; **Spread per step** (box plot, outliers, ◆ target); **Rework** table; **Monthly trend per step** (7 small multiples, dashed target); **In-flight RFEs** (live `erpStore.rfaRows`: stage from candidates / prep, days in stage from the stage log or a seeded value, status chip with icon Over target / Slower than usual (> 1.5 × median) / On track).
+- AtlTable chips accept an optional `icon`.
 
 ### Appraisals (phase 10)
 One common end-of-service appraisal form for all clients (instead of each client's own), so results can be collected and summarised.

@@ -1,0 +1,178 @@
+/* ── data/analytics.js ────────────────────────────────────────
+   RFE pipeline analytics data for the internal ERP (Operations / management).
+   Depends on: utils.js, vessels.js, seafarers.js, clients.js, store.js
+   (loaded after clients.js)
+   Exposes globals:
+     RFE_STAGES, RFE_STEPS, RFE_POOLS, OPS_GROUPS, OPS_USERS, rfeHistory,
+     opsUserForClient(), logRfeStage(), rfeStepDurations()
+   Seeds erpStore.rfeTargets (days per step) and erpStore.rfeStageLog.
+
+   Stages: Created → Pool Search → Ask for Acceptance → Accepted →
+           Principal Approval → Preparation → Ready → Embarked
+   Each completed RFE carries its stage events [{ stage, at }] (at = ms).
+   A rejection by the principal sends the RFE back to Pool Search (loop).
+   Measuring rule: each step is measured on the FINAL pass (last entry into
+   Pool Search onwards); the time spent in abandoned passes is "rework".
+   Created → Pool Search uses the first search entry.
+──────────────────────────────────────────────────────────────── */
+
+var RFE_STAGES = [
+    { id: 'created',     label: 'Created' },
+    { id: 'search',      label: 'Pool Search' },
+    { id: 'ask',         label: 'Ask for Acceptance' },
+    { id: 'accepted',    label: 'Accepted' },
+    { id: 'approval',    label: 'Principal Approval' },
+    { id: 'preparation', label: 'Preparation' },
+    { id: 'ready',       label: 'Ready' },
+    { id: 'embarked',    label: 'Embarked' },
+];
+
+// The 7 steps between consecutive stages; colour = validated 7-step ordinal blue ramp
+// (dataviz validator --ordinal: monotone L, adjacent ΔL >= 0.06, light end 2.11:1 on white)
+var RFE_STEPS = [
+    { id: 's1', from: 'created',     to: 'search',      label: 'Created → Pool Search',            short: 'Start search',  color: '#86b6ef', ink: '#0b0b0b' },
+    { id: 's2', from: 'search',      to: 'ask',         label: 'Pool Search → Ask for Acceptance', short: 'Search',        color: '#719fd8', ink: '#0b0b0b' },
+    { id: 's3', from: 'ask',         to: 'accepted',    label: 'Ask for Acceptance → Accepted',    short: 'Acceptance',    color: '#5c89c1', ink: '#ffffff' },
+    { id: 's4', from: 'accepted',    to: 'approval',    label: 'Accepted → Principal Approval',    short: 'To principal',  color: '#4874ab', ink: '#ffffff' },
+    { id: 's5', from: 'approval',    to: 'preparation', label: 'Principal Approval → Preparation', short: 'Approval',      color: '#345f95', ink: '#ffffff' },
+    { id: 's6', from: 'preparation', to: 'ready',       label: 'Preparation → Ready',              short: 'Preparation',   color: '#214a80', ink: '#ffffff' },
+    { id: 's7', from: 'ready',       to: 'embarked',    label: 'Ready → Embarked',                 short: 'Joining',       color: '#0d366b', ink: '#ffffff' },
+];
+
+var RFE_POOLS = [
+    { id: 'dedicated', label: 'Dedicated to client' },
+    { id: 'excrew',    label: 'Ex-crew (not dedicated)' },
+    { id: 'new',       label: 'New candidate' },
+];
+
+// Operations: a user handles a couple of clients, the user's group a superset
+var OPS_GROUPS = [
+    { id: 'g1', name: 'Desk A — Tankers',      clientIds: ['c1', 'c3'] },
+    { id: 'g2', name: 'Desk B — Dry & Liner',  clientIds: ['c2', 'c4'] },
+];
+var OPS_USERS = [
+    { id: 'u1', name: 'Eleni Markou',    groupId: 'g1', clientIds: ['c1'] },
+    { id: 'u2', name: 'Nikos Andreou',   groupId: 'g1', clientIds: ['c1', 'c3'] },
+    { id: 'u3', name: 'Sofia Dimitriou', groupId: 'g1', clientIds: ['c3'] },
+    { id: 'u4', name: 'Petros Lykos',    groupId: 'g2', clientIds: ['c2'] },
+    { id: 'u5', name: 'Anna Georgiou',   groupId: 'g2', clientIds: ['c2', 'c4'] },
+    { id: 'u6', name: 'Kostas Ioannou',  groupId: 'g2', clientIds: ['c4'] },
+];
+
+// Deterministic default handler of a client (for live RFEs without an assignment)
+function opsUserForClient(clientId, salt) {
+    var users = OPS_USERS.filter(u => u.clientIds.includes(clientId));
+    if (!users.length) return OPS_USERS[0];
+    var h = 0;
+    String(salt || '').split('').forEach(c => { h = (h * 31 + c.charCodeAt(0)) >>> 0; });
+    return users[h % users.length];
+}
+
+// Step targets in days (management can change them on the analytics page)
+erpStore.rfeTargets = { s1: 1, s2: 10, s3: 3, s4: 2, s5: 5, s6: 14, s7: 3 };
+
+/* Step durations of an RFE from its events (days, final-pass rule) →
+   { steps: { s1..s7 }, total, rework, loops } — null if not complete */
+function rfeStepDurations(events) {
+    var DAY = 86400000;
+    var firstSearch = events.findIndex(e => e.stage === 'search');
+    var lastSearch = -1;
+    events.forEach((e, i) => { if (e.stage === 'search') lastSearch = i; });
+    var created = events.find(e => e.stage === 'created');
+    var embarked = events.find(e => e.stage === 'embarked');
+    if (!created || !embarked || firstSearch < 0) return null;
+    var at = {};
+    events.slice(lastSearch).forEach(e => { if (!(e.stage in at)) at[e.stage] = e.at; });
+    var steps = { s1: (events[firstSearch].at - created.at) / DAY };
+    for (var i = 1; i < RFE_STEPS.length; i++) {
+        var s = RFE_STEPS[i];
+        if (at[s.from] == null || at[s.to] == null) return null;
+        steps[s.id] = (at[s.to] - at[s.from]) / DAY;
+    }
+    return {
+        steps, total: (embarked.at - created.at) / DAY,
+        rework: (events[lastSearch].at - events[firstSearch].at) / DAY,
+        loops: events.filter(e => e.stage === 'search').length - 1,
+    };
+}
+
+/* ── History: ~12 months of completed RFEs ───────────────────── */
+var rfeHistory = (function () {
+    var seed = 20260601;
+    var rnd = function () {                                  // mulberry32
+        seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+        var t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+        t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+        return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+    var normal = function () { return Math.sqrt(-2 * Math.log(rnd() || 1e-9)) * Math.cos(2 * Math.PI * rnd()); };
+    var pick = function (list, weights) {
+        var r = rnd() * weights.reduce((a, b) => a + b, 0);
+        for (var i = 0; i < list.length; i++) { r -= weights[i]; if (r <= 0) return list[i]; }
+        return list[list.length - 1];
+    };
+    // log-normal around a median, with occasional slow outliers
+    var dur = function (median, factor) {
+        var v = median * factor * Math.exp(0.45 * normal());
+        if (rnd() < 0.05) v *= 2.5;
+        return Math.max(0.2, v);
+    };
+    var BASE = { s1: 1, s2: 7, s3: 2, s4: 1.5, s5: 4, s6: 12, s7: 3 };
+    var DAY = 86400000;
+    var now = TODAY.getTime();
+    var clients = ['c1', 'c2', 'c3', 'c4'];
+    var officers = ['Master', 'Chief Officer', 'Chief Engineer', 'Second Engineer', 'Second Officer', 'Third Officer', 'Third Engineer'];
+    var out = [];
+    for (var n = 0; n < 160; n++) {
+        var clientId = pick(clients, [40, 25, 25, 10]);
+        var client = allClientsData.find(c => c.id === clientId);
+        var vesselId = client.vesselIds[Math.floor(rnd() * client.vesselIds.length)];
+        var vessel = allVessels.find(v => v.id === vesselId);
+        var rank = vessel.ranks[Math.floor(rnd() * vessel.ranks.length)].rank;
+        var pool = pick(RFE_POOLS, [45, 35, 20]).id;
+        var user = pick(OPS_USERS.filter(u => u.clientIds.includes(clientId)), [1, 1, 1].slice(0, OPS_USERS.filter(u => u.clientIds.includes(clientId)).length));
+        var embarkedAt = now - (3 + rnd() * 362) * DAY;
+        var progress = 1 - (now - embarkedAt) / (365 * DAY);   // 0 = a year ago, 1 = now
+        var f = { s1: 1, s2: 1, s3: 1, s4: 1, s5: 1, s6: 1, s7: 1 };
+        if (pool === 'new')       { f.s2 *= 1.6; f.s3 *= 1.5; f.s6 *= 1.4; }
+        if (pool === 'excrew')    { f.s2 *= 1.2; }
+        if (pool === 'dedicated') { f.s2 *= 0.7; f.s6 *= 0.8; }
+        if (clientId === 'c2')    { f.s5 *= 2.0; }
+        if (clientId === 'c4')    { f.s5 *= 1.3; }
+        if (user.id === 'u5')     { f.s2 *= 1.5; }
+        if (user.id === 'u3')     { f.s2 *= 0.8; }
+        if (user.id === 'u6')     { f.s6 *= 1.3; }
+        if (rank === 'Master' || rank === 'Chief Engineer') f.s2 *= 1.4;
+        else if (!officers.includes(rank)) f.s2 *= 0.8;
+        f.s2 *= 1.25 - 0.4 * progress;                        // search gets faster over the year
+        f.s6 *= 1.1 - 0.2 * progress;
+
+        // passes through search → approval; a rejection by the principal loops back
+        var loops = rnd() < (clientId === 'c2' ? 0.22 : 0.11) ? 1 : 0;
+        var seq = [['created', 0], ['search', dur(BASE.s1, f.s1)]];
+        for (var p = 0; p <= loops; p++) {
+            seq.push(['ask', dur(BASE.s2, f.s2)], ['accepted', dur(BASE.s3, f.s3)], ['approval', dur(BASE.s4, f.s4)]);
+            seq.push(p < loops ? ['search', dur(BASE.s5, f.s5)] : ['preparation', dur(BASE.s5, f.s5)]);
+        }
+        seq.push(['ready', dur(BASE.s6, f.s6)], ['embarked', dur(BASE.s7, f.s7)]);
+        var total = seq.reduce((a, s) => a + s[1], 0);
+        var t = embarkedAt - total * DAY;
+        var events = seq.map(s => { t += s[1] * DAY; return { stage: s[0], at: Math.round(t) }; });
+        out.push({
+            ref: 'RFE-' + (5000 + n), clientId, vesselId: vessel.id, vesselType: vessel.type,
+            rank, pool, userId: user.id, groupId: user.groupId, events,
+        });
+    }
+    return out;
+})();
+
+/* ── Live RFEs: stage log (entry dates of the current stage) ─────
+   Seeded for open RFEs on first use; RFAs.js records new stage changes
+   (send for approval, principal approve / reject all) via logRfeStage(). */
+erpStore.rfeStageLog = {};
+
+function logRfeStage(ref, stage) {
+    if (!ref) return;
+    var log = erpStore.rfeStageLog[ref] || (erpStore.rfeStageLog[ref] = []);
+    log.push({ stage, at: Date.now() });
+}

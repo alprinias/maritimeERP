@@ -551,3 +551,50 @@
     .atl-approval__cell:nth-child(4) { grid-column: auto; border-right: 1px solid var(--atl-border); }
     .atl-cand__top { flex-wrap: wrap; }
 }
+
+/* ── Operations: RFE Analytics (internal ERP, Atlantis look) ─── */
+.atl-an { flex: 1; min-height: 0; display: flex; flex-direction: column; background: #FAFAFA !important; }
+.atl-an__scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 20px 24px 32px; }
+.atl-an__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
+.atl-an__headbtns { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.atl-an__filters {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 18px;
+    padding: 12px 14px; background: #fff; border: 1px solid var(--atl-border); border-radius: 8px;
+}
+.atl-an__f { flex: 1 1 130px; min-width: 130px; max-width: 220px; }
+.atl-an__compare { width: 220px; flex: 0 0 220px; }
+.atl-an__tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(165px, 1fr)); gap: 14px; margin-bottom: 20px; }
+.atl-an__tiles .atl-tile { padding: 14px 16px !important; }
+.atl-an__table .atl-table__grid { font-size: 14px; }
+.atl-an__table .atl-table__grid td, .atl-an__table .atl-table__grid th { padding: 0 10px !important; }
+.atl-an__kpi { font-size: 30px; font-variant-numeric: tabular-nums; }
+.atl-an__panelhead { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+.atl-an__note { display: flex; align-items: flex-start; gap: 6px; margin-top: 8px; font-size: 12px; color: #757575; }
+.atl-an__note .v-icon { margin-top: 1px; }
+.atl-an__cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(440px, 1fr)); gap: 20px; }
+.atl-an__cols .atl-dash__panel { margin-bottom: 20px; }
+.atl-an__multiples { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px 20px; margin-top: 10px; }
+.atl-an__mini { border-top: 1px solid #EEEEEE; padding-top: 8px; }
+.atl-an__minihead { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.atl-an__minititle { font-weight: 600; color: var(--atl-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.atl-an__minitarget { margin-left: auto; color: #757575; font-size: 12px; white-space: nowrap; }
+.atl-an__swatch { display: inline-block; flex: 0 0 12px; width: 12px; height: 12px; border-radius: 2px; }
+.atl-an__rework { margin-top: 8px; font-size: 14px; }
+.atl-an__rework th { font-weight: 600 !important; color: var(--atl-text) !important; white-space: nowrap; }
+.atl-an__rework td { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.atl-an__meter { display: flex; align-items: center; gap: 8px; }
+.atl-an__meterbar { flex: 1; height: 8px; background: #EEEEEE; border-radius: 4px; overflow: hidden; }
+.atl-an__meterbar > span { display: block; height: 100%; background: #345f95; border-radius: 0 4px 4px 0; }
+/* tables inside a scrolling page: natural height */
+.atl-an__table .atl-table { flex: none; }
+.atl-an__table .atl-table__scroll { flex: none; max-height: 560px; }
+.atl-echart { width: 100%; }
+.atl-an__dialogtitle { color: var(--atl-blue); font-weight: 600 !important; padding: 18px 24px 4px !important; }
+.atl-an__trow { display: grid; grid-template-columns: 12px 1fr 120px; align-items: center; gap: 12px; padding: 5px 0; font-size: 14px; }
+.atl-an__ttotal { border-top: 1px solid var(--atl-border); margin-top: 6px; padding-top: 12px; }
+.atl-an__ttotal b { text-align: right; padding-right: 12px; }
+@media (max-width: 700px) {
+    .atl-an__scroll { padding: 14px 12px 24px; }
+    .atl-an__f, .atl-an__compare { flex: 1 1 100%; width: auto; }
+    .atl-an__cols { grid-template-columns: 1fr; }
+}
