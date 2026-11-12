@@ -142,14 +142,23 @@ const ApprovalDialog = {
             store:      erpStore,
             choice:     null,      // candidate id selected with the Approve radio
             rejectOpen: false,
-            reason:     '',
+            reasons:    {},        // candidate id → { reason, note } (Reject all)
+            allReason:  null,      // "same reason for all"
+            rejectionReasons: PRINCIPAL_REJECTION_REASONS,
             cvDoc:      null,
             cvSeafarer: null,
         };
     },
 
     watch: {
-        'store.clientUi.approvalRef'() { this.choice = null; this.reason = ''; this.rejectOpen = false; },
+        'store.clientUi.approvalRef'() { this.choice = null; this.rejectOpen = false; },
+        // fresh reason form each time Reject all opens
+        rejectOpen(on) {
+            if (!on) return;
+            this.allReason = null;
+            this.reasons = Object.fromEntries(this.item.pending.map(c => [c.id, { reason: null, note: '' }]));
+        },
+        allReason(v) { if (v) Object.values(this.reasons).forEach(r => { r.reason = v; }); },
     },
 
     computed: {
@@ -170,6 +179,11 @@ const ApprovalDialog = {
             return s ? fullNameLF(s) : this.item.row.confirmedSeafarer;
         },
         chosen()     { return this.choice ? seafarerById(this.choice) : null; },
+        // every candidate has a reason; "Other" needs a note
+        rejectValid() {
+            const list = Object.values(this.reasons);
+            return list.length > 0 && list.every(r => r.reason && (r.reason !== 'other' || r.note.trim()));
+        },
     },
 
     methods: {
@@ -202,9 +216,10 @@ const ApprovalDialog = {
             this.store.clientUi.toast = 'Approved ' + name + ' for ' + this.item.ref;
         },
         confirmReject() {
-            principalRejectAll(this.item.row, this.reason.trim());
+            const reasons = {};
+            Object.keys(this.reasons).forEach(id => { reasons[id] = { reason: this.reasons[id].reason, note: this.reasons[id].note.trim() }; });
+            principalRejectAll(this.item.row, reasons);
             this.rejectOpen = false;
-            this.reason = '';
             this.store.clientUi.toast = 'All candidates rejected for ' + this.item.ref + ' — the agency continues the search';
         },
     },
@@ -273,7 +288,7 @@ const ClientApprovalsView = {
                         relieving: relieved ? fullNameLF(relieved) : (i.relieving || '— (new position)'),
                         approved: approved ? fullNameLF(approved) : (i.status === 'approved' ? i.row.confirmedSeafarer : '—'),
                         decision: last ? (last.action === 'approved' ? 'Approved ' : 'Rejected all ') + atlDate(last.date)
-                                         + (last.reason ? ' — ' + last.reason : '') : '—',
+                                         + (last.reasonLabels ? ' — ' + last.reasonLabels.join(', ') : last.reason ? ' — ' + last.reason : '') : '—',
                     };
                 })
                 .sort((a, b) => a.joinDate.localeCompare(b.joinDate));

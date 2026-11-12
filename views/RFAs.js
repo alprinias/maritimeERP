@@ -125,6 +125,7 @@ const RFAsView = {
 
     data() {
         return {
+            refusalReasons: SEAFARER_REFUSAL_REASONS,
             activeTab:      'signoff',
             filterClient:   '',
             filterVessel:   '',
@@ -336,11 +337,28 @@ const RFAsView = {
                     services:       s.services,
                     groupId:        groupMap[s.category] || 'new',
                     checked:        false,
-                    // null|'pending'|'accepted'|'refused'|'onApproval'
+                    // null|'pending'|'accepted'|'refused'|'noAnswer'|'onApproval'
                     acceptance:     (proposed || []).includes(s.id) ? 'onApproval' : null,
-                    approvalChoice: null,   // null|'approved'|'rejected' — set by the principal
+                    refusalReason:  null,   // SEAFARER_REFUSAL_REASONS id (when refused)
+                    refusalNote:    '',
+                    decidedAt:      null,   // ms — when refused / no answer / decided by the principal
+                    // null|'approved'|'rejected'|'notFavored' — set by the principal
+                    approvalChoice: null,
+                    rejectionReason: null,  // PRINCIPAL_REJECTION_REASONS id (when rejected)
+                    rejectionNote:  '',
                 }));
         },
+
+        // Seafarer refused (reason from SEAFARER_REFUSAL_REASONS) / did not answer
+        refuseCandidate(c, reasonId) {
+            if (!reasonId) return;
+            c.refusalReason = reasonId;
+            c.acceptance = 'refused';
+            c.decidedAt = Date.now();
+        },
+        noAnswerCandidate(c) { c.acceptance = 'noAnswer'; c.decidedAt = Date.now(); },
+        refusalLabel(id) { return refusalReasonLabel(id); },
+        rejectionLabel(id) { return rejectionReasonLabel(id); },
 
         // Service stat helpers
         totalTrips(c) {
@@ -551,12 +569,15 @@ function pendingCandidates(row) {
     return rfaCandidates(row).filter(c => c.acceptance === 'onApproval' && !c.approvalChoice);
 }
 
-// Approve one candidate: the others on approval stay undecided, the RFE moves
-// to OnPreparation with the candidate as confirmed seafarer.
+// Approve one candidate: the others on approval are "not favored" (no reason,
+// not a rejection); the RFE moves to OnPreparation with the candidate as confirmed seafarer.
 function principalApprove(row, candidateId) {
     const target = rfaCandidates(row).find(c => c.id === candidateId);
     if (!target) return;
+    const now = Date.now();
+    pendingCandidates(row).forEach(c => { if (c !== target) { c.approvalChoice = 'notFavored'; c.decidedAt = now; } });
     target.approvalChoice = 'approved';
+    target.decidedAt = now;
     row.rfeStatus = 'OnPreparation';
     row.confirmedSeafarer = target.name;
     if (row.rfeCandidates) {
@@ -568,11 +589,23 @@ function principalApprove(row, candidateId) {
     logRfeStage(row.rfeNo || row.rfaNo, 'preparation');      // RFE analytics
 }
 
-// Reject every candidate on approval (reason required); the RFE stays OnSearch
-// so the agency continues the candidate search.
-function principalRejectAll(row, reason) {
+// Reject every candidate on approval, one reason per candidate
+// (reasons = { candidateId: { reason: PRINCIPAL_REJECTION_REASONS id, note } });
+// the RFE stays OnSearch so the agency continues the candidate search.
+function principalRejectAll(row, reasons) {
     const pending = pendingCandidates(row);
-    pending.forEach(c => { c.approvalChoice = 'rejected'; });
-    row.approvalHistory.push({ date: isoDate(new Date()), action: 'rejected', reason, candidates: pending.map(c => c.name) });
+    const now = Date.now();
+    pending.forEach(c => {
+        const r = (reasons || {})[c.id] || {};
+        c.approvalChoice = 'rejected';
+        c.rejectionReason = r.reason || 'other';
+        c.rejectionNote = r.note || '';
+        c.decidedAt = now;
+    });
+    row.approvalHistory.push({
+        date: isoDate(new Date()), action: 'rejected', candidates: pending.map(c => c.name),
+        reasons: pending.map(c => c.name + ': ' + rejectionReasonLabel(c.rejectionReason) + (c.rejectionNote ? ' — ' + c.rejectionNote : '')),
+        reasonLabels: [...new Set(pending.map(c => rejectionReasonLabel(c.rejectionReason)))],
+    });
     logRfeStage(row.rfeNo || row.rfaNo, 'search');           // RFE analytics: back to Pool Search (loop)
 }

@@ -598,6 +598,20 @@
 .atl-an__trow { display: grid; grid-template-columns: 12px 1fr 120px; align-items: center; gap: 12px; padding: 5px 0; font-size: 14px; }
 .atl-an__ttotal { border-top: 1px solid var(--atl-border); margin-top: 6px; padding-top: 12px; }
 .atl-an__ttotal b { text-align: right; padding-right: 12px; }
+.atl-an__tabs { margin: -4px 0 14px; border-bottom: 1px solid var(--atl-border); }
+.atl-an__tabs .v-tab { text-transform: none; letter-spacing: 0.02em; font-weight: 600; }
+.atl-an__heatwrap { overflow-x: auto; margin-top: 6px; }
+.atl-an__heat { border-collapse: separate; border-spacing: 2px; font-size: 13px; font-variant-numeric: tabular-nums; min-width: 100%; }
+.atl-an__heat th { font-weight: 600; color: var(--atl-text); padding: 6px 8px; text-align: center; vertical-align: bottom; }
+.atl-an__heat th.atl-an__heatreason { max-width: 110px; white-space: normal; font-size: 12px; line-height: 1.25; }
+.atl-an__heat td { padding: 7px 8px; text-align: center; white-space: nowrap; border-radius: 3px; }
+.atl-an__heat td.text-left, .atl-an__heat th.text-left { text-align: left; }
+.atl-an__heat tbody tr + tr td:nth-child(-n+3) { border-top: 1px solid #EEEEEE; }
+.atl-an__heat tr.is-low td { opacity: 0.55; }
+.atl-an__low, .atl-an__muted { color: #9E9E9E; font-size: 12px; }
+/* Client UI: Reject all — one reason per candidate */
+.atl-reject__row { padding: 10px 0; border-top: 1px solid #EEEEEE; }
+.atl-reject__name { font-weight: 600; margin-bottom: 8px; }
 @media (max-width: 700px) {
     .atl-an__scroll { padding: 14px 12px 24px; }
     .atl-an__f, .atl-an__compare { flex: 1 1 100%; width: auto; }

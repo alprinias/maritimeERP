@@ -1446,11 +1446,12 @@
                                                            class="accent-emerald-600 w-3.5 h-3.5">
                                                     <span class="text-[11px] font-bold text-emerald-700">Accepted</span>
                                                 </label>
-                                                <label class="flex items-center gap-1.5 cursor-pointer">
-                                                    <input type="radio" :name="'acc-'+c.id" value="refused" v-model="c.acceptance"
-                                                           class="accent-red-500 w-3.5 h-3.5">
-                                                    <span class="text-[11px] font-bold text-red-600">Refused</span>
-                                                </label>
+                                                <select @change="refuseCandidate(c, $event.target.value)"
+                                                        class="text-[11px] font-bold text-red-600 border border-red-200 rounded px-1 py-0.5 bg-white max-w-[150px]">
+                                                    <option value="">Refused — reason…</option>
+                                                    <option v-for="r in refusalReasons" :key="r.id" :value="r.id">{{ r.label }}</option>
+                                                </select>
+                                                <button @click="noAnswerCandidate(c)" class="text-[11px] font-bold text-slate-500 hover:text-slate-700 whitespace-nowrap">No answer</button>
                                             </div>
                                             <!-- Settled state badges -->
                                             <span v-else-if="c.acceptance === 'accepted'"
@@ -1458,16 +1459,21 @@
                                                 ✓ Accepted
                                             </span>
                                             <span v-else-if="c.acceptance === 'refused'"
-                                                  class="text-[10px] font-black px-2.5 py-1 rounded-full bg-red-100 text-red-600 border border-red-200">
-                                                ✕ Refused
+                                                  class="text-[10px] font-black px-2.5 py-1 rounded-full bg-red-100 text-red-600 border border-red-200 whitespace-nowrap">
+                                                ✕ Refused · {{ refusalLabel(c.refusalReason) }}
+                                            </span>
+                                            <span v-else-if="c.acceptance === 'noAnswer'"
+                                                  class="text-[10px] font-black px-2.5 py-1 rounded-full bg-slate-100 text-slate-500 border border-slate-300 whitespace-nowrap">
+                                                No answer
                                             </span>
                                             <!-- On Approval: read-only — the principal decides in the Client UI -->
                                             <span v-else-if="c.acceptance === 'onApproval'"
                                                   :class="['text-[10px] font-black px-2.5 py-1 rounded-full whitespace-nowrap border',
                                                            c.approvalChoice === 'approved' ? 'bg-emerald-100 text-emerald-700 border-emerald-300' :
                                                            c.approvalChoice === 'rejected' ? 'bg-red-50 text-red-500 border-red-200' :
+                                                           c.approvalChoice === 'notFavored' ? 'bg-slate-100 text-slate-500 border-slate-300' :
                                                            'bg-violet-100 text-violet-700 border-violet-300']">
-                                                {{ c.approvalChoice === 'approved' ? '✓ Approved by principal' : c.approvalChoice === 'rejected' ? '✕ Rejected by principal' : '⏳ Awaiting principal' }}
+                                                {{ c.approvalChoice === 'approved' ? '✓ Approved by principal' : c.approvalChoice === 'rejected' ? '✕ Rejected · ' + rejectionLabel(c.rejectionReason) : c.approvalChoice === 'notFavored' ? 'Not favored by principal' : '⏳ Awaiting principal' }}
                                             </span>
                                         </div>
 
@@ -1792,20 +1798,24 @@
                                                             <input type="radio" :name="'rfr-acc-'+c.id" value="accepted" v-model="c.acceptance" class="accent-emerald-600 w-3.5 h-3.5">
                                                             <span class="text-[11px] font-bold text-emerald-700">Accepted</span>
                                                         </label>
-                                                        <label class="flex items-center gap-1.5 cursor-pointer">
-                                                            <input type="radio" :name="'rfr-acc-'+c.id" value="refused" v-model="c.acceptance" class="accent-red-500 w-3.5 h-3.5">
-                                                            <span class="text-[11px] font-bold text-red-600">Refused</span>
-                                                        </label>
+                                                        <select @change="refuseCandidate(c, $event.target.value)"
+                                                                class="text-[11px] font-bold text-red-600 border border-red-200 rounded px-1 py-0.5 bg-white max-w-[150px]">
+                                                            <option value="">Refused — reason…</option>
+                                                            <option v-for="r in refusalReasons" :key="r.id" :value="r.id">{{ r.label }}</option>
+                                                        </select>
+                                                        <button @click="noAnswerCandidate(c)" class="text-[11px] font-bold text-slate-500 hover:text-slate-700 whitespace-nowrap">No answer</button>
                                                     </div>
                                                     <span v-else-if="c.acceptance === 'accepted'" class="text-[10px] font-black px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-300">✓ Accepted</span>
-                                                    <span v-else-if="c.acceptance === 'refused'" class="text-[10px] font-black px-2.5 py-1 rounded-full bg-red-100 text-red-600 border border-red-200">✕ Refused</span>
+                                                    <span v-else-if="c.acceptance === 'refused'" class="text-[10px] font-black px-2.5 py-1 rounded-full bg-red-100 text-red-600 border border-red-200 whitespace-nowrap">✕ Refused · {{ refusalLabel(c.refusalReason) }}</span>
+                                                    <span v-else-if="c.acceptance === 'noAnswer'" class="text-[10px] font-black px-2.5 py-1 rounded-full bg-slate-100 text-slate-500 border border-slate-300 whitespace-nowrap">No answer</span>
                                                     <!-- On Approval: read-only — the principal decides in the Client UI -->
                                                     <span v-else-if="c.acceptance === 'onApproval'"
                                                           :class="['text-[10px] font-black px-2.5 py-1 rounded-full whitespace-nowrap border',
                                                                    c.approvalChoice === 'approved' ? 'bg-emerald-100 text-emerald-700 border-emerald-300' :
                                                                    c.approvalChoice === 'rejected' ? 'bg-red-50 text-red-500 border-red-200' :
+                                                           c.approvalChoice === 'notFavored' ? 'bg-slate-100 text-slate-500 border-slate-300' :
                                                                    'bg-violet-100 text-violet-700 border-violet-300']">
-                                                        {{ c.approvalChoice === 'approved' ? '✓ Approved by principal' : c.approvalChoice === 'rejected' ? '✕ Rejected by principal' : '⏳ Awaiting principal' }}
+                                                        {{ c.approvalChoice === 'approved' ? '✓ Approved by principal' : c.approvalChoice === 'rejected' ? '✕ Rejected · ' + rejectionLabel(c.rejectionReason) : c.approvalChoice === 'notFavored' ? 'Not favored by principal' : '⏳ Awaiting principal' }}
                                                     </span>
                                                 </div>
                                             </div>
@@ -1967,21 +1977,27 @@
     <div class="atl-an__head">
         <div>
             <div class="atl-dash__title">RFE Pipeline Analytics</div>
-            <div class="atl-dash__subtitle">How long Requests For Embarkation take from stage to stage · {{ statLabel.toLowerCase() }} days · last {{ period }} months</div>
+            <div class="atl-dash__subtitle" v-if="tab === 'time'">How long Requests For Embarkation take from stage to stage · {{ statLabel.toLowerCase() }} days · last {{ period }} months</div>
+            <div class="atl-dash__subtitle" v-else>Why seafarers refuse and why principals reject candidates · decided in the last {{ period }} months</div>
         </div>
         <div class="atl-an__headbtns">
             <div class="atl-seg" role="group" aria-label="Statistic">
                 <button :class="{ 'is-on': stat === 'median' }" @click="stat = 'median'">Median</button>
                 <button :class="{ 'is-on': stat === 'average' }" @click="stat = 'average'">Average</button>
             </div>
-            <v-btn variant="outlined" color="primary" prepend-icon="mdi-target" @click="openTargets">Targets</v-btn>
+            <v-btn v-if="tab === 'time'" variant="outlined" color="primary" prepend-icon="mdi-target" @click="openTargets">Targets</v-btn>
         </div>
     </div>
+
+    <v-tabs v-model="tab" color="primary" density="comfortable" class="atl-an__tabs">
+        <v-tab value="time" prepend-icon="mdi-timer-outline">Time</v-tab>
+        <v-tab value="decisions" prepend-icon="mdi-account-cancel-outline">Refusals &amp; rejections</v-tab>
+    </v-tabs>
 
     <!-- Filters: one row, scope the whole page -->
     <div class="atl-an__filters">
         <v-select v-model="period" :items="[{ value: 3, title: '3 months' }, { value: 6, title: '6 months' }, { value: 12, title: '12 months' }]"
-                  label="Embarked in" density="compact" variant="outlined" hide-details class="atl-an__f"></v-select>
+                  :label="tab === 'time' ? 'Embarked in' : 'Decided in'" density="compact" variant="outlined" hide-details class="atl-an__f"></v-select>
         <v-select v-model="f.client" :items="options.client" label="Principal" clearable density="compact" variant="outlined" hide-details class="atl-an__f"></v-select>
         <v-select v-model="f.vesselType" :items="options.vesselType" label="Vessel type" clearable density="compact" variant="outlined" hide-details class="atl-an__f"></v-select>
         <v-select v-model="f.rank" :items="options.rank" label="Rank" clearable density="compact" variant="outlined" hide-details class="atl-an__f"></v-select>
@@ -1991,6 +2007,7 @@
         <v-btn v-if="activeFilterCount" variant="text" color="primary" prepend-icon="mdi-filter-remove-outline" @click="clearFilters">Clear ({{ activeFilterCount }})</v-btn>
     </div>
 
+    <template v-if="tab === 'time'">
     <div v-if="!completed.length" class="atl-dash__panel atl-dash__empty">
         <v-icon icon="mdi-information-outline"></v-icon> No completed RFEs match these filters.
     </div>
@@ -2106,6 +2123,112 @@
                        empty-text="No open RFEs match these filters"></atl-table>
         </div>
     </div>
+    </template>
+
+    <!-- ══ Refusals & rejections ══ -->
+    <template v-else>
+    <div class="atl-an__tiles">
+        <v-card v-for="k in decKpis" :key="k.id" variant="outlined" class="atl-tile">
+            <div class="atl-tile__head">
+                <div class="atl-tile__label">{{ k.label }}</div>
+                <span class="atl-tile__icon"><v-icon :icon="k.icon" size="20"></v-icon></span>
+            </div>
+            <div class="atl-tile__value atl-an__kpi">{{ k.value }}</div>
+            <div class="atl-tile__sub">{{ k.sub }}</div>
+        </v-card>
+    </div>
+
+    <div class="atl-an__cols">
+        <div class="atl-dash__panel">
+            <div class="atl-section-title atl-dash__h">Why seafarers refuse</div>
+            <div class="atl-dash__meta">Refusals by reason · count and share of all refusals · "No answer" is counted separately · click a bar to list the cases</div>
+            <e-chart v-if="reasonStats('refused').length" :option="refusalOption" :height="refusalHeight" @bar-click="p => onReasonClick('refused', p)"></e-chart>
+            <div v-else class="atl-dash__empty"><v-icon icon="mdi-information-outline"></v-icon> No refusals in this period.</div>
+        </div>
+        <div class="atl-dash__panel">
+            <div class="atl-section-title atl-dash__h">Why principals reject</div>
+            <div class="atl-dash__meta">Rejected candidates by reason · candidates "not favored" when another one was approved are not rejections · click a bar to list the cases</div>
+            <e-chart v-if="reasonStats('rejected').length" :option="rejectionOption" :height="rejectionHeight" @bar-click="p => onReasonClick('rejected', p)"></e-chart>
+            <div v-else class="atl-dash__empty"><v-icon icon="mdi-information-outline"></v-icon> No rejections in this period.</div>
+        </div>
+    </div>
+
+    <div class="atl-dash__panel">
+        <div class="atl-section-title atl-dash__h">Time lost per reason</div>
+        <div class="atl-dash__meta">
+            {{ statLabel }} extra days · refusals: search + acceptance days compared with RFEs without refusals ·
+            rejections: days of the rejected pass until the search restarted · reasons with fewer than 3 cases are left out
+        </div>
+        <e-chart :option="lostOption" :height="lostHeight"></e-chart>
+    </div>
+
+    <div class="atl-dash__panel">
+        <div class="atl-an__panelhead">
+            <div>
+                <div class="atl-section-title atl-dash__h">Reasons by {{ compareItems.find(c => c.value === compareBy).title.toLowerCase() }}</div>
+                <div class="atl-dash__meta">Rate, then the share of each reason within the group's {{ decSide === 'refusal' ? 'refusals' : 'rejections' }} · darker = larger share</div>
+            </div>
+            <div class="atl-an__headbtns">
+                <v-select v-model="compareBy" :items="compareItems" label="Compare by" density="compact" variant="outlined" hide-details class="atl-an__compare"></v-select>
+                <div class="atl-seg" role="group" aria-label="Side">
+                    <button :class="{ 'is-on': decSide === 'refusal' }" @click="decSide = 'refusal'">Seafarer refusals</button>
+                    <button :class="{ 'is-on': decSide === 'rejection' }" @click="decSide = 'rejection'">Principal rejections</button>
+                </div>
+            </div>
+        </div>
+        <div class="atl-an__heatwrap">
+            <table class="atl-an__heat">
+                <thead><tr>
+                    <th class="text-left">{{ compareItems.find(c => c.value === compareBy).title }}</th>
+                    <th>{{ decSide === 'refusal' ? 'Asked' : 'Sent' }}</th>
+                    <th>{{ decSide === 'refusal' ? 'Refusal rate' : 'Rejection rate' }}</th>
+                    <th v-for="z in decGroups.reasons" :key="z.id" class="atl-an__heatreason">{{ z.label }}</th>
+                </tr></thead>
+                <tbody>
+                    <tr v-for="r in decGroups.rows" :key="r.key" :class="{ 'is-low': r.low }">
+                        <td class="text-left">{{ r.label }}<span v-if="r.low" class="atl-an__low"> · low sample</span></td>
+                        <td>{{ r.base }}</td>
+                        <td><b>{{ pct(r.rate) }}</b> <span class="atl-an__muted">({{ r.n }})</span></td>
+                        <td v-for="z in decGroups.reasons" :key="z.id" :style="r.share[z.id] ? heatStyle(r.share[z.id], decGroups.kind) : null"
+                            :title="r.label + ' · ' + z.label + ': ' + pct(r.share[z.id])">{{ r.share[z.id] ? pct(r.share[z.id]) : '—' }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="atl-dash__panel">
+        <div class="atl-section-title atl-dash__h">Monthly trend</div>
+        <div class="atl-dash__meta">Rates by month of decision · months with fewer than 5 decisions are skipped</div>
+        <div class="atl-an__multiples">
+            <div v-for="t in decTrendOptions" :key="t.def.id" class="atl-an__mini">
+                <div class="atl-an__minihead">
+                    <span class="atl-an__swatch" :style="{ background: t.def.color }"></span>
+                    <span class="atl-an__minititle">{{ t.def.label }}</span>
+                </div>
+                <e-chart :option="t.option" :height="130"></e-chart>
+            </div>
+        </div>
+    </div>
+
+    <div class="atl-dash__panel" ref="cases">
+        <div class="atl-an__panelhead">
+            <div>
+                <div class="atl-section-title atl-dash__h">Cases</div>
+                <div class="atl-dash__meta">Every refusal, no answer and rejection in scope · click a reason bar above to narrow the list</div>
+            </div>
+            <div class="atl-an__headbtns">
+                <v-chip v-if="selReason" closable color="primary" variant="tonal" @click:close="selReason = null">{{ selReasonText }}</v-chip>
+                <v-btn v-else variant="text" color="grey-darken-1" prepend-icon="mdi-phone-off-outline" @click="selReason = { kind: 'noAnswer' }">Show no answers</v-btn>
+            </div>
+        </div>
+        <div class="atl-an__table">
+            <atl-table :columns="caseColumns" :items="caseRows" v-model:visible="casesVisible" sort-key="date"
+                       pdf-title="Refusals and rejections" :pdf-subtitle="pdfSubtitle + (selReason ? '  ·  ' + selReasonText : '')"
+                       empty-text="No cases match these filters"></atl-table>
+        </div>
+    </div>
+    </template>
 
 </div>
 
@@ -2790,6 +2913,7 @@
                                 <strong>{{ atlDate(h.date) }} — {{ h.action === 'approved' ? 'Approved' : 'Rejected all' }}</strong>
                                 <div>{{ h.candidates.join(', ') }}</div>
                                 <div v-if="h.reason" class="text-medium-emphasis">Reason: {{ h.reason }}</div>
+<div v-for="(r, k) in (h.reasons || [])" :key="k" class="text-medium-emphasis">{{ r }}</div>
                             </div>
                         </v-card>
                     </v-menu>
@@ -2848,6 +2972,7 @@
                         <strong>{{ atlDate(h.date) }} — {{ h.action === 'approved' ? 'Approved' : 'Rejected all' }}</strong>
                         <div>{{ h.candidates.join(', ') }}</div>
                         <div v-if="h.reason" class="text-medium-emphasis">Reason: {{ h.reason }}</div>
+<div v-for="(r, k) in (h.reasons || [])" :key="k" class="text-medium-emphasis">{{ r }}</div>
                     </div>
                 </div>
             </div>
@@ -2862,18 +2987,29 @@
             </div>
         </div>
 
-        <!-- Reject all: reason required -->
-        <v-dialog v-model="rejectOpen" max-width="560">
+        <!-- Reject all: one reason per candidate (Other → note required) -->
+        <v-dialog v-model="rejectOpen" max-width="640" :fullscreen="isPhone">
             <v-card class="pa-2">
                 <v-card-title>Reject all candidates</v-card-title>
                 <v-card-text>
-                    <p class="mb-4">All {{ item.pending.length }} candidates for {{ item.ref }} will be rejected and the agency will continue the candidate search.</p>
-                    <v-textarea v-model="reason" label="Reason (required)" variant="outlined" rows="3" auto-grow autofocus hide-details></v-textarea>
+                    <p class="mb-4">All {{ item.pending.length }} candidates for {{ item.ref }} will be rejected and the agency will continue the candidate search. Please give a reason for each candidate.</p>
+                    <v-select v-if="item.pending.length > 1" v-model="allReason" :items="rejectionReasons" item-value="id" item-title="label"
+                              label="Same reason for all (optional)" variant="outlined" density="compact" hide-details class="mb-4"></v-select>
+                    <div v-for="c in item.pending" :key="c.id" class="atl-reject__row">
+                        <div class="atl-reject__name">{{ fullNameLF(person(c)) }}</div>
+                        <template v-if="reasons[c.id]">
+                            <v-select v-model="reasons[c.id].reason" :items="rejectionReasons" item-value="id" item-title="label"
+                                      label="Reason (required)" variant="outlined" density="compact" hide-details></v-select>
+                            <v-text-field v-if="reasons[c.id].reason" v-model="reasons[c.id].note"
+                                          :label="reasons[c.id].reason === 'other' ? 'Note (required)' : 'Note (optional)'"
+                                          variant="outlined" density="compact" hide-details class="mt-2"></v-text-field>
+                        </template>
+                    </div>
                 </v-card-text>
                 <v-card-actions>
                     <v-spacer></v-spacer>
                     <v-btn variant="text" @click="rejectOpen = false">Cancel</v-btn>
-                    <v-btn color="error" variant="flat" :disabled="!reason.trim()" @click="confirmReject">Reject all</v-btn>
+                    <v-btn color="error" variant="flat" :disabled="!rejectValid" @click="confirmReject">Reject all</v-btn>
                 </v-card-actions>
             </v-card>
         </v-dialog>

@@ -55,6 +55,8 @@ function _anHatch() {
     return { image: _anHatchTile, repeat: 'repeat' };
 }
 const AN_APPROVAL_STRIP = '#7E57C2';
+// Refusals & rejections: refusals in Atlantis blue, rejections in the approval purple
+const AN_DEC = { refused: '#1565C0', rejected: '#7E57C2', noAnswer: '#757575' };
 const AN_BAR = 22;   // bar thickness (px)
 
 // ── Statistics ────────────────────────────────────────────────
@@ -99,6 +101,10 @@ const OpsAnalyticsView = {
             draftTargets: null,
             leadVisible: ['n', 's1', 's2', 's3', 's4', 's5', 's6', 's7', 'total'],
             flightVisible: ['client', 'vessel', 'user', 'stage', 'days', 'target', 'status'],
+            tab:         'time',      // 'time' | 'decisions'
+            decSide:     'refusal',   // by-group table: 'refusal' | 'rejection'
+            selReason:   null,        // { kind: 'refused' | 'rejected' | 'noAnswer', id } — filters the cases table
+            casesVisible: ['kindText', 'reasonText', 'pool', 'rank', 'client', 'vessel', 'user'],
         };
     },
 
@@ -147,25 +153,7 @@ const OpsAnalyticsView = {
         },
 
         // Group key + label of an RFE for the chosen comparison
-        groupsOf() {
-            const by = this.compareBy;
-            const label = {
-                client:     id => (allClientsData.find(c => c.id === id) || {}).name || id,
-                rank:       r => r.toUpperCase(),
-                vesselType: t => t,
-                pool:       p => RFE_POOLS.find(x => x.id === p).label,
-                user:       id => OPS_USERS.find(u => u.id === id).name,
-                group:      id => OPS_GROUPS.find(g => g.id === id).name,
-            };
-            const keyOf = { client: 'clientId', rank: 'rank', vesselType: 'vesselType', pool: 'pool', user: 'userId', group: 'groupId' };
-            if (by === 'all') return [{ key: 'all', label: 'All RFEs', items: this.completed }];
-            const map = {};
-            this.completed.forEach(r => {
-                const k = r[keyOf[by]];
-                (map[k] = map[k] || { key: k, label: label[by](k), items: [] }).items.push(r);
-            });
-            return Object.values(map);
-        },
+        groupsOf() { return this.groupBy(this.completed, 'All RFEs'); },
 
         // Per group: stat per step, stat of total, n — sorted slowest first
         groupStats() {
@@ -465,6 +453,218 @@ const OpsAnalyticsView = {
             ];
         },
 
+        /* ══ Refusals & rejections tab ══════════════════════════
+           One record per candidate decision: history (rfeHistory[].cands) + live
+           rows of the RFAs view. Period = decision date ("Decided in"); the pool
+           filter / grouping uses the candidate's own pool. */
+        decisions() {
+            const from = TODAY.getTime() - this.period * 30.44 * 86400000;
+            const F = this.f;
+            const out = [];
+            rfeHistory.forEach(r => r.cands.forEach(c => out.push({
+                ref: r.ref, clientId: r.clientId, vesselId: r.vesselId, vesselType: r.vesselType, rank: r.rank,
+                userId: r.userId, groupId: r.groupId, name: c.name, pool: c.pool, outcome: c.outcome,
+                reason: c.reason, note: '', at: c.at, live: false,
+            })));
+            const R = this.store.rfaRows;
+            if (R) {
+                [...R.replacement.map(r => ({ row: r, ref: r.rfeNo, cands: r.rfeCandidates || [] })),
+                 ...R.embarkation.map(r => ({ row: r, ref: r.rfaNo, cands: r.candidates || [] }))].forEach(x => {
+                    const v = allVessels.find(vs => vs.id === x.row.vesselId);
+                    const client = allClientsData.find(c => c.vesselIds.includes(x.row.vesselId));
+                    const user = opsUserForClient(client.id, x.ref);
+                    x.cands.forEach(c => {
+                        let outcome = null, reason = null, note = '';
+                        if (c.acceptance === 'refused')       { outcome = 'refused'; reason = c.refusalReason || 'other'; note = c.refusalNote || ''; }
+                        else if (c.acceptance === 'noAnswer') { outcome = 'noAnswer'; }
+                        else if (c.acceptance === 'accepted') { outcome = 'accepted'; }
+                        else if (c.acceptance === 'onApproval') {
+                            outcome = c.approvalChoice === 'rejected' ? 'rejected' : c.approvalChoice || 'onApproval';
+                            if (outcome === 'rejected') { reason = c.rejectionReason || 'other'; note = c.rejectionNote || ''; }
+                        }
+                        if (!outcome) return;
+                        out.push({ ref: x.ref, clientId: client.id, vesselId: v.id, vesselType: v.type, rank: x.row.rank,
+                                   userId: user.id, groupId: user.groupId, name: c.name, pool: c.groupId || 'new',
+                                   outcome, reason, note, at: c.decidedAt || Date.now(), live: true });
+                    });
+                });
+            }
+            return out.filter(d => d.at >= from
+                && (!F.client || d.clientId === F.client) && (!F.vesselType || d.vesselType === F.vesselType)
+                && (!F.rank || d.rank === F.rank) && (!F.pool || d.pool === F.pool)
+                && (!F.user || d.userId === F.user) && (!F.group || d.groupId === F.group));
+        },
+        decCounts() { return this._decCounts(this.decisions); },
+
+        decKpis() {
+            const c = this.decCounts;
+            const top = kind => this.reasonStats(kind)[0];
+            const tr = top('refused'), tj = top('rejected');
+            return [
+                { id: 'ref', label: 'Seafarer refusal rate', icon: 'mdi-account-cancel-outline', value: this.pct(c.refusalRate),
+                  sub: c.refused + ' refused of ' + c.asked + ' asked' },
+                { id: 'na', label: 'No answer', icon: 'mdi-phone-off-outline', value: this.pct(c.noAnswerRate),
+                  sub: c.noAnswer + ' of ' + c.asked + ' asked did not answer in time' },
+                { id: 'rej', label: 'Principal rejection rate', icon: 'mdi-close-circle-outline', value: this.pct(c.rejectionRate),
+                  sub: c.rejected + ' rejected of ' + c.sent + ' sent for approval · ' + c.notFavored + ' not favored (not counted)' },
+                { id: 'asked', label: 'Asked per filled RFE', icon: 'mdi-account-multiple-outline',
+                  value: c.approved ? (c.asked / c.approved).toFixed(1) : '—', sub: 'Candidates asked for each approved one' },
+                { id: 'topref', label: 'Top refusal reason', icon: 'mdi-account-alert-outline',
+                  value: tr ? this.pct(tr.share) : '—', sub: tr ? tr.label : 'No refusals' },
+                { id: 'toprej', label: 'Top rejection reason', icon: 'mdi-account-remove-outline',
+                  value: tj ? this.pct(tj.share) : '—', sub: tj ? tj.label : 'No rejections' },
+            ];
+        },
+
+        // Extra days per reason (statistic of the median / average toggle):
+        //  refusal  → search + acceptance days of RFEs with that refusal reason minus
+        //             the same for RFEs without any refusal
+        //  rejection → rework days (lost to the rejected pass) of RFEs with that reason
+        lostByReason() {
+            const refs = new Set(this.decisions.filter(d => !d.live).map(d => d.ref));
+            const rfes = rfeHistory.filter(r => refs.has(r.ref)).map(r => ({ r, d: rfeStepDurations(r.events) }));
+            const sa = x => x.d.steps.s2 + x.d.steps.s3;
+            const base = _anStat(rfes.filter(x => !x.r.cands.some(c => c.outcome === 'refused')).map(sa), this.stat) || 0;
+            const out = { refused: {}, rejected: {} };
+            SEAFARER_REFUSAL_REASONS.forEach(z => {
+                const v = rfes.filter(x => x.r.cands.some(c => c.outcome === 'refused' && c.reason === z.id)).map(sa);
+                out.refused[z.id] = v.length ? Math.max(0, _anStat(v, this.stat) - base) : null;
+            });
+            PRINCIPAL_REJECTION_REASONS.forEach(z => {
+                const v = rfes.filter(x => x.r.cands.some(c => c.outcome === 'rejected' && c.reason === z.id)).map(x => x.d.rework);
+                out.rejected[z.id] = v.length ? _anStat(v, this.stat) : null;
+            });
+            return out;
+        },
+
+        refusalOption()   { return this.reasonOption('refused'); },
+        rejectionOption() { return this.reasonOption('rejected'); },
+        refusalHeight()   { return this.reasonStats('refused').length * 34 + 50; },
+        rejectionHeight() { return this.reasonStats('rejected').length * 34 + 50; },
+
+        // Time lost per reason, both sides on one axis (days)
+        lostOption() {
+            const rows = [
+                ...this.reasonStats('refused').map(r => Object.assign({ kind: 'refused' }, r)),
+                ...this.reasonStats('rejected').map(r => Object.assign({ kind: 'rejected' }, r)),
+            ].filter(r => r.lost != null && r.count >= 3).sort((a, b) => b.lost - a.lost);
+            const mk = (kind, name, color) => ({
+                name, type: 'bar', stack: 'lost', barWidth: 16,
+                itemStyle: { color, borderRadius: [0, 4, 4, 0] },
+                label: { show: true, position: 'right', color: AN_INK.primary, fontSize: 11, formatter: p => (p.value ? '+' + _anFmt(p.value) + ' d' : '') },
+                data: rows.map(r => (r.kind === kind ? Math.round(r.lost * 10) / 10 : null)),
+            });
+            return {
+                textStyle: { fontFamily: AN_FONT },
+                legend: { top: 0, left: 0, itemGap: 18, textStyle: { color: AN_INK.secondary, fontSize: 12 }, data: ['Seafarer refusal', 'Principal rejection'] },
+                grid: { top: 32, left: 24, right: 60, bottom: 24, containLabel: true },
+                xAxis: { type: 'value', name: 'days', nameTextStyle: { color: AN_INK.muted }, axisLabel: { color: AN_INK.muted },
+                         splitLine: { lineStyle: { color: AN_INK.grid } }, axisLine: { show: true, lineStyle: { color: AN_INK.axis } } },
+                yAxis: { type: 'category', inverse: true, data: rows.map(r => r.label), axisTick: { show: false },
+                         axisLabel: { color: AN_INK.primary, fontSize: 12 }, axisLine: { lineStyle: { color: AN_INK.axis } } },
+                tooltip: { trigger: 'item', backgroundColor: '#fff', borderColor: '#e0e0e0', textStyle: { color: AN_INK.primary, fontFamily: AN_FONT, fontSize: 12 },
+                    formatter: p => {
+                        const r = rows[p.dataIndex];
+                        return '<b>' + _anEsc(r.label) + '</b><br>' + (r.kind === 'refused' ? 'Seafarer refusal' : 'Principal rejection')
+                            + ' · ' + r.count + ' cases<br>' + this.statLabel + ' extra <b>' + _anFmt(r.lost) + ' d</b>'
+                            + '<br><span style="color:' + AN_INK.secondary + '">' + (r.kind === 'refused'
+                                ? 'Search + acceptance days vs RFEs without refusals'
+                                : 'Days lost to the rejected pass (back to search)') + '</span>';
+                    } },
+                series: [mk('refused', 'Seafarer refusal', AN_DEC.refused), mk('rejected', 'Principal rejection', AN_DEC.rejected)],
+            };
+        },
+        lostHeight() {
+            const n = [...this.reasonStats('refused'), ...this.reasonStats('rejected')].filter(r => r.lost != null && r.count >= 3).length;
+            return n * 28 + 60;
+        },
+
+        // By group × reason: share of the group's refusals (or rejections) per reason
+        decGroups() {
+            const kind = this.decSide === 'refusal' ? 'refused' : 'rejected';
+            const reasons = kind === 'refused' ? SEAFARER_REFUSAL_REASONS : PRINCIPAL_REJECTION_REASONS;
+            const rows = this.groupBy(this.decisions, 'All candidates').map(g => {
+                const c = this._decCounts(g.items);
+                const hits = g.items.filter(d => d.outcome === kind);
+                const share = {};
+                reasons.forEach(z => { share[z.id] = hits.length ? hits.filter(d => d.reason === z.id).length / hits.length : 0; });
+                return { key: g.key, label: g.label, base: kind === 'refused' ? c.asked : c.sent, n: hits.length,
+                         rate: kind === 'refused' ? c.refusalRate : c.rejectionRate, share, low: hits.length < AN_LOW_SAMPLE };
+            }).sort((a, b) => b.rate - a.rate);
+            return { kind, reasons: reasons.filter(z => rows.some(r => r.share[z.id] > 0)), rows };
+        },
+
+        // Monthly rates (small multiples)
+        decTrendOptions() {
+            const byMonth = {};
+            this.decisions.forEach(d => {
+                const dt = new Date(d.at), k = dt.getUTCFullYear() + '-' + dt.getUTCMonth();
+                (byMonth[k] = byMonth[k] || []).push(d);
+            });
+            const defs = [
+                { id: 'refusalRate',   label: 'Seafarer refusal rate',   color: AN_DEC.refused },
+                { id: 'noAnswerRate',  label: 'No answer rate',          color: AN_DEC.noAnswer },
+                { id: 'rejectionRate', label: 'Principal rejection rate', color: AN_DEC.rejected },
+            ];
+            return defs.map(def => ({ def, option: {
+                textStyle: { fontFamily: AN_FONT },
+                grid: { top: 14, left: 4, right: 38, bottom: 4, containLabel: true },
+                xAxis: { type: 'category', data: this.months.map(m => m.label), boundaryGap: false,
+                         axisLabel: { color: AN_INK.muted, fontSize: 10, interval: Math.ceil(this.months.length / 4) - 1 },
+                         axisTick: { show: false }, axisLine: { lineStyle: { color: AN_INK.axis } } },
+                yAxis: { type: 'value', min: 0, splitNumber: 3, axisLabel: { color: AN_INK.muted, fontSize: 10, formatter: v => Math.round(v * 100) + '%' },
+                         splitLine: { lineStyle: { color: AN_INK.grid } } },
+                tooltip: { trigger: 'axis', backgroundColor: '#fff', borderColor: '#e0e0e0', textStyle: { color: AN_INK.primary, fontFamily: AN_FONT, fontSize: 12 },
+                           formatter: ps => '<b>' + (ps[0].value == null ? '—' : Math.round(ps[0].value * 100) + '%') + '</b> · ' + _anEsc(ps[0].name) },
+                series: [{
+                    type: 'line', connectNulls: true, showSymbol: false, lineStyle: { width: 2, color: def.color }, itemStyle: { color: def.color },
+                    endLabel: { show: true, color: AN_INK.primary, fontSize: 11, formatter: p => Math.round(p.value * 100) + '%' },
+                    data: this.months.map(m => { const v = byMonth[m.key]; return v && v.length >= AN_LOW_SAMPLE ? this._decCounts(v)[def.id] : null; }),
+                }],
+            } }));
+        },
+
+        // Cases (refusals, no answers, rejections) — filtered by a clicked reason
+        caseRows() {
+            const S = this.selReason;
+            return this.decisions
+                .filter(d => ['refused', 'noAnswer', 'rejected'].includes(d.outcome))
+                .filter(d => !S || (d.outcome === S.kind && (S.kind === 'noAnswer' || d.reason === S.id)))
+                .map((d, i) => ({
+                    _key: d.ref + '|' + i, date: isoDate(new Date(d.at)), ref: d.ref, name: d.name,
+                    kindText: d.outcome === 'refused' ? 'Seafarer refused' : d.outcome === 'noAnswer' ? 'No answer' : 'Principal rejected',
+                    kindChip: d.outcome === 'refused' ? { text: 'Seafarer refused', color: 'primary', icon: 'mdi-account-cancel-outline' }
+                            : d.outcome === 'noAnswer' ? { text: 'No answer', color: 'grey', icon: 'mdi-phone-off-outline' }
+                            : { text: 'Principal rejected', color: '#7E57C2', icon: 'mdi-close-circle-outline' },
+                    reasonText: d.outcome === 'refused' ? refusalReasonLabel(d.reason) : d.outcome === 'rejected' ? rejectionReasonLabel(d.reason) : '—',
+                    note: d.note || '', pool: RFE_POOLS.find(p => p.id === d.pool).label, rank: d.rank.toUpperCase(),
+                    client: allClientsData.find(c => c.id === d.clientId).name,
+                    vessel: allVessels.find(v => v.id === d.vesselId).name.toUpperCase(),
+                    user: OPS_USERS.find(u => u.id === d.userId).name,
+                    date_sort: -d.at,
+                }));
+        },
+        caseColumns() {
+            return [
+                { key: 'date',       title: 'Date', fixed: true, format: v => atlDate(v) },
+                { key: 'ref',        title: 'Request', fixed: true },
+                { key: 'name',       title: 'Seafarer' },
+                { key: 'kindText',   title: 'Outcome', type: 'chip', chip: r => r.kindChip },
+                { key: 'reasonText', title: 'Reason' },
+                { key: 'note',       title: 'Note' },
+                { key: 'pool',       title: 'Pool' },
+                { key: 'rank',       title: 'Rank' },
+                { key: 'client',     title: 'Principal' },
+                { key: 'vessel',     title: 'Vessel' },
+                { key: 'user',       title: 'User' },
+            ];
+        },
+        selReasonText() {
+            const S = this.selReason;
+            if (!S) return '';
+            return S.kind === 'noAnswer' ? 'No answer' : (S.kind === 'refused' ? 'Seafarer refused: ' + refusalReasonLabel(S.id) : 'Principal rejected: ' + rejectionReasonLabel(S.id));
+        },
+
         pdfSubtitle() {
             const F = this.f, o = this.options;
             const name = (list, v) => { const x = list.find(i => (i.value || i) === v); return x ? (x.title || x) : v; };
@@ -476,6 +676,85 @@ const OpsAnalyticsView = {
     },
 
     methods: {
+        // Groups of items (RFEs or candidate decisions — same field names) by compareBy
+        groupBy(items, allLabel) {
+            const by = this.compareBy;
+            if (by === 'all') return [{ key: 'all', label: allLabel, items }];
+            const label = {
+                client:     id => (allClientsData.find(c => c.id === id) || {}).name || id,
+                rank:       r => r.toUpperCase(),
+                vesselType: t => t,
+                pool:       p => (RFE_POOLS.find(x => x.id === p) || { label: p }).label,
+                user:       id => OPS_USERS.find(u => u.id === id).name,
+                group:      id => OPS_GROUPS.find(g => g.id === id).name,
+            };
+            const keyOf = { client: 'clientId', rank: 'rank', vesselType: 'vesselType', pool: 'pool', user: 'userId', group: 'groupId' };
+            const map = {};
+            items.forEach(r => {
+                const k = r[keyOf[by]];
+                (map[k] = map[k] || { key: k, label: label[by](k), items: [] }).items.push(r);
+            });
+            return Object.values(map);
+        },
+        // Counts and rates of a list of candidate decisions
+        _decCounts(items) {
+            const n = o => items.filter(d => d.outcome === o).length;
+            const c = { refused: n('refused'), noAnswer: n('noAnswer'), rejected: n('rejected'),
+                        approved: n('approved'), notFavored: n('notFavored') };
+            c.asked = items.length;                                     // every candidate asked for acceptance
+            c.sent  = c.rejected + c.approved + c.notFavored;           // decided by the principal
+            c.refusalRate   = c.asked ? c.refused / c.asked : 0;
+            c.noAnswerRate  = c.asked ? c.noAnswer / c.asked : 0;
+            c.rejectionRate = c.sent ? c.rejected / c.sent : 0;
+            return c;
+        },
+        // Reasons of one side: [{ id, label, count, share, lost }] most frequent first
+        reasonStats(kind) {
+            const list = kind === 'refused' ? SEAFARER_REFUSAL_REASONS : PRINCIPAL_REJECTION_REASONS;
+            const hits = this.decisions.filter(d => d.outcome === kind);
+            return list.map(z => {
+                const count = hits.filter(d => d.reason === z.id).length;
+                return { id: z.id, label: z.label, count, share: hits.length ? count / hits.length : 0, lost: this.lostByReason[kind][z.id] };
+            }).filter(r => r.count > 0).sort((a, b) => b.count - a.count);
+        },
+        // Sorted horizontal bars of reason counts (one hue per side), click → cases
+        reasonOption(kind) {
+            const rows = this.reasonStats(kind);
+            const color = AN_DEC[kind];
+            return {
+                textStyle: { fontFamily: AN_FONT },
+                grid: { top: 8, left: 24, right: 90, bottom: 24, containLabel: true },
+                xAxis: { type: 'value', minInterval: 1, axisLabel: { color: AN_INK.muted },
+                         splitLine: { lineStyle: { color: AN_INK.grid } }, axisLine: { show: true, lineStyle: { color: AN_INK.axis } } },
+                yAxis: { type: 'category', inverse: true, data: rows.map(r => r.label), axisTick: { show: false },
+                         axisLabel: { color: AN_INK.primary, fontSize: 12 }, axisLine: { lineStyle: { color: AN_INK.axis } } },
+                tooltip: { trigger: 'item', backgroundColor: '#fff', borderColor: '#e0e0e0', textStyle: { color: AN_INK.primary, fontFamily: AN_FONT, fontSize: 12 },
+                    formatter: p => {
+                        const r = rows[p.dataIndex];
+                        return '<b>' + _anEsc(r.label) + '</b><br>' + r.count + ' cases · ' + this.pct(r.share) + ' of all '
+                            + (kind === 'refused' ? 'refusals' : 'rejections')
+                            + (r.lost != null ? '<br>' + this.statLabel + ' extra ' + _anFmt(r.lost) + ' d' : '')
+                            + '<br><span style="color:' + AN_INK.secondary + '">Click to list the cases</span>';
+                    } },
+                series: [{
+                    type: 'bar', barWidth: 18, itemStyle: { color, borderRadius: [0, 4, 4, 0] }, cursor: 'pointer',
+                    label: { show: true, position: 'right', color: AN_INK.primary, fontSize: 12,
+                             formatter: p => rows[p.dataIndex].count + '  ·  ' + this.pct(rows[p.dataIndex].share) },
+                    data: rows.map(r => r.count),
+                }],
+            };
+        },
+        onReasonClick(kind, p) {
+            const r = this.reasonStats(kind)[p.dataIndex];
+            if (!r) return;
+            this.selReason = { kind, id: r.id };
+            this.$nextTick(() => { const el = this.$refs.cases; if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+        },
+        // Heat cell: share shaded in the side's hue (text flips to white on dark cells)
+        heatStyle(share, kind) {
+            const rgb = kind === 'refused' ? '21,101,192' : '126,87,194';
+            return { background: 'rgba(' + rgb + ',' + (0.06 + share * 0.94).toFixed(2) + ')', color: share > 0.45 ? '#fff' : AN_INK.primary };
+        },
         fmt: _anFmt,
         pct: v => Math.round(v * 100) + '%',
         // Days in the current stage: from the stage log, else a seeded entry date

@@ -170,6 +170,111 @@ var rfeHistory = (function () {
     return out;
 })();
 
+/* ── Seafarer refusals and principal rejections ────────────────
+   Reasons are picked from these lists (draft — to be agreed with the
+   stakeholders; ids are stored, labels can be renamed freely).
+   - Seafarer refused (internal RFAs view, Operations): one reason per refusal.
+     "No answer within the deadline" is a separate outcome (acceptance 'noAnswer').
+   - Principal rejected all (Client UI): one reason per rejected candidate.
+     When the principal approves one candidate, the others are "not favored"
+     (approvalChoice 'notFavored') — no reason, not a rejection. */
+var SEAFARER_REFUSAL_REASONS = [
+    { id: 'salary',       label: 'Salary / terms' },
+    { id: 'vessel',       label: 'Vessel type or trading area' },
+    { id: 'contract',     label: 'Contract length / rotation' },
+    { id: 'availability', label: 'Not available on the joining date' },
+    { id: 'family',       label: 'Family / personal' },
+    { id: 'health',       label: 'Health' },
+    { id: 'otherOffer',   label: "Accepted another company's offer" },
+    { id: 'other',        label: 'Other' },
+];
+var PRINCIPAL_REJECTION_REASONS = [
+    { id: 'expRank',     label: 'Not enough experience in the rank' },
+    { id: 'expVessel',   label: 'Not enough experience on the vessel type' },
+    { id: 'performance', label: 'Past performance / appraisal' },
+    { id: 'documents',   label: 'Certificates or documents' },
+    { id: 'age',         label: 'Age' },
+    { id: 'english',     label: 'English / communication' },
+    { id: 'crewMix',     label: 'Nationality / crew mix' },
+    { id: 'salary',      label: 'Salary expectation' },
+    { id: 'preferOther', label: 'Prefers another candidate or former crew' },
+    { id: 'other',       label: 'Other' },
+];
+function refusalReasonLabel(id)   { var r = SEAFARER_REFUSAL_REASONS.find(x => x.id === id);   return r ? r.label : (id || '—'); }
+function rejectionReasonLabel(id) { var r = PRINCIPAL_REJECTION_REASONS.find(x => x.id === id); return r ? r.label : (id || '—'); }
+
+/* Candidate history of the completed RFEs (separate seeded stream, so the
+   durations above are unchanged): rfeHistory[i].cands =
+   [{ name, pool, outcome: 'refused'|'noAnswer'|'rejected'|'approved'|'notFavored', reason, at }]
+   - more refusals when search + acceptance took longer; new candidates refuse
+     more (salary, vessel), dedicated crew mostly over availability / family
+   - every rejection pass (loop) rejects all candidates sent, each with a reason;
+     Pacific Logistics (c2) rejects more on vessel-type experience and English */
+(function () {
+    var seed = 777;
+    var rnd = function () {
+        seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+        var t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+        t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+        return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+    var pickW = function (map) {
+        var keys = Object.keys(map), sum = keys.reduce((a, k) => a + map[k], 0), r = rnd() * sum;
+        for (var i = 0; i < keys.length; i++) { r -= map[keys[i]]; if (r <= 0) return keys[i]; }
+        return keys[keys.length - 1];
+    };
+    var REFUSE = {
+        dedicated: { salary: 12, vessel: 6,  contract: 10, availability: 34, family: 22, health: 6, otherOffer: 5,  other: 5 },
+        excrew:    { salary: 24, vessel: 14, contract: 14, availability: 16, family: 11, health: 4, otherOffer: 14, other: 3 },
+        new:       { salary: 31, vessel: 21, contract: 14, availability: 9,  family: 7,  health: 2, otherOffer: 14, other: 2 },
+    };
+    var REJECT = { expRank: 24, expVessel: 20, performance: 9, documents: 11, age: 7, english: 10, crewMix: 6, salary: 5, preferOther: 6, other: 2 };
+    var DAY = 86400000;
+    var poolMix = { dedicated: 40, excrew: 35, new: 25 };
+    rfeHistory.forEach(r => {
+        var d = rfeStepDurations(r.events);
+        var byRank = allSeafarers.filter(s => s.rank === r.rank);
+        var names = byRank.length ? byRank : allSeafarers;
+        var name = () => names[Math.floor(rnd() * names.length)].name;
+        var asks = r.events.filter(e => e.stage === 'ask').map(e => e.at);
+        var accepted = r.events.filter(e => e.stage === 'accepted').map(e => e.at);
+        var searches = r.events.filter(e => e.stage === 'search').map(e => e.at);
+        var cands = [];
+        // refusals / no answers, spread over the passes' acceptance windows
+        var slow = Math.max(0, (d.steps.s2 + d.steps.s3) / 9 - 0.6);
+        var nRef = Math.floor(rnd() * (0.6 + slow * 1.6) + (r.pool === 'new' ? 0.5 : 0) + rnd() * 0.6);
+        for (var k = 0; k < nRef; k++) {
+            var pool = pickW({ dedicated: 18, excrew: 37, new: 45 });   // new candidates refuse most
+            var w = Object.assign({}, REFUSE[pool]);
+            if (r.rank === 'Master' || r.rank === 'Chief Engineer') w.salary *= 1.5;
+            var p = Math.floor(rnd() * asks.length);
+            var at = asks[p] + rnd() * Math.max(DAY, accepted[p] - asks[p]);
+            if (rnd() < ({ dedicated: 0.08, excrew: 0.2, new: 0.32 })[pool])
+                cands.push({ name: name(), pool, outcome: 'noAnswer', reason: null, at: Math.round(at) });
+            else
+                cands.push({ name: name(), pool, outcome: 'refused', reason: pickW(w), at: Math.round(at) });
+        }
+        // rejection passes: all sent candidates rejected, one reason each
+        for (var lp = 1; lp < searches.length; lp++) {
+            var nSent = 2 + Math.floor(rnd() * 2);
+            for (var j = 0; j < nSent; j++) {
+                var cp = pickW(poolMix);
+                var rw = Object.assign({}, REJECT);
+                if (r.clientId === 'c2') { rw.expVessel *= 2; rw.english *= 1.6; }
+                if (cp === 'new') { rw.expRank *= 1.6; rw.expVessel *= 1.4; }
+                if (cp === 'dedicated') { rw.performance *= 1.5; rw.expRank *= 0.5; }
+                cands.push({ name: name(), pool: cp, outcome: 'rejected', reason: pickW(rw), at: searches[lp] });
+            }
+        }
+        // final pass: one approved (the RFE's pool), the others not favored
+        var approvalAt = r.events.filter(e => e.stage === 'preparation')[0].at;
+        cands.push({ name: name(), pool: r.pool, outcome: 'approved', reason: null, at: approvalAt });
+        var nOthers = Math.floor(rnd() * 2.4);
+        for (var o = 0; o < nOthers; o++) cands.push({ name: name(), pool: pickW(poolMix), outcome: 'notFavored', reason: null, at: approvalAt });
+        r.cands = cands;
+    });
+})();
+
 /* ── Live RFEs: stage log (entry dates of the current stage) ─────
    Seeded for open RFEs on first use; RFAs.js records new stage changes
    (send for approval, principal approve / reject all) via logRfeStage(). */
