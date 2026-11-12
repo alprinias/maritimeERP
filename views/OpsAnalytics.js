@@ -7,7 +7,7 @@
    - Filters (one row, scope everything): period, client, vessel type, rank,
      seafarer pool, user, user group · statistic median (default) / average ·
      compare by · targets
-   - KPI tiles · lead-time bars per group (7 steps stacked, ordinal blue ramp,
+   - KPI tiles · start-to-embarkation bars per group (7 steps stacked, ordinal blue ramp,
      target marker, table view) · spread per step (box plot) · monthly trend per
      step (small multiples) · rework (loops back to search) · in-flight RFEs
    Steps are measured on the final pass (data/analytics.js rfeStepDurations).
@@ -125,7 +125,7 @@ const OpsAnalyticsView = {
         compareItems() {
             return [
                 { value: 'all',        title: 'All RFEs (no grouping)' },
-                { value: 'client',     title: 'Client' },
+                { value: 'client',     title: 'Principal' },
                 { value: 'rank',       title: 'Rank' },
                 { value: 'vesselType', title: 'Vessel type' },
                 { value: 'pool',       title: 'Seafarer pool' },
@@ -193,10 +193,10 @@ const OpsAnalyticsView = {
             const within = totals.filter(t => t <= this.targetTotal).length / (totals.length || 1);
             const loops = all.filter(r => r.d.loops > 0);
             return [
-                { id: 'lead', label: this.statLabel + ' lead time', icon: 'mdi-timer-outline',
+                { id: 'lead', label: this.statLabel + ' start to embarkation time', icon: 'mdi-timer-outline',
                   value: _anFmt(_anStat(totals, this.stat)) + ' d', sub: 'Created → Embarked · ' + all.length + ' RFEs' },
                 { id: 'within', label: 'Within target', icon: 'mdi-target',
-                  value: Math.round(within * 100) + '%', sub: 'Lead time ≤ ' + this.targetTotal + ' d (sum of step targets)',
+                  value: Math.round(within * 100) + '%', sub: 'Start to embarkation ≤ ' + this.targetTotal + ' d (sum of step targets)',
                   status: within >= 0.8 ? { text: 'On track', icon: 'mdi-check-circle-outline', color: 'success' }
                         : within >= 0.6 ? { text: 'Watch', icon: 'mdi-alert-outline', color: 'warning' }
                         : { text: 'Below 60%', icon: 'mdi-alert-circle-outline', color: 'error' } },
@@ -215,7 +215,7 @@ const OpsAnalyticsView = {
             ];
         },
 
-        // ── Chart 1: lead-time bars per group ─────────────────
+        // ── Chart 1: start-to-embarkation bars per group ─────────────────
         leadHeight() { return Math.max(160, this.groupStats.length * 44 + 110); },
         leadOption() {
             const G = this.groupStats;
@@ -283,7 +283,7 @@ const OpsAnalyticsView = {
                         return '<div style="font-weight:600;margin-bottom:4px">' + _anEsc(g.label) + ' · ' + g.n + ' RFEs'
                             + (g.low ? ' · low sample' : '') + '</div>' + rows
                             + '<div style="margin-top:6px;border-top:1px solid #eee;padding-top:4px">Sum of step ' + statLabel.toLowerCase() + 's <b>'
-                            + _anFmt(g.sumSteps) + ' d</b><br>' + statLabel + ' lead time <b>' + _anFmt(g.total) + ' d</b> · within target <b>'
+                            + _anFmt(g.sumSteps) + ' d</b><br>' + statLabel + ' start to embarkation time <b>' + _anFmt(g.total) + ' d</b> · within target <b>'
                             + Math.round(g.withinTarget * 100) + '%</b></div>';
                     },
                 },
@@ -295,7 +295,7 @@ const OpsAnalyticsView = {
                 { key: 'label', title: this.compareItems.find(c => c.value === this.compareBy).title, fixed: true },
                 { key: 'n', title: 'RFEs' },
                 ...RFE_STEPS.map(s => ({ key: s.id, title: s.short + ' (d)', format: v => _anFmt(v) })),
-                { key: 'total', title: this.statLabel + ' lead time (d)', format: v => _anFmt(v) },
+                { key: 'total', title: this.statLabel + ' start to embarkation (d)', format: v => _anFmt(v) },
                 { key: 'within', title: 'Within target', format: v => Math.round(v * 100) + '%' },
                 { key: 'rework', title: 'Rework rate', format: v => Math.round(v * 100) + '%' },
             ];
@@ -308,9 +308,14 @@ const OpsAnalyticsView = {
         // ── Chart 2: spread per step (box plot) ───────────────
         boxOption() {
             const all = this.completed;
-            const boxes = [], outliers = [];
+            // Box = quartiles (so its middle line is always the median); whiskers = the
+            // lowest / highest values within 1.5 × box length of the box; beyond = outliers.
+            // Average mode adds the average as a marker.
+            const BOX = 'Middle 50% · usual range', avgMode = this.stat === 'average';
+            const boxes = [], outliers = [], means = [];
             RFE_STEPS.forEach((s, i) => {
                 const v = all.map(r => r.d.steps[s.id]).sort((a, b) => a - b);
+                means.push(_anStat(v, 'average'));
                 const q1 = _anQuantile(v, 0.25), q2 = _anQuantile(v, 0.5), q3 = _anQuantile(v, 0.75);
                 const lo = q1 - 1.5 * (q3 - q1), hi = q3 + 1.5 * (q3 - q1);
                 const inside = v.filter(x => x >= lo && x <= hi);
@@ -320,7 +325,8 @@ const OpsAnalyticsView = {
             });
             return {
                 textStyle: { fontFamily: AN_FONT },
-                legend: { top: 0, left: 0, textStyle: { color: AN_INK.secondary, fontSize: 12 }, data: ['Middle 50% and range', 'Outlier', 'Target'] },
+                legend: { top: 0, left: 0, itemGap: 18, textStyle: { color: AN_INK.secondary, fontSize: 12 },
+                          data: [BOX, ...(avgMode ? ['Average'] : []), 'Outlier', 'Target'] },
                 grid: { top: 36, left: 8, right: 24, bottom: 28, containLabel: true },
                 xAxis: { type: 'value', name: 'days', nameTextStyle: { color: AN_INK.muted }, axisLabel: { color: AN_INK.muted },
                          splitLine: { lineStyle: { color: AN_INK.grid } }, axisLine: { show: true, lineStyle: { color: AN_INK.axis } } },
@@ -329,20 +335,25 @@ const OpsAnalyticsView = {
                 tooltip: { trigger: 'item', backgroundColor: '#fff', borderColor: '#e0e0e0', textStyle: { color: AN_INK.primary, fontFamily: AN_FONT, fontSize: 12 },
                     formatter: p => {
                         const s = RFE_STEPS[p.dataIndex] || RFE_STEPS[p.value[1]];
-                        if (p.seriesName === 'Middle 50% and range') {
+                        if (p.seriesName === BOX) {
                             const [mn, a, m, b, mx] = p.value.slice(-5);
-                            return '<b>' + _anEsc(s.label) + '</b><br>Median <b>' + _anFmt(m) + ' d</b> · middle 50% ' + _anFmt(a) + '–' + _anFmt(b)
-                                + ' d<br>Range ' + _anFmt(mn) + '–' + _anFmt(mx) + ' d · target ' + this.targets[s.id] + ' d';
+                            return '<b>' + _anEsc(s.label) + '</b><br>Median <b>' + _anFmt(m) + ' d</b> · average <b>' + _anFmt(means[p.dataIndex]) + ' d</b>'
+                                + '<br>Middle 50% of RFEs ' + _anFmt(a) + '–' + _anFmt(b) + ' d'
+                                + '<br>Usual range (whiskers) ' + _anFmt(mn) + '–' + _anFmt(mx) + ' d<br>Target ' + this.targets[s.id] + ' d';
                         }
+                        if (p.seriesName === 'Average') return '<b>' + _anEsc(RFE_STEPS[p.value[1]].label) + '</b><br>Average <b>' + _anFmt(p.value[0]) + ' d</b>';
                         if (p.seriesName === 'Target') return '<b>' + _anEsc(RFE_STEPS[p.value[1]].label) + '</b><br>Target <b>' + p.value[0] + ' d</b>';
                         return '<b>' + _anEsc(RFE_STEPS[p.value[1]].label) + '</b><br>Outlier <b>' + _anFmt(p.value[0]) + ' d</b>';
                     } },
                 series: [
-                    { name: 'Middle 50% and range', type: 'boxplot', boxWidth: [10, 22], data: boxes,
-                      itemStyle: { color: '#719fd840', borderColor: '#345f95' } },
+                    { name: BOX, type: 'boxplot', boxWidth: [10, 22], data: boxes,
+                      itemStyle: { color: '#A9C5EA55', borderColor: '#4F7DBF' } },
+                    ...(avgMode ? [{ name: 'Average', type: 'scatter', symbol: 'circle', symbolSize: 11, z: 4,
+                      data: means.map((m, i) => [Math.round(m * 10) / 10, i]),
+                      itemStyle: { color: '#ffffff', borderColor: '#E07A35', borderWidth: 2.5 } }] : []),
                     { name: 'Outlier', type: 'scatter', symbolSize: 8, data: outliers,
                       itemStyle: { color: '#9e9e9e', borderColor: '#fff', borderWidth: 2 } },
-                    { name: 'Target', type: 'scatter', symbol: 'diamond', symbolSize: 13,
+                    { name: 'Target', type: 'scatter', symbol: 'diamond', symbolSize: 13, z: 5,
                       data: RFE_STEPS.map((s, i) => [+this.targets[s.id], i]),
                       itemStyle: { color: AN_INK.primary, borderColor: '#fff', borderWidth: 2 } },
                 ],
@@ -442,7 +453,7 @@ const OpsAnalyticsView = {
             return [
                 { key: 'ref',    title: 'Request', fixed: true },
                 { key: 'rank',   title: 'Rank',    fixed: true },
-                { key: 'client', title: 'Client' },
+                { key: 'client', title: 'Principal' },
                 { key: 'vessel', title: 'Vessel' },
                 { key: 'user',   title: 'User' },
                 { key: 'group',  title: 'Group' },

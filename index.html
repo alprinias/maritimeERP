@@ -1982,7 +1982,7 @@
     <div class="atl-an__filters">
         <v-select v-model="period" :items="[{ value: 3, title: '3 months' }, { value: 6, title: '6 months' }, { value: 12, title: '12 months' }]"
                   label="Period" density="compact" variant="outlined" hide-details class="atl-an__f"></v-select>
-        <v-select v-model="f.client" :items="options.client" label="Client" clearable density="compact" variant="outlined" hide-details class="atl-an__f"></v-select>
+        <v-select v-model="f.client" :items="options.client" label="Principal" clearable density="compact" variant="outlined" hide-details class="atl-an__f"></v-select>
         <v-select v-model="f.vesselType" :items="options.vesselType" label="Vessel type" clearable density="compact" variant="outlined" hide-details class="atl-an__f"></v-select>
         <v-select v-model="f.rank" :items="options.rank" label="Rank" clearable density="compact" variant="outlined" hide-details class="atl-an__f"></v-select>
         <v-select v-model="f.pool" :items="options.pool" label="Seafarer pool" clearable density="compact" variant="outlined" hide-details class="atl-an__f"></v-select>
@@ -2009,12 +2009,12 @@
         </v-card>
     </div>
 
-    <!-- Lead time per group -->
+    <!-- Start to embarkation time per group -->
     <div class="atl-dash__panel">
         <div class="atl-an__panelhead">
             <div>
-                <div class="atl-section-title atl-dash__h">Lead time by step</div>
-                <div class="atl-dash__meta">{{ statLabel }} days per step, slowest first · dashed line = target lead time · click a bar to filter</div>
+                <div class="atl-section-title atl-dash__h">Start to Embarkation Time by step</div>
+                <div class="atl-dash__meta">{{ statLabel }} days per step, slowest first · dashed line = target start to embarkation time · click a bar to filter</div>
             </div>
             <div class="atl-an__headbtns">
                 <v-select v-model="compareBy" :items="compareItems" label="Compare by" density="compact" variant="outlined" hide-details class="atl-an__compare"></v-select>
@@ -2034,13 +2034,15 @@
         </template>
         <div v-else class="atl-an__table">
             <atl-table :columns="leadColumns" :items="leadRows" v-model:visible="leadVisible"
-                       pdf-title="RFE lead time by step" :pdf-subtitle="pdfSubtitle"></atl-table>
+                       pdf-title="RFE start to embarkation time by step" :pdf-subtitle="pdfSubtitle"></atl-table>
         </div>
         <div class="atl-an__note">
             <v-icon icon="mdi-information-outline" size="16"></v-icon>
-            <span v-if="stat === 'median'">Bar length = sum of the step medians. The median lead time (in the tooltip and table) is measured per RFE, so it differs from the sum.</span>
-            <span v-else>Bar length = sum of the step averages, which equals the average lead time of the final pass. Rework before the final pass is shown below.</span>
-            Groups with fewer than 5 RFEs are greyed out.
+            <span>
+                <template v-if="stat === 'median'">Bar length = sum of the step medians. The median start to embarkation time (in the tooltip and table) is measured per RFE, so it differs from the sum.</template>
+                <template v-else>Bar length = sum of the step averages, which equals the average start to embarkation time of the final pass. Rework before the final pass is shown below.</template>
+                Groups with fewer than 5 RFEs are greyed out.
+            </span>
         </div>
     </div>
 
@@ -2048,7 +2050,10 @@
         <!-- Spread per step -->
         <div class="atl-dash__panel">
             <div class="atl-section-title atl-dash__h">Spread per step</div>
-            <div class="atl-dash__meta">Box = middle 50% of RFEs, line = median, whiskers = typical range, dots = outliers, ◆ = target</div>
+            <div class="atl-dash__meta">
+                Box = middle 50% of RFEs · line in the box = median<span v-if="stat === 'average'"> · ○ = average</span> ·
+                whiskers = usual range (values up to 1.5 × the box length beyond the box) · dots = outliers beyond the whiskers · ◆ = target
+            </div>
             <e-chart :option="boxOption" :height="330"></e-chart>
         </div>
         <!-- Rework -->
@@ -2109,14 +2114,14 @@
     <v-card v-if="draftTargets" class="atl-an__dialog">
         <v-card-title class="atl-an__dialogtitle">Step targets (days)</v-card-title>
         <v-card-text>
-            <div class="atl-dash__meta mb-4">Targets apply to every client. The lead-time target is the sum of the step targets.</div>
+            <div class="atl-dash__meta mb-4">Targets apply to every principal. The start to embarkation target is the sum of the step targets.</div>
             <div v-for="s in steps" :key="s.id" class="atl-an__trow">
                 <span :class="['atl-an__swatch', s.cls]" :style="s.cls ? null : { background: s.color }"></span>
                 <span class="atl-an__tlabel">{{ s.label }}</span>
                 <v-text-field v-model.number="draftTargets[s.id]" type="number" min="0" step="0.5" suffix="d"
                               density="compact" variant="outlined" hide-details class="atl-an__tinput"></v-text-field>
             </div>
-            <div class="atl-an__trow atl-an__ttotal"><span></span><span class="atl-an__tlabel">Lead time target</span><b>{{ draftTotal() }} d</b></div>
+            <div class="atl-an__trow atl-an__ttotal"><span></span><span class="atl-an__tlabel">Start to embarkation target</span><b>{{ draftTotal() }} d</b></div>
         </v-card-text>
         <v-card-actions>
             <v-btn variant="text" @click="resetTargets">Reset</v-btn>

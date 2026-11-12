@@ -36,11 +36,11 @@ var RFE_STAGES = [
 var RFE_STEPS = [
     { id: 's1', from: 'created',     to: 'search',      label: 'Created → Pool Search',            short: 'Start search',  color: '#BDBDBD', ink: '#212121', line: '#9E9E9E' },
     { id: 's2', from: 'search',      to: 'ask',         label: 'Pool Search → Ask for Acceptance', short: 'Search',        color: '#A9C5EA', ink: '#1A3A66', line: '#7FA6D9', hatch: true, cls: 'atl-bar--search' },
-    { id: 's3', from: 'ask',         to: 'accepted',    label: 'Ask for Acceptance → Accepted',    short: 'Acceptance',    color: '#4F7DBF', ink: '#ffffff' },
+    { id: 's3', from: 'ask',         to: 'accepted',    label: 'Ask for Acceptance → Accepted',    short: 'Seafarer Acceptance',  color: '#4F7DBF', ink: '#ffffff' },
     { id: 's4', from: 'accepted',    to: 'approval',    label: 'Accepted → Principal Approval',    short: 'To principal',  color: '#1565C0', ink: '#ffffff' },
-    { id: 's5', from: 'approval',    to: 'preparation', label: 'Principal Approval → Preparation', short: 'Approval',      color: '#7E57C2', ink: '#1A3A66', hatch: true, cls: 'atl-bar--approval' },
+    { id: 's5', from: 'approval',    to: 'preparation', label: 'Principal Approval → Preparation', short: 'On Approval',  color: '#7E57C2', ink: '#1A3A66', hatch: true, cls: 'atl-bar--approval' },
     { id: 's6', from: 'preparation', to: 'ready',       label: 'Preparation → Ready',              short: 'Preparation',   color: '#8FC48A', ink: '#1B3A17', cls: 'atl-bar--preparation' },
-    { id: 's7', from: 'ready',       to: 'embarked',    label: 'Ready → Embarked',                 short: 'Joining',       color: '#3D8B47', ink: '#ffffff', cls: 'atl-bar--ready' },
+    { id: 's7', from: 'ready',       to: 'embarked',    label: 'Ready → Embarked',                 short: 'Ready To Embark',  color: '#3D8B47', ink: '#ffffff', cls: 'atl-bar--ready' },
 ];
 
 var RFE_POOLS = [
