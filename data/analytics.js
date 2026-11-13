@@ -51,8 +51,8 @@ var RFE_POOLS = [
 
 // Operations: a user handles a couple of clients, the user's group a superset
 var OPS_GROUPS = [
-    { id: 'g1', name: 'Desk A — Tankers',      clientIds: ['c1', 'c3'] },
-    { id: 'g2', name: 'Desk B — Dry & Liner',  clientIds: ['c2', 'c4'] },
+    { id: 'g1', name: 'Crossworld', clientIds: ['c1', 'c3'] },
+    { id: 'g2', name: 'Creworld',   clientIds: ['c2', 'c4'] },
 ];
 var OPS_USERS = [
     { id: 'u1', name: 'Eleni Markou',    groupId: 'g1', clientIds: ['c1'] },
