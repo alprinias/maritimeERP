@@ -221,7 +221,8 @@ These are fixed per step and come from the Atlantis Gantt.
 | s6 | Preparation | `#8FC48A` | `#1B3A17` | | |
 | s7 | Ready To Embark | `#3D8B47` | white | | |
 
-- **Hatch:** the Atlantis Gantt CSS is `repeating-linear-gradient(135deg, #DCE8F7 0 7px, #A9C5EA 7px 9px)`. ECharts can't use CSS gradients, so the mockup draws a seamless **13 × 13 canvas tile** with three 2.6 px diagonal strokes and uses it as `{ image, repeat: 'repeat' }`. See `_anHatch()`.
+- **Hatch:** the Atlantis Gantt CSS is `repeating-linear-gradient(135deg, #DCE8F7 0 7px, #A9C5EA 7px 9px)`. ECharts can't use CSS gradients. The mockup draws the striped segments with a **custom series under the bars** (`_hatch` in `leadOption`, shapes from `_anHatchShapes()`): a `#DCE8F7` rectangle plus 45° `#A9C5EA` lines, 2.6 px wide and every 13 px, cut at the segment's edges. The s2 and s5 bars themselves are transparent, so they still carry the label, the white border and the tooltip.
+  - **Don't use an ECharts image pattern** (`{ image, repeat }`) for this. In one user's browser the pattern was drawn transparent, although it rendered in headless Edge.
 - **Purple strip on s5:** drawn with a `custom` series of rectangles over the s5 segment. See the `_approvalStrip` series in `leadOption`.
 - **Legend:** an HTML legend above the chart (not the ECharts legend), with 30 × 14 swatches. The stripes and the strip use the Gantt CSS classes `atl-bar--search` and `atl-bar--approval`, so the legend looks exactly like Atlantis.
 

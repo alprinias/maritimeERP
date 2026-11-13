@@ -41,18 +41,23 @@ const EChart = {
 };
 
 // Atlantis search / approval stripes (Gantt: repeating-linear-gradient(135deg,
-// #DCE8F7 0 7px, #A9C5EA 7px 9px)) as a seamless 13 × 13 tile for ECharts pattern fills
-let _anHatchTile = null;
-function _anHatch() {
-    if (!_anHatchTile) {
-        const c = document.createElement('canvas'); c.width = c.height = 13;
-        const x = c.getContext('2d');
-        x.fillStyle = '#DCE8F7'; x.fillRect(0, 0, 13, 13);
-        x.strokeStyle = '#A9C5EA'; x.lineWidth = 2.6;
-        [-13, 0, 13].forEach(k => { x.beginPath(); x.moveTo(k, 13); x.lineTo(k + 13, 0); x.stroke(); });
-        _anHatchTile = c;
+// #DCE8F7 0 7px, #A9C5EA 7px 9px)), drawn as plain shapes by a custom series:
+// a light-blue rectangle plus 45° lines every 13 px, clipped to the segment.
+// (Not an ECharts image pattern: some browsers drew those transparent.)
+const AN_HATCH_BG = '#DCE8F7', AN_HATCH_LINE = '#A9C5EA', AN_HATCH_STEP = 13;
+function _anHatchShapes(x, w, top, h, opacity) {
+    if (w <= 0.5) return [];
+    const out = [{ type: 'rect', shape: { x, y: top, width: w, height: h }, style: { fill: AN_HATCH_BG, opacity } }];
+    const bot = top + h, right = x + w;
+    for (let u = Math.floor((x - h) / AN_HATCH_STEP) * AN_HATCH_STEP; u < right; u += AN_HATCH_STEP) {
+        // line from (u, bottom) up to (u + h, top), cut at the segment's left and right edges
+        let x1 = u, y1 = bot, x2 = u + h, y2 = top;
+        if (x1 < x) { y1 -= x - x1; x1 = x; }
+        if (x2 > right) { y2 += x2 - right; x2 = right; }
+        if (x2 - x1 < 0.5) continue;
+        out.push({ type: 'line', shape: { x1, y1, x2, y2 }, style: { stroke: AN_HATCH_LINE, lineWidth: 2.6, opacity } });
     }
-    return { image: _anHatchTile, repeat: 'repeat' };
+    return out;
 }
 const AN_APPROVAL_STRIP = '#7E57C2';
 // Refusals & rejections: refusals in Atlantis blue, rejections in the approval purple
@@ -350,7 +355,8 @@ const OpsAnalyticsView = {
             const statLabel = this.statLabel;
             const series = RFE_STEPS.map((s, i) => ({
                 name: s.short, type: 'bar', stack: 'lead', barWidth: AN_BAR,
-                itemStyle: { color: s.hatch ? _anHatch() : s.color, borderColor: '#ffffff', borderWidth: 1,
+                // striped steps: transparent bar (keeps label, border, tooltip) over the _hatch series
+                itemStyle: { color: s.hatch ? 'rgba(0,0,0,0)' : s.color, borderColor: '#ffffff', borderWidth: 1,
                              borderRadius: i === RFE_STEPS.length - 1 ? [0, 4, 4, 0] : 0 },
                 emphasis: { focus: 'none', itemStyle: { opacity: 0.85 } },
                 label: { show: true, position: 'inside', color: s.ink, fontSize: 11, fontFamily: AN_FONT,
@@ -371,8 +377,25 @@ const OpsAnalyticsView = {
                          formatter: p => _anFmt(G[p.dataIndex].sumSteps) + ' d' + (G[p.dataIndex].low ? '  · low sample' : '') },
                 data: G.map(() => 0.0001),
             });
+            // stripes of the search / approval segments, drawn under the (transparent) bars
+            const startOf = (g, id) => RFE_STEPS.slice(0, RFE_STEPS.findIndex(s => s.id === id)).reduce((a, s) => a + (g.steps[s.id] || 0), 0);
+            const hatched = RFE_STEPS.filter(s => s.hatch).map(s => s.id);
+            series.push({
+                name: '_hatch', type: 'custom', silent: true, tooltip: { show: false }, z: 1,
+                encode: { x: hatched.flatMap((_, k) => [1 + 2 * k, 2 + 2 * k]), y: 0 },
+                data: G.map((g, i) => [i, ...hatched.flatMap(id => [startOf(g, id), startOf(g, id) + (g.steps[id] || 0)])]),
+                renderItem: (params, api) => {
+                    const op = G[params.dataIndex].low ? 0.35 : 1;
+                    const children = [];
+                    hatched.forEach((_, k) => {
+                        const a = api.coord([api.value(1 + 2 * k), api.value(0)]), b = api.coord([api.value(2 + 2 * k), api.value(0)]);
+                        children.push(..._anHatchShapes(a[0], b[0] - a[0], a[1] - AN_BAR / 2, AN_BAR, op));
+                    });
+                    return { type: 'group', children };
+                },
+            });
             // purple bottom strip of the approval segment (as on the Atlantis Gantt)
-            const before = g => RFE_STEPS.slice(0, 4).reduce((a, s) => a + (g.steps[s.id] || 0), 0);
+            const before = g => startOf(g, 's5');
             series.push({
                 name: '_approvalStrip', type: 'custom', silent: true, tooltip: { show: false }, z: 5,
                 encode: { x: [0, 1], y: 2 },
