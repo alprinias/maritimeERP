@@ -563,6 +563,15 @@
 }
 .atl-an__f { flex: 1 1 130px; min-width: 130px; max-width: 220px; }
 .atl-an__compare { width: 220px; flex: 0 0 220px; }
+.atl-an__period { max-width: 200px; flex-basis: 170px; }
+.atl-an__month { max-width: 150px; }
+/* What the tile arrows compare with */
+.atl-an__compare-note { display: flex; align-items: center; gap: 6px; font-size: 13px; color: rgba(0,0,0,.6); margin: -4px 0 10px; }
+/* Change against the comparison period, next to a tile value */
+.atl-an__delta { display: flex; align-items: center; gap: 2px; margin: 2px 0 2px; font-size: 13px; font-weight: 500; white-space: nowrap; }
+.atl-an__delta--good { color: rgb(var(--v-theme-success)); }
+.atl-an__delta--bad  { color: rgb(var(--v-theme-error)); }
+.atl-an__delta--flat { color: rgba(0,0,0,.6); }
 .atl-an__tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(165px, 1fr)); gap: 14px; margin-bottom: 20px; }
 .atl-an__tiles .atl-tile { padding: 14px 16px !important; }
 .atl-an__table .atl-table__grid { font-size: 14px; }

@@ -86,13 +86,41 @@ function _anLiveStage(row, kind) {
     return 'search';
 }
 
+// 'YYYY-MM' of a (year, 0-based month) — the month may overflow either way
+function _anMonthKey(y, m) {
+    const d = new Date(Date.UTC(y, m, 1));
+    return d.getUTCFullYear() + '-' + String(d.getUTCMonth() + 1).padStart(2, '0');
+}
+// k consecutive months from (year, 0-based month): [{ key: 'YYYY-M0', label: "Mon 'YY" }]
+function _anMonths(y, m, k) {
+    const out = [];
+    for (let i = 0; i < k; i++) {
+        const d = new Date(Date.UTC(y, m + i, 1));
+        out.push({ key: d.getUTCFullYear() + '-' + d.getUTCMonth(), label: ATL_MONTHS[d.getUTCMonth()] + " '" + String(d.getUTCFullYear()).slice(2) });
+    }
+    return out;
+}
+
+// Change against the comparison period, for a KPI tile:
+// better = 'lower' | 'higher' | null (neutral); fmt = how to write the change
+function _anDelta(cur, prev, better, fmt) {
+    if (cur == null || prev == null || isNaN(cur) || isNaN(prev)) return null;
+    const diff = cur - prev, txt = fmt(Math.abs(diff));
+    if (txt === fmt(0)) return { text: 'No change', icon: 'mdi-minus', tone: 'flat' };
+    const up = diff > 0;
+    const tone = !better ? 'flat' : (up === (better === 'higher')) ? 'good' : 'bad';
+    return { text: txt, icon: up ? 'mdi-arrow-up' : 'mdi-arrow-down', tone };
+}
+
 const OpsAnalyticsView = {
     template: '#tpl-ops-analytics',
 
     data() {
         return {
             store:       erpStore,
-            period:      12,          // months (by embarkation date)
+            period:      'm12',       // 'm3' | 'm6' | 'm12' | 'ytd' | 'ly' | 'custom' (see range)
+            customFrom:  null,        // 'YYYY-MM' (custom range, first month)
+            customTo:    null,        // 'YYYY-MM' (custom range, last month, inclusive)
             stat:        'median',    // 'median' | 'average'
             compareBy:   'client',
             f: { client: null, vesselType: null, rank: null, pool: null, user: null, group: null },
@@ -109,6 +137,18 @@ const OpsAnalyticsView = {
     },
 
     created() { ensureRfaRows(); },
+
+    watch: {
+        // Custom range: start from the last 12 months, and keep From ≤ To
+        period(v) {
+            if (v !== 'custom' || this.customFrom) return;
+            const now = new Date(TODAY.getTime());
+            this.customTo = _anMonthKey(now.getUTCFullYear(), now.getUTCMonth());
+            this.customFrom = _anMonthKey(now.getUTCFullYear(), now.getUTCMonth() - 11);
+        },
+        customFrom(v) { if (v && this.customTo && v > this.customTo) this.customTo = v; },
+        customTo(v)   { if (v && this.customFrom && v < this.customFrom) this.customFrom = v; },
+    },
 
     computed: {
         steps() { return RFE_STEPS; },
@@ -140,16 +180,88 @@ const OpsAnalyticsView = {
             ];
         },
 
-        // ── Completed RFEs in scope ───────────────────────────
-        completed() {
-            const from = TODAY.getTime() - this.period * 30.44 * 86400000;
+        // ── Period ────────────────────────────────────────────
+        periodItems() {
+            const y = new Date(TODAY.getTime()).getUTCFullYear();
+            return [
+                { value: 'm3',  title: 'Last 3 months' },
+                { value: 'm6',  title: 'Last 6 months' },
+                { value: 'm12', title: 'Last 12 months' },
+                { value: 'ytd', title: 'This year (' + y + ')' },
+                { value: 'ly',  title: 'Last year (' + (y - 1) + ')' },
+                { value: 'custom', title: 'Custom range…' },
+            ];
+        },
+        // First full month of the history (earlier periods have no data to compare with)
+        dataStart() {
+            const first = new Date(Math.min(...rfeHistory.map(r => r.events[r.events.length - 1].at)));
+            return Date.UTC(first.getUTCFullYear(), first.getUTCMonth() + 1, 1);
+        },
+        // Months offered by the custom range (newest first)
+        monthItems() {
+            const out = [], now = new Date(TODAY.getTime());
+            for (let t = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1); t >= this.dataStart;) {
+                const d = new Date(t);
+                out.push({ value: _anMonthKey(d.getUTCFullYear(), d.getUTCMonth()), title: ATL_MONTHS[d.getUTCMonth()] + ' ' + d.getUTCFullYear() });
+                t = Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - 1, 1);
+            }
+            return out;
+        },
+        /* The selected period and the one it is compared with.
+           { from, to (exclusive; Infinity = up to now), months: [{ key, label }] (trend axis),
+             label, prev: { from, to, label, text } | null (no data that far back) }
+           - Last N months: rolling N × 30.44 days back from today; previous = the N months before
+           - This year: 1 Jan → today; previous = same dates last year
+           - Last year: the calendar year; previous = the year before
+           - Custom: whole months From → To; previous = as many months just before */
+        range() {
+            const DAY = 86400000, now = TODAY.getTime(), n = new Date(now);
+            const Y = n.getUTCFullYear(), M = n.getUTCMonth();
+            const mlabel = t => { const d = new Date(t); return ATL_MONTHS[d.getUTCMonth()] + ' ' + d.getUTCFullYear(); };
+            const dlabel = t => atlDate(isoDate(new Date(t)));
+            let r;
+            if (this.period[0] === 'm') {
+                const N = +this.period.slice(1), span = N * 30.44 * DAY;
+                r = { from: now - span, to: Infinity, months: _anMonths(Y, M - N + 1, N), label: 'Last ' + N + ' months',
+                      prev: { from: now - 2 * span, to: now - span, label: 'the previous ' + N + ' months' } };
+            } else if (this.period === 'ytd') {
+                const from = Date.UTC(Y, 0, 1), prevTo = Date.UTC(Y - 1, M, n.getUTCDate() + 1);
+                r = { from, to: Infinity, months: _anMonths(Y, 0, M + 1), label: Y + ' to date',
+                      prev: { from: Date.UTC(Y - 1, 0, 1), to: prevTo, label: 'the same period of ' + (Y - 1) } };
+            } else if (this.period === 'ly') {
+                r = { from: Date.UTC(Y - 1, 0, 1), to: Date.UTC(Y, 0, 1), months: _anMonths(Y - 1, 0, 12), label: String(Y - 1),
+                      prev: { from: Date.UTC(Y - 2, 0, 1), to: Date.UTC(Y - 1, 0, 1), label: String(Y - 2) } };
+            } else {
+                const [fy, fm] = (this.customFrom || _anMonthKey(Y, M)).split('-').map(Number);
+                const [ty, tm] = (this.customTo || _anMonthKey(Y, M)).split('-').map(Number);
+                const k = (ty - fy) * 12 + (tm - fm) + 1;
+                const from = Date.UTC(fy, fm - 1, 1), end = Date.UTC(ty, tm, 1);
+                r = { from, to: end > now ? Infinity : end, months: _anMonths(fy, fm - 1, k),
+                      label: k === 1 ? mlabel(from) : mlabel(from) + ' – ' + mlabel(Date.UTC(ty, tm - 1, 1)),
+                      prev: { from: Date.UTC(fy, fm - 1 - k, 1), to: from, label: 'the previous ' + (k === 1 ? 'month' : k + ' months') } };
+            }
+            r.live = r.to === Infinity;                    // the period runs up to today
+            const p = r.prev;
+            p.text = 'Compared with ' + p.label + ' (' + dlabel(p.from) + ' – ' + dlabel(p.to - DAY) + ')';
+            if (p.from < this.dataStart) r.prev = null;
+            return r;
+        },
+        periodLabel() { return this.tab === 'time' ? 'Embarked' : 'Decided'; },
+
+        // ── Completed RFEs in scope (and in the comparison period) ──
+        filteredHistory() {
             const F = this.f;
             return rfeHistory
                 .map(r => Object.assign({ d: rfeStepDurations(r.events), embarkedAt: r.events[r.events.length - 1].at }, r))
-                .filter(r => r.d && r.embarkedAt >= from
+                .filter(r => r.d
                     && (!F.client || r.clientId === F.client) && (!F.vesselType || r.vesselType === F.vesselType)
                     && (!F.rank || r.rank === F.rank) && (!F.pool || r.pool === F.pool)
                     && (!F.user || r.userId === F.user) && (!F.group || r.groupId === F.group));
+        },
+        completed() { return this.filteredHistory.filter(r => r.embarkedAt >= this.range.from && r.embarkedAt < this.range.to); },
+        completedPrev() {
+            const p = this.range.prev;
+            return p ? this.filteredHistory.filter(r => r.embarkedAt >= p.from && r.embarkedAt < p.to) : null;
         },
 
         // Group key + label of an RFE for the chosen comparison
@@ -173,34 +285,49 @@ const OpsAnalyticsView = {
 
         // ── KPI tiles ─────────────────────────────────────────
         kpis() {
-            const all = this.completed;
-            const steps = RFE_STEPS.map(s => ({ s, v: _anStat(all.map(r => r.d.steps[s.id]), this.stat) }));
-            const slowest = steps.slice().sort((a, b) => b.v - a.v)[0];
-            const over = steps.map(x => Object.assign({ ratio: x.v / (this.targets[x.s.id] || 1) }, x)).sort((a, b) => b.ratio - a.ratio)[0];
-            const totals = all.map(r => r.d.total);
-            const within = totals.filter(t => t <= this.targetTotal).length / (totals.length || 1);
-            const loops = all.filter(r => r.d.loops > 0);
+            const cur = this.timeSummary(this.completed);
+            const prevItems = this.completedPrev;
+            // no comparison when the earlier period has too few RFEs to mean anything
+            const prev = prevItems && prevItems.length >= AN_LOW_SAMPLE ? this.timeSummary(prevItems) : null;
+            const days = v => _anFmt(v) + ' d', pts = v => { const n = Math.round(v * 100); return n + (n === 1 ? ' pt' : ' pts'); };
+            const d = (get, better, fmt) => (prev ? _anDelta(get(cur), get(prev), better, fmt) : null);
+            const slowest = RFE_STEPS.slice().sort((a, b) => (cur.steps[b.id] || 0) - (cur.steps[a.id] || 0))[0];
+            const ratio = (S, s) => S.steps[s.id] / (this.targets[s.id] || 1);
+            const over = RFE_STEPS.slice().sort((a, b) => ratio(cur, b) - ratio(cur, a))[0];
+            const within = cur.within, overRatio = ratio(cur, over);
             return [
                 { id: 'lead', label: this.statLabel + ' start to embarkation time', icon: 'mdi-timer-outline',
-                  value: _anFmt(_anStat(totals, this.stat)) + ' d', sub: 'Created → Embarked · ' + all.length + ' RFEs' },
+                  value: days(cur.total), sub: 'Created → Embarked · ' + cur.n + ' RFEs',
+                  delta: d(S => S.total, 'lower', days) },
                 { id: 'within', label: 'Within target', icon: 'mdi-target',
                   value: Math.round(within * 100) + '%', sub: 'Start to embarkation ≤ ' + this.targetTotal + ' d (sum of step targets)',
+                  delta: d(S => S.within, 'higher', pts),
                   status: within >= 0.8 ? { text: 'On track', icon: 'mdi-check-circle-outline', color: 'success' }
                         : within >= 0.6 ? { text: 'Watch', icon: 'mdi-alert-outline', color: 'warning' }
                         : { text: 'Below 60%', icon: 'mdi-alert-circle-outline', color: 'error' } },
-                { id: 'done', label: 'Completed RFEs', icon: 'mdi-ferry', value: String(all.length),
-                  sub: 'Embarked in the last ' + this.period + ' months' },
+                { id: 'done', label: 'Completed RFEs', icon: 'mdi-ferry', value: String(cur.n),
+                  sub: 'Embarked: ' + this.range.label, delta: d(S => S.n, null, v => v + (v === 1 ? ' RFE' : ' RFEs')) },
                 { id: 'slowest', label: 'Slowest step', icon: 'mdi-snail',
-                  value: slowest ? _anFmt(slowest.v) + ' d' : '—', sub: slowest ? slowest.s.label : '' },
+                  value: cur.n ? days(cur.steps[slowest.id]) : '—', sub: cur.n ? slowest.label : '',
+                  delta: d(S => S.steps[slowest.id], 'lower', days) },
                 { id: 'over', label: 'Most over target', icon: 'mdi-flag-outline',
-                  value: over ? Math.round(over.ratio * 100) + '%' : '—',
-                  sub: over ? over.s.label + ' · ' + _anFmt(over.v) + ' of ' + this.targets[over.s.id] + ' d' : '',
-                  status: over && over.ratio > 1 ? { text: 'Over target', icon: 'mdi-alert-circle-outline', color: 'error' }
-                                                 : { text: 'All within', icon: 'mdi-check-circle-outline', color: 'success' } },
+                  value: cur.n ? Math.round(overRatio * 100) + '%' : '—',
+                  sub: cur.n ? over.label + ' · ' + _anFmt(cur.steps[over.id]) + ' of ' + this.targets[over.id] + ' d' : '',
+                  delta: d(S => ratio(S, over), 'lower', pts),
+                  status: overRatio > 1 ? { text: 'Over target', icon: 'mdi-alert-circle-outline', color: 'error' }
+                                        : { text: 'All within', icon: 'mdi-check-circle-outline', color: 'success' } },
                 { id: 'rework', label: 'Rework rate', icon: 'mdi-backup-restore',
-                  value: Math.round(loops.length / (all.length || 1) * 100) + '%',
-                  sub: loops.length + ' RFEs back to search · ' + _anFmt(_anStat(loops.map(r => r.d.rework), this.stat)) + ' d lost each' },
+                  value: Math.round(cur.reworkRate * 100) + '%',
+                  sub: cur.loops + ' RFEs back to search · ' + _anFmt(cur.reworkLost) + ' d lost each',
+                  delta: d(S => S.reworkRate, 'lower', pts) },
             ];
+        },
+        // Caption above the tiles: what the arrows compare with
+        compareText() {
+            const p = this.range.prev;
+            if (!p) return 'No comparison: there is no data before ' + atlDate(isoDate(new Date(this.dataStart))).slice(3);
+            const few = this.tab === 'time' ? this.completedPrev.length < AN_LOW_SAMPLE : this.decisionsPrev.length < AN_LOW_SAMPLE;
+            return few ? 'No comparison: too few records in ' + p.label : p.text;
         },
 
         // ── Chart 1: start-to-embarkation bars per group ─────────────────
@@ -349,15 +476,7 @@ const OpsAnalyticsView = {
         },
 
         // ── Chart 3: monthly trend per step (small multiples) ─
-        months() {
-            const out = [];
-            const d0 = new Date(Date.UTC(TODAY.getUTCFullYear(), TODAY.getUTCMonth(), 1));
-            for (let i = this.period - 1; i >= 0; i--) {
-                const m = new Date(Date.UTC(d0.getUTCFullYear(), d0.getUTCMonth() - i, 1));
-                out.push({ key: m.getUTCFullYear() + '-' + m.getUTCMonth(), label: ATL_MONTHS[m.getUTCMonth()] + " '" + String(m.getUTCFullYear()).slice(2) });
-            }
-            return out;
-        },
+        months() { return this.range.months; },
         trendOptions() {
             const byMonth = {};
             this.completed.forEach(r => {
@@ -411,8 +530,11 @@ const OpsAnalyticsView = {
                 ...R.replacement.map(r => ({ row: r, kind: 'rfr', ref: r.rfeNo })),
                 ...R.embarkation.map(r => ({ row: r, kind: 'rfe', ref: r.rfaNo })),
             ];
-            const median = {};
-            RFE_STEPS.forEach(s => { median[s.id] = _anStat(rfeHistory.map(r => rfeStepDurations(r.events)).filter(Boolean).map(d => d.steps[s.id]), 'median'); });
+            // "typical" = median of each step over the RFEs embarked in the last 12 months
+            // (always as of today — the in-flight list does not follow the period)
+            const median = {}, since = TODAY.getTime() - 365 * 86400000;
+            const recent = rfeHistory.filter(r => r.events[r.events.length - 1].at >= since).map(r => rfeStepDurations(r.events)).filter(Boolean);
+            RFE_STEPS.forEach(s => { median[s.id] = _anStat(recent.map(d => d.steps[s.id]), 'median'); });
             const F = this.f;
             return live.map(x => {
                 const v = allVessels.find(vs => vs.id === x.row.vesselId);
@@ -455,10 +577,15 @@ const OpsAnalyticsView = {
 
         /* ══ Refusals & rejections tab ══════════════════════════
            One record per candidate decision: history (rfeHistory[].cands) + live
-           rows of the RFAs view. Period = decision date ("Decided in"); the pool
+           rows of the RFAs view. Period = decision date ("Decided"); the pool
            filter / grouping uses the candidate's own pool. */
-        decisions() {
-            const from = TODAY.getTime() - this.period * 30.44 * 86400000;
+        decisions() { return this.allDecisions.filter(d => d.at >= this.range.from && d.at < this.range.to); },
+        decisionsPrev() {
+            const p = this.range.prev;
+            return p ? this.allDecisions.filter(d => d.at >= p.from && d.at < p.to) : null;
+        },
+        // Every decision matching the filters (any date)
+        allDecisions() {
             const F = this.f;
             const out = [];
             rfeHistory.forEach(r => r.cands.forEach(c => out.push({
@@ -489,8 +616,7 @@ const OpsAnalyticsView = {
                     });
                 });
             }
-            return out.filter(d => d.at >= from
-                && (!F.client || d.clientId === F.client) && (!F.vesselType || d.vesselType === F.vesselType)
+            return out.filter(d => (!F.client || d.clientId === F.client) && (!F.vesselType || d.vesselType === F.vesselType)
                 && (!F.rank || d.rank === F.rank) && (!F.pool || d.pool === F.pool)
                 && (!F.user || d.userId === F.user) && (!F.group || d.groupId === F.group));
         },
@@ -498,21 +624,36 @@ const OpsAnalyticsView = {
 
         decKpis() {
             const c = this.decCounts;
+            const P = this.decisionsPrev;
+            const p = P && P.length >= AN_LOW_SAMPLE ? this._decCounts(P) : null;
+            const pts = v => { const n = Math.round(v * 100); return n + (n === 1 ? ' pt' : ' pts'); }, x1 = v => v.toFixed(1);
+            const d = (get, better, fmt) => (p ? _anDelta(get(c), get(p), better, fmt) : null);
+            const perFilled = C => (C.approved ? C.asked / C.approved : null);
+            // share of the same reason among the earlier period's refusals / rejections
+            const prevShare = (kind, id) => {
+                if (!p) return null;
+                const hits = P.filter(x => x.outcome === kind);
+                return hits.length ? hits.filter(x => x.reason === id).length / hits.length : null;
+            };
             const top = kind => this.reasonStats(kind)[0];
             const tr = top('refused'), tj = top('rejected');
             return [
                 { id: 'ref', label: 'Seafarer refusal rate', icon: 'mdi-account-cancel-outline', value: this.pct(c.refusalRate),
-                  sub: c.refused + ' refused of ' + c.asked + ' asked' },
+                  sub: c.refused + ' refused of ' + c.asked + ' asked', delta: d(C => C.refusalRate, 'lower', pts) },
                 { id: 'na', label: 'No answer', icon: 'mdi-phone-off-outline', value: this.pct(c.noAnswerRate),
-                  sub: c.noAnswer + ' of ' + c.asked + ' asked did not answer in time' },
+                  sub: c.noAnswer + ' of ' + c.asked + ' asked did not answer in time', delta: d(C => C.noAnswerRate, 'lower', pts) },
                 { id: 'rej', label: 'Principal rejection rate', icon: 'mdi-close-circle-outline', value: this.pct(c.rejectionRate),
-                  sub: c.rejected + ' rejected of ' + c.sent + ' sent for approval · ' + c.notFavored + ' not favored (not counted)' },
+                  sub: c.rejected + ' rejected of ' + c.sent + ' sent for approval · ' + c.notFavored + ' not favored (not counted)',
+                  delta: d(C => C.rejectionRate, 'lower', pts) },
                 { id: 'asked', label: 'Asked per filled RFE', icon: 'mdi-account-multiple-outline',
-                  value: c.approved ? (c.asked / c.approved).toFixed(1) : '—', sub: 'Candidates asked for each approved one' },
+                  value: c.approved ? x1(perFilled(c)) : '—', sub: 'Candidates asked for each approved one',
+                  delta: d(perFilled, 'lower', x1) },
                 { id: 'topref', label: 'Top refusal reason', icon: 'mdi-account-alert-outline',
-                  value: tr ? this.pct(tr.share) : '—', sub: tr ? tr.label : 'No refusals' },
+                  value: tr ? this.pct(tr.share) : '—', sub: tr ? tr.label : 'No refusals',
+                  delta: tr ? _anDelta(tr.share, prevShare('refused', tr.id), null, pts) : null },
                 { id: 'toprej', label: 'Top rejection reason', icon: 'mdi-account-remove-outline',
-                  value: tj ? this.pct(tj.share) : '—', sub: tj ? tj.label : 'No rejections' },
+                  value: tj ? this.pct(tj.share) : '—', sub: tj ? tj.label : 'No rejections',
+                  delta: tj ? _anDelta(tj.share, prevShare('rejected', tj.id), null, pts) : null },
             ];
         },
 
@@ -522,7 +663,7 @@ const OpsAnalyticsView = {
         //  rejection → rework days (lost to the rejected pass) of RFEs with that reason
         lostByReason() {
             const refs = new Set(this.decisions.filter(d => !d.live).map(d => d.ref));
-            const rfes = rfeHistory.filter(r => refs.has(r.ref)).map(r => ({ r, d: rfeStepDurations(r.events) }));
+            const rfes = rfeHistory.filter(r => refs.has(r.ref)).map(r => ({ r, d: rfeStepDurations(r.events) })).filter(x => x.d);   // embarked ones only
             const sa = x => x.d.steps.s2 + x.d.steps.s3;
             const base = _anStat(rfes.filter(x => !x.r.cands.some(c => c.outcome === 'refused')).map(sa), this.stat) || 0;
             const out = { refused: {}, rejected: {} };
@@ -619,7 +760,12 @@ const OpsAnalyticsView = {
                 series: [{
                     type: 'line', connectNulls: true, showSymbol: false, lineStyle: { width: 2, color: def.color }, itemStyle: { color: def.color },
                     endLabel: { show: true, color: AN_INK.primary, fontSize: 11, formatter: p => Math.round(p.value * 100) + '%' },
-                    data: this.months.map(m => { const v = byMonth[m.key]; return v && v.length >= AN_LOW_SAMPLE ? this._decCounts(v)[def.id] : null; }),
+                    // a month needs ≥ 5 in the rate's own base (asked, or sent for the rejection rate)
+                    data: this.months.map(m => {
+                        const v = byMonth[m.key]; if (!v) return null;
+                        const c = this._decCounts(v);
+                        return (def.id === 'rejectionRate' ? c.sent : c.asked) >= AN_LOW_SAMPLE ? c[def.id] : null;
+                    }),
                 }],
             } }));
         },
@@ -668,7 +814,7 @@ const OpsAnalyticsView = {
         pdfSubtitle() {
             const F = this.f, o = this.options;
             const name = (list, v) => { const x = list.find(i => (i.value || i) === v); return x ? (x.title || x) : v; };
-            const parts = ['Last ' + this.period + ' months', this.statLabel];
+            const parts = [this.periodLabel + ': ' + this.range.label, this.statLabel];
             Object.keys(F).forEach(k => { if (F[k]) parts.push(name(o[k], F[k])); });
             return parts.join('  ·  ');
         },
@@ -757,6 +903,18 @@ const OpsAnalyticsView = {
         },
         fmt: _anFmt,
         pct: v => Math.round(v * 100) + '%',
+        // Statistics of a list of completed RFEs (tiles of the period and of the comparison period)
+        timeSummary(items) {
+            const totals = items.map(r => r.d.total), loops = items.filter(r => r.d.loops > 0);
+            const steps = {};
+            RFE_STEPS.forEach(s => { steps[s.id] = _anStat(items.map(r => r.d.steps[s.id]), this.stat); });
+            return {
+                n: items.length, steps, total: _anStat(totals, this.stat),
+                within: totals.filter(t => t <= this.targetTotal).length / (totals.length || 1),
+                loops: loops.length, reworkRate: loops.length / (items.length || 1),
+                reworkLost: _anStat(loops.map(r => r.d.rework), this.stat),
+            };
+        },
         // Days in the current stage: from the stage log, else a seeded entry date
         daysInStage(ref, stage) {
             const log = this.store.rfeStageLog[ref] || [];

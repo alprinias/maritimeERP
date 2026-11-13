@@ -100,7 +100,7 @@ function rfeStepDurations(events) {
     };
 }
 
-/* ── History: ~12 months of completed RFEs ───────────────────── */
+/* ── History: ~3 years of completed RFEs ───────────────────── */
 var rfeHistory = (function () {
     var seed = 20260601;
     var rnd = function () {                                  // mulberry32
@@ -123,11 +123,13 @@ var rfeHistory = (function () {
     };
     var BASE = { s1: 1, s2: 7, s3: 2, s4: 1.5, s5: 4, s6: 12, s7: 3 };
     var DAY = 86400000;
+    var HIST_DAYS = 3 * 365;                                // three years of completed RFEs
+    var AHEAD = 72;                                         // + RFEs still open today (would embark within ~10 weeks)
     var now = TODAY.getTime();
     var clients = ['c1', 'c2', 'c3', 'c4'];
     var officers = ['Master', 'Chief Officer', 'Chief Engineer', 'Second Engineer', 'Second Officer', 'Third Officer', 'Third Engineer'];
     var out = [];
-    for (var n = 0; n < 160; n++) {
+    for (var n = 0; n < 512; n++) {
         var clientId = pick(clients, [40, 25, 25, 10]);
         var client = allClientsData.find(c => c.id === clientId);
         var vesselId = client.vesselIds[Math.floor(rnd() * client.vesselIds.length)];
@@ -135,8 +137,8 @@ var rfeHistory = (function () {
         var rank = vessel.ranks[Math.floor(rnd() * vessel.ranks.length)].rank;
         var pool = pick(RFE_POOLS, [45, 35, 20]).id;
         var user = pick(OPS_USERS.filter(u => u.clientIds.includes(clientId)), [1, 1, 1].slice(0, OPS_USERS.filter(u => u.clientIds.includes(clientId)).length));
-        var embarkedAt = now - (3 + rnd() * 362) * DAY;
-        var progress = 1 - (now - embarkedAt) / (365 * DAY);   // 0 = a year ago, 1 = now
+        var embarkedAt = now + (AHEAD - rnd() * (HIST_DAYS + AHEAD - 3)) * DAY;
+        var progress = Math.min(1, 1 - (now - embarkedAt) / (HIST_DAYS * DAY));   // 0 = start of the history, 1 = now
         var f = { s1: 1, s2: 1, s3: 1, s4: 1, s5: 1, s6: 1, s7: 1 };
         if (pool === 'new')       { f.s2 *= 1.6; f.s3 *= 1.5; f.s6 *= 1.4; }
         if (pool === 'excrew')    { f.s2 *= 1.2; }
@@ -232,7 +234,7 @@ function rejectionReasonLabel(id) { var r = PRINCIPAL_REJECTION_REASONS.find(x =
     var DAY = 86400000;
     var poolMix = { dedicated: 40, excrew: 35, new: 25 };
     rfeHistory.forEach(r => {
-        var d = rfeStepDurations(r.events);
+        var d = rfeStepDurations(r.events);           // full timeline (open RFEs are cut to today below)
         var byRank = allSeafarers.filter(s => s.rank === r.rank);
         var names = byRank.length ? byRank : allSeafarers;
         var name = () => names[Math.floor(rnd() * names.length)].name;
@@ -271,8 +273,12 @@ function rejectionReasonLabel(id) { var r = PRINCIPAL_REJECTION_REASONS.find(x =
         cands.push({ name: name(), pool: r.pool, outcome: 'approved', reason: null, at: approvalAt });
         var nOthers = Math.floor(rnd() * 2.4);
         for (var o = 0; o < nOthers; o++) cands.push({ name: name(), pool: pickW(poolMix), outcome: 'notFavored', reason: null, at: approvalAt });
-        r.cands = cands;
+        // open RFEs: keep only what has happened by today (no embarkation yet → not in the Time tab)
+        var now = TODAY.getTime();
+        r.events = r.events.filter(e => e.at <= now);
+        r.cands = cands.filter(c => c.at <= now);
     });
+    rfeHistory = rfeHistory.filter(r => r.events.length);   // not created yet
 })();
 
 /* ── Live RFEs: stage log (entry dates of the current stage) ─────

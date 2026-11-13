@@ -1977,8 +1977,8 @@
     <div class="atl-an__head">
         <div>
             <div class="atl-dash__title">RFE Pipeline Analytics</div>
-            <div class="atl-dash__subtitle" v-if="tab === 'time'">How long Requests For Embarkation take from stage to stage · {{ statLabel.toLowerCase() }} days · last {{ period }} months</div>
-            <div class="atl-dash__subtitle" v-else>Why seafarers refuse and why principals reject candidates · decided in the last {{ period }} months</div>
+            <div class="atl-dash__subtitle" v-if="tab === 'time'">How long Requests For Embarkation take from stage to stage · {{ statLabel.toLowerCase() }} days · embarked: {{ range.label }}</div>
+            <div class="atl-dash__subtitle" v-else>Why seafarers refuse and why principals reject candidates · decided: {{ range.label }}</div>
         </div>
         <div class="atl-an__headbtns">
             <div class="atl-seg" role="group" aria-label="Statistic">
@@ -1996,8 +1996,11 @@
 
     <!-- Filters: one row, scope the whole page -->
     <div class="atl-an__filters">
-        <v-select v-model="period" :items="[{ value: 3, title: '3 months' }, { value: 6, title: '6 months' }, { value: 12, title: '12 months' }]"
-                  :label="tab === 'time' ? 'Embarked in last' : 'Decided in last'" density="compact" variant="outlined" hide-details class="atl-an__f"></v-select>
+        <v-select v-model="period" :items="periodItems" :label="periodLabel" density="compact" variant="outlined" hide-details class="atl-an__f atl-an__period"></v-select>
+        <template v-if="period === 'custom'">
+            <v-select v-model="customFrom" :items="monthItems" label="From" density="compact" variant="outlined" hide-details class="atl-an__f atl-an__month"></v-select>
+            <v-select v-model="customTo" :items="monthItems" label="To" density="compact" variant="outlined" hide-details class="atl-an__f atl-an__month"></v-select>
+        </template>
         <v-select v-model="f.client" :items="options.client" label="Principal" clearable density="compact" variant="outlined" hide-details class="atl-an__f"></v-select>
         <v-select v-model="f.vesselType" :items="options.vesselType" label="Vessel type" clearable density="compact" variant="outlined" hide-details class="atl-an__f"></v-select>
         <v-select v-model="f.rank" :items="options.rank" label="Rank" clearable density="compact" variant="outlined" hide-details class="atl-an__f"></v-select>
@@ -2013,7 +2016,8 @@
     </div>
 
     <template v-else>
-    <!-- KPI tiles -->
+    <!-- KPI tiles (arrows: change against the comparison period) -->
+    <div class="atl-an__compare-note"><v-icon icon="mdi-swap-horizontal" size="16"></v-icon> {{ compareText }}</div>
     <div class="atl-an__tiles">
         <v-card v-for="k in kpis" :key="k.id" variant="outlined" class="atl-tile">
             <div class="atl-tile__head">
@@ -2021,6 +2025,7 @@
                 <span class="atl-tile__icon"><v-icon :icon="k.icon" size="20"></v-icon></span>
             </div>
             <div class="atl-tile__value atl-an__kpi">{{ k.value }}</div>
+                <div v-if="k.delta" class="atl-an__delta" :class="'atl-an__delta--' + k.delta.tone"><v-icon :icon="k.delta.icon" size="14"></v-icon>{{ k.delta.text }}</div>
             <div class="atl-tile__sub">{{ k.sub }}</div>
             <v-chip v-if="k.status" :color="k.status.color" :prepend-icon="k.status.icon" size="small" variant="tonal" label class="mt-2">{{ k.status.text }}</v-chip>
         </v-card>
@@ -2117,6 +2122,7 @@
     <div class="atl-dash__panel">
         <div class="atl-section-title atl-dash__h">In-flight RFEs</div>
         <div class="atl-dash__meta">Open requests (from RFAs) and how long they have been in their current stage, against the step target</div>
+        <div v-if="!range.live" class="atl-an__compare-note"><v-icon icon="mdi-information-outline" size="16"></v-icon> As of today — this list does not follow the selected period ({{ range.label }}).</div>
         <div class="atl-an__table">
             <atl-table :columns="flightColumns" :items="flightRows" v-model:visible="flightVisible"
                        pdf-title="In-flight RFEs" :pdf-subtitle="pdfSubtitle" sort-key="status_sort"
@@ -2127,6 +2133,7 @@
 
     <!-- ══ Refusals & rejections ══ -->
     <template v-else>
+    <div class="atl-an__compare-note"><v-icon icon="mdi-swap-horizontal" size="16"></v-icon> {{ compareText }}</div>
     <div class="atl-an__tiles">
         <v-card v-for="k in decKpis" :key="k.id" variant="outlined" class="atl-tile">
             <div class="atl-tile__head">
@@ -2134,6 +2141,7 @@
                 <span class="atl-tile__icon"><v-icon :icon="k.icon" size="20"></v-icon></span>
             </div>
             <div class="atl-tile__value atl-an__kpi">{{ k.value }}</div>
+                <div v-if="k.delta" class="atl-an__delta" :class="'atl-an__delta--' + k.delta.tone"><v-icon :icon="k.delta.icon" size="14"></v-icon>{{ k.delta.text }}</div>
             <div class="atl-tile__sub">{{ k.sub }}</div>
         </v-card>
     </div>
