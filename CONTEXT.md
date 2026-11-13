@@ -52,6 +52,7 @@ maritimeERP/
 │   ├── ClientPreparation.js← Client UI → On Preparation + <preparation-dialog>, contractPdf()
 │   ├── ClientAppraisals.js ← Client UI → Appraisals + <appraisal-dialog>, appraisalPdf()
 │   └── ClientApprovals.js  ← Client UI → Pending Approvals + <approval-dialog>, cvPdf()
+├── RFE_ANALYTICS_BACKEND.md ← brief for the backend developer: data to record + endpoints for RFE Analytics
 └── CONTEXT.md
 ```
 
