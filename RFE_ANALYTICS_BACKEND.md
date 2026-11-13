@@ -290,14 +290,14 @@ This endpoint returns the open RFEs **as of now**. It ignores `from`/`to` and `p
 
 ### 4.5 Period and comparison: two calls per tab
 
-The browser works out the selected period and the **comparison period** from the period choice, then calls `completed` (or `decisions`) once for each:
+The browser works out the selected period and the **comparison period**, then calls `completed` (or `decisions`) once for each. The user chooses the comparison: **Previous period** (the default) or **Same period last year**.
 
-| Choice | Period | Compared with |
-|---|---|---|
-| Last 3 / 6 / 12 months | now − N × 30.44 days → now | the N months just before |
-| This year | 1 Jan → now | 1 Jan → today's date, last year |
-| Last year | the previous calendar year | the year before that |
-| Custom range (From–To months) | first day of From → first day after To | the same number of months just before |
+| Choice | Period | Previous period | Same period last year |
+|---|---|---|---|
+| Last 3 / 6 / 12 months | now − N × 30.44 days → now | the N months just before | the same dates one year earlier |
+| This year | 1 Jan → now | the same number of days before 1 Jan | 1 Jan → today's date, last year |
+| Last year | the previous calendar year | the year before that | the year before that |
+| Custom range (From–To months) | first day of From → first day after To | the same number of months just before | the same months one year earlier |
 
 The tiles show the change against the comparison period. There is no comparison when the comparison period starts before `dataStart`, or has fewer than 5 records. The server only needs to support `from`/`to`; it has no logic of its own for the comparison.
 

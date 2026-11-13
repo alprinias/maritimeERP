@@ -121,6 +121,7 @@ const OpsAnalyticsView = {
             period:      'm12',       // 'm3' | 'm6' | 'm12' | 'ytd' | 'ly' | 'custom' (see range)
             customFrom:  null,        // 'YYYY-MM' (custom range, first month)
             customTo:    null,        // 'YYYY-MM' (custom range, last month, inclusive)
+            compareMode: 'prev',      // tiles compare with: 'prev' (period just before) | 'year' (same period a year earlier)
             stat:        'median',    // 'median' | 'average'
             compareBy:   'client',
             f: { client: null, vesselType: null, rank: null, pool: null, user: null, group: null },
@@ -210,39 +211,49 @@ const OpsAnalyticsView = {
         /* The selected period and the one it is compared with.
            { from, to (exclusive; Infinity = up to now), months: [{ key, label }] (trend axis),
              label, prev: { from, to, label, text } | null (no data that far back) }
-           - Last N months: rolling N × 30.44 days back from today; previous = the N months before
-           - This year: 1 Jan → today; previous = same dates last year
-           - Last year: the calendar year; previous = the year before
-           - Custom: whole months From → To; previous = as many months just before */
+           Period:
+           - Last N months: rolling N × 30.44 days back from today
+           - This year: 1 Jan → today · Last year: the calendar year
+           - Custom: whole months From → To (up to today when To is the current month)
+           Comparison (compareMode):
+           - 'prev': the same length just before (Last N months: the N months before;
+             This year: as many days before 1 Jan; Last year: the year before;
+             Custom: as many whole months before)
+           - 'year': the same dates one year earlier (a period running up to today is
+             compared up to today's date last year) */
         range() {
             const DAY = 86400000, now = TODAY.getTime(), n = new Date(now);
             const Y = n.getUTCFullYear(), M = n.getUTCMonth();
             const mlabel = t => { const d = new Date(t); return ATL_MONTHS[d.getUTCMonth()] + ' ' + d.getUTCFullYear(); };
             const dlabel = t => atlDate(isoDate(new Date(t)));
-            let r;
+            const yearBack = t => { const d = new Date(t); d.setUTCFullYear(d.getUTCFullYear() - 1); return d.getTime(); };
+            let r, prev;                                   // prev = the 'previous period' comparison
             if (this.period[0] === 'm') {
                 const N = +this.period.slice(1), span = N * 30.44 * DAY;
-                r = { from: now - span, to: Infinity, months: _anMonths(Y, M - N + 1, N), label: 'Last ' + N + ' months',
-                      prev: { from: now - 2 * span, to: now - span, label: 'the previous ' + N + ' months' } };
+                r = { from: now - span, to: Infinity, months: _anMonths(Y, M - N + 1, N), label: 'Last ' + N + ' months' };
+                prev = { from: now - 2 * span, to: now - span, label: 'the previous ' + N + ' months' };
             } else if (this.period === 'ytd') {
-                const from = Date.UTC(Y, 0, 1), prevTo = Date.UTC(Y - 1, M, n.getUTCDate() + 1);
-                r = { from, to: Infinity, months: _anMonths(Y, 0, M + 1), label: Y + ' to date',
-                      prev: { from: Date.UTC(Y - 1, 0, 1), to: prevTo, label: 'the same period of ' + (Y - 1) } };
+                const from = Date.UTC(Y, 0, 1);
+                r = { from, to: Infinity, months: _anMonths(Y, 0, M + 1), label: Y + ' to date' };
+                prev = { from: from - (now - from), to: from, label: 'the same number of days before 1 Jan' };
             } else if (this.period === 'ly') {
-                r = { from: Date.UTC(Y - 1, 0, 1), to: Date.UTC(Y, 0, 1), months: _anMonths(Y - 1, 0, 12), label: String(Y - 1),
-                      prev: { from: Date.UTC(Y - 2, 0, 1), to: Date.UTC(Y - 1, 0, 1), label: String(Y - 2) } };
+                r = { from: Date.UTC(Y - 1, 0, 1), to: Date.UTC(Y, 0, 1), months: _anMonths(Y - 1, 0, 12), label: String(Y - 1) };
+                prev = { from: Date.UTC(Y - 2, 0, 1), to: Date.UTC(Y - 1, 0, 1), label: String(Y - 2) };
             } else {
                 const [fy, fm] = (this.customFrom || _anMonthKey(Y, M)).split('-').map(Number);
                 const [ty, tm] = (this.customTo || _anMonthKey(Y, M)).split('-').map(Number);
                 const k = (ty - fy) * 12 + (tm - fm) + 1;
                 const from = Date.UTC(fy, fm - 1, 1), end = Date.UTC(ty, tm, 1);
                 r = { from, to: end > now ? Infinity : end, months: _anMonths(fy, fm - 1, k),
-                      label: k === 1 ? mlabel(from) : mlabel(from) + ' – ' + mlabel(Date.UTC(ty, tm - 1, 1)),
-                      prev: { from: Date.UTC(fy, fm - 1 - k, 1), to: from, label: 'the previous ' + (k === 1 ? 'month' : k + ' months') } };
+                      label: k === 1 ? mlabel(from) : mlabel(from) + ' – ' + mlabel(Date.UTC(ty, tm - 1, 1)) };
+                prev = { from: Date.UTC(fy, fm - 1 - k, 1), to: from, label: 'the previous ' + (k === 1 ? 'month' : k + ' months') };
             }
             r.live = r.to === Infinity;                    // the period runs up to today
+            r.prev = this.compareMode === 'year'
+                ? { from: yearBack(r.from), to: yearBack(r.live ? now : r.to), label: 'the same period a year earlier' }
+                : prev;
             const p = r.prev;
-            p.text = 'Compared with ' + p.label + ' (' + dlabel(p.from) + ' – ' + dlabel(p.to - DAY) + ')';
+            p.text = 'Compared with ' + p.label + ' (' + dlabel(p.from) + ' – ' + dlabel(p.to - 1) + ')';   // last day included (to is exclusive)
             if (p.from < this.dataStart) r.prev = null;
             return r;
         },

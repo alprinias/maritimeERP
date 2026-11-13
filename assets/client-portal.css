@@ -565,8 +565,11 @@
 .atl-an__compare { width: 220px; flex: 0 0 220px; }
 .atl-an__period { max-width: 200px; flex-basis: 170px; }
 .atl-an__month { max-width: 150px; }
-/* What the tile arrows compare with */
+/* What the tile arrows compare with + the Previous period / Same period last year switch */
 .atl-an__compare-note { display: flex; align-items: center; gap: 6px; font-size: 13px; color: rgba(0,0,0,.6); margin: -4px 0 10px; }
+.atl-an__comparebar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px 16px; margin: -4px 0 12px; }
+.atl-an__comparebar .atl-an__compare-note { margin: 0; }
+.atl-seg--sm button { padding: 5px 10px; font-size: 12px; letter-spacing: 0.04em; }
 /* Change against the comparison period, next to a tile value */
 .atl-an__delta { display: flex; align-items: center; gap: 2px; margin: 2px 0 2px; font-size: 13px; font-weight: 500; white-space: nowrap; }
 .atl-an__delta--good { color: rgb(var(--v-theme-success)); }

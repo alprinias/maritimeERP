@@ -2017,7 +2017,13 @@
 
     <template v-else>
     <!-- KPI tiles (arrows: change against the comparison period) -->
-    <div class="atl-an__compare-note"><v-icon icon="mdi-swap-horizontal" size="16"></v-icon> {{ compareText }}</div>
+    <div class="atl-an__comparebar">
+        <div class="atl-an__compare-note"><v-icon icon="mdi-swap-horizontal" size="16"></v-icon> {{ compareText }}</div>
+        <div class="atl-seg atl-seg--sm" role="group" aria-label="Compare with">
+            <button :class="{ 'is-on': compareMode === 'prev' }" @click="compareMode = 'prev'">Previous period</button>
+            <button :class="{ 'is-on': compareMode === 'year' }" @click="compareMode = 'year'">Same period last year</button>
+        </div>
+    </div>
     <div class="atl-an__tiles">
         <v-card v-for="k in kpis" :key="k.id" variant="outlined" class="atl-tile">
             <div class="atl-tile__head">
@@ -2133,7 +2139,13 @@
 
     <!-- ══ Refusals & rejections ══ -->
     <template v-else>
-    <div class="atl-an__compare-note"><v-icon icon="mdi-swap-horizontal" size="16"></v-icon> {{ compareText }}</div>
+    <div class="atl-an__comparebar">
+        <div class="atl-an__compare-note"><v-icon icon="mdi-swap-horizontal" size="16"></v-icon> {{ compareText }}</div>
+        <div class="atl-seg atl-seg--sm" role="group" aria-label="Compare with">
+            <button :class="{ 'is-on': compareMode === 'prev' }" @click="compareMode = 'prev'">Previous period</button>
+            <button :class="{ 'is-on': compareMode === 'year' }" @click="compareMode = 'year'">Same period last year</button>
+        </div>
+    </div>
     <div class="atl-an__tiles">
         <v-card v-for="k in decKpis" :key="k.id" variant="outlined" class="atl-tile">
             <div class="atl-tile__head">

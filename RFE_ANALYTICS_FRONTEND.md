@@ -88,6 +88,7 @@ composables/
 | `tab` | `'time'` | `'time'` or `'decisions'` |
 | `period` | `'m12'` | `m3`, `m6`, `m12`, `ytd`, `ly` or `custom` |
 | `customFrom`, `customTo` | last 12 months when Custom is first chosen | `'YYYY-MM'`. Keep From ≤ To by moving the other box. |
+| `compareMode` | `'prev'` | `'prev'` (previous period) or `'year'` (same period last year). Changes the comparison request only. |
 | `filters` | all `null` | `principalId`, `vesselType`, `rank`, `pool`, `groupId`, `userId` |
 | `stat` | `'median'` | `'median'` or `'average'`. **Client-only**: no refetch. |
 | `compareBy` | `'client'` | `all`, `client` (principal), `rank`, `vesselType`, `pool`, `user`, `group`. **Client-only**; shared by both tabs. |
@@ -120,12 +121,16 @@ Which data to load, and when:
 
 Port the `range` computed property and its helpers `_anMonths` and `_anMonthKey` from `OpsAnalytics.js`. The period's label reads **"Embarked"** on the Time tab and **"Decided"** on the Refusals tab.
 
-| Choice (label in the list) | Period `[from, to)` | Compared with | Trend months |
-|---|---|---|---|
-| Last 3 / 6 / 12 months | now − N × 30.44 d → now | the N × 30.44 d before | the last N calendar months, including the current one |
-| This year (2026) | 1 Jan → now | 1 Jan → today's date, last year | Jan → current month |
-| Last year (2025) | the previous calendar year | the year before | 12 months |
-| Custom range… | 1st of From → 1st of the month after To | the same number of months just before | From → To |
+A switch next to the comparison caption, **Previous period** / **Same period last year** (`compareMode`: `'prev'` by default, or `'year'`), chooses what the tiles compare with. It applies to both tabs.
+
+| Choice (label in the list) | Period `[from, to)` | Previous period | Same period last year | Trend months |
+|---|---|---|---|---|
+| Last 3 / 6 / 12 months | now − N × 30.44 d → now | the N × 30.44 d before | the same dates one year earlier | the last N calendar months, including the current one |
+| This year (2026) | 1 Jan → now | the same number of days before 1 Jan | 1 Jan → today's date, last year | Jan → current month |
+| Last year (2025) | the previous calendar year | the year before | the year before (the same) | 12 months |
+| Custom range… | 1st of From → 1st of the month after To | the same number of whole months just before | the same months one year earlier; up to today's date last year when To is the current month | From → To |
+
+For example, a custom range of Aug–Sep 2026 is compared either with Jun–Jul 2026 or with Aug–Sep 2025.
 
 **Custom range:**
 - Show two extra selects, **From** and **To**.
@@ -136,7 +141,7 @@ Port the `range` computed property and its helpers `_anMonths` and `_anMonthKey`
 - Treat the range as "live". The In-flight panel then shows no note (§6.6).
 
 **Comparison caption** above the tiles, one of:
-- `Compared with the previous 12 months (12 Nov 2024 – 12 Nov 2025)`;
+- `Compared with the previous 12 months (13 Nov 2024 – 13 Nov 2025)`, or `Compared with the same period a year earlier (01 Aug 2025 – 30 Sep 2025)`;
 - `No comparison: there is no data before Dec 2023`, when the comparison period starts before `dataStart`;
 - `No comparison: too few records in …`, when the comparison period has fewer than 5 rows.
 
@@ -410,7 +415,7 @@ Text in charts always uses these ink colours, never the series colour.
 
 Compare against the mockup with the same made-up data, or against the real data with a known answer.
 
-- [ ] Every period choice gives the right `[from, to)`, comparison caption, trend months and subtitle. Custom: From/To swap correctly, and no month before `dataStart` is offered.
+- [ ] Every period choice gives the right `[from, to)`, comparison caption (in both comparison modes), trend months and subtitle. Custom: From/To swap correctly, and no month before `dataStart` is offered.
 - [ ] Tile arrows: green = better, red = worse, grey = neutral. "No change" appears when the formatted change is 0. No arrows when there is no comparison.
 - [ ] Median ⇄ Average and Compare by change everything **without** new requests.
 - [ ] The step bars look exactly like the mockup:
