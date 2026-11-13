@@ -53,6 +53,7 @@ maritimeERP/
 │   ├── ClientAppraisals.js ← Client UI → Appraisals + <appraisal-dialog>, appraisalPdf()
 │   └── ClientApprovals.js  ← Client UI → Pending Approvals + <approval-dialog>, cvPdf()
 ├── RFE_ANALYTICS_BACKEND.md ← brief for the backend developer: data to record + endpoints for RFE Analytics
+├── RFE_ANALYTICS_FRONTEND.md← brief for the frontend developer: the page in Vue + Vuetify + ECharts
 └── CONTEXT.md
 ```
 

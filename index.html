@@ -2025,7 +2025,7 @@
                 <span class="atl-tile__icon"><v-icon :icon="k.icon" size="20"></v-icon></span>
             </div>
             <div class="atl-tile__value atl-an__kpi">{{ k.value }}</div>
-                <div v-if="k.delta" class="atl-an__delta" :class="'atl-an__delta--' + k.delta.tone"><v-icon :icon="k.delta.icon" size="14"></v-icon>{{ k.delta.text }}</div>
+            <div v-if="k.delta" class="atl-an__delta" :class="'atl-an__delta--' + k.delta.tone"><v-icon :icon="k.delta.icon" size="14"></v-icon>{{ k.delta.text }}</div>
             <div class="atl-tile__sub">{{ k.sub }}</div>
             <v-chip v-if="k.status" :color="k.status.color" :prepend-icon="k.status.icon" size="small" variant="tonal" label class="mt-2">{{ k.status.text }}</v-chip>
         </v-card>
@@ -2141,7 +2141,7 @@
                 <span class="atl-tile__icon"><v-icon :icon="k.icon" size="20"></v-icon></span>
             </div>
             <div class="atl-tile__value atl-an__kpi">{{ k.value }}</div>
-                <div v-if="k.delta" class="atl-an__delta" :class="'atl-an__delta--' + k.delta.tone"><v-icon :icon="k.delta.icon" size="14"></v-icon>{{ k.delta.text }}</div>
+            <div v-if="k.delta" class="atl-an__delta" :class="'atl-an__delta--' + k.delta.tone"><v-icon :icon="k.delta.icon" size="14"></v-icon>{{ k.delta.text }}</div>
             <div class="atl-tile__sub">{{ k.sub }}</div>
         </v-card>
     </div>
