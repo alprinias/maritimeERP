@@ -299,7 +299,11 @@ The browser works out the selected period and the **comparison period**, then ca
 | Last year | the previous calendar year | the year before that | the year before that |
 | Custom range (From–To months) | first day of From → first day after To | the same number of months just before | the same months one year earlier |
 
-The tiles show the change against the comparison period. There is no comparison when the comparison period starts before `dataStart`, or has fewer than 5 records. The server only needs to support `from`/`to`; it has no logic of its own for the comparison.
+Example: a custom range of Aug–Sep 2026 is compared either with Jun–Jul 2026 (previous period) or with Aug–Sep 2025 (same period last year).
+
+When the selected period runs up to today, the "same period last year" comparison runs only up to **today's date last year**. For example, Oct 2026 – Nov 2026 viewed on 13 Nov 2026 is compared with 1 Oct – 13 Nov 2025. The comparison call therefore always sends an explicit `to`.
+
+The tiles show the change against the comparison period. There is no comparison when the comparison period starts before `dataStart`, or has fewer than 5 records. "Same period last year" needs at least one year of history before the selected period. The server only needs to support `from`/`to`; it has no logic of its own for the comparison.
 
 ---
 
@@ -345,4 +349,4 @@ This section is for information. The server does **not** need to implement these
 4. **No answer:** does Operations always record it by hand (as in the mockup), or should it also be set automatically after a deadline?
 5. **Time zone:** should period boundaries and months be in UTC or in the company's time zone?
 6. **Access:** does every Operations user see the whole department, or only their own group, with management seeing everything? Who can change targets? The mockup has no restrictions.
-7. **Back-fill:** can stage events be rebuilt for past RFEs from existing records (audit log, status history)? If not, the page starts empty and fills as new RFEs complete. The comparison tiles appear once a full previous period exists.
+7. **Back-fill:** can stage events be rebuilt for past RFEs from existing records (audit log, status history)? If not, the page starts empty and fills as new RFEs complete. The comparison arrows appear once the comparison period is fully covered: after one period's length for "Previous period", and after a year for "Same period last year".

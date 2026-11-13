@@ -132,6 +132,10 @@ A switch next to the comparison caption, **Previous period** / **Same period las
 
 For example, a custom range of Aug–Sep 2026 is compared either with Jun–Jul 2026 or with Aug–Sep 2025.
 
+- **"Same period last year" for a period running up to today** stops at today's date last year. For example, Oct–Nov 2026 viewed on 13 Nov 2026 is compared with 1 Oct – 13 Nov 2025. Shift both ends back with `setUTCFullYear(year − 1)`, using `now` as the end of the live period.
+- **The comparison request always sends an explicit `to`**, even when the selected period itself is live.
+- **Changing `compareMode` refetches only the comparison data.** Keep the selected period's data in the cache.
+
 **Custom range:**
 - Show two extra selects, **From** and **To**.
 - Offer only months from `dataStart` up to the current month, newest first.
@@ -417,6 +421,7 @@ Text in charts always uses these ink colours, never the series colour.
 Compare against the mockup with the same made-up data, or against the real data with a known answer.
 
 - [ ] Every period choice gives the right `[from, to)`, comparison caption (in both comparison modes), trend months and subtitle. Custom: From/To swap correctly, and no month before `dataStart` is offered.
+- [ ] The Previous period / Same period last year switch is on both tabs. It changes the caption dates and the arrows, and not the main figures.
 - [ ] Tile arrows: green = better, red = worse, grey = neutral. "No change" appears when the formatted change is 0. No arrows when there is no comparison.
 - [ ] Median ⇄ Average and Compare by change everything **without** new requests.
 - [ ] The step bars look exactly like the mockup:
